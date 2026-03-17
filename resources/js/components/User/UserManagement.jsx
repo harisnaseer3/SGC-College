@@ -3,9 +3,11 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import UserList from './UserList';
 import UserForm from './UserForm';
+import { useNotifications } from '../../contexts/NotificationContext';
 import Card from '../UI/Card';
 
 const UserManagement = () => {
+    const { showSuccess, showError } = useNotifications();
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -30,8 +32,11 @@ const UserManagement = () => {
         if (!window.confirm('Are you sure you want to delete this user?')) return;
         try {
             await axios.delete(`/api/users/${id}`);
+            showSuccess('User deleted successfully!');
             fetchUsers();
         } catch (error) {
+            const message = error.response?.data?.message || 'Error deleting user';
+            showError(message);
             console.error('Error deleting user:', error);
         }
     };

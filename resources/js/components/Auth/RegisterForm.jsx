@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 
 const RegisterForm = ({ onToggleLogin }) => {
     const { register } = useAuth();
+    const { showError } = useNotifications();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -49,6 +51,10 @@ const RegisterForm = ({ onToggleLogin }) => {
             console.error('Registration error:', error);
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
+                showError('Registration failed. Please fix the errors.');
+            } else {
+                const message = error.response?.data?.message || 'Registration failed. Please try again.';
+                showError(message);
             }
         } finally {
             setLoading(false);

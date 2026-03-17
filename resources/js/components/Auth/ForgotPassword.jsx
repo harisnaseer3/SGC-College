@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 
 const ForgotPassword = ({ onToggleLogin }) => {
+    const { showError } = useNotifications();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -14,7 +16,8 @@ const ForgotPassword = ({ onToggleLogin }) => {
             const response = await axios.post('/api/forgot-password', { email });
             setMessage(response.data.message);
         } catch (error) {
-            setMessage('Something went wrong. Please try again.');
+            const msg = error.response?.data?.message || 'Something went wrong. Please try again.';
+            showError(msg);
         } finally {
             setLoading(false);
         }

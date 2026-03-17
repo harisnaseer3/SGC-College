@@ -10,14 +10,14 @@ trait HasCampusScope
     {
         static::creating(function ($model) {
             $user = auth()->user();
-            if ($user && empty($model->campus_id) && !$user->hasRole('Super Admin')) {
+            if ($user && empty($model->campus_id) && !$user->hasRole('super_admin')) {
                 $model->campus_id = $user->campus_id;
             }
         });
 
         static::addGlobalScope('campus', function (Builder $builder) {
             $user = auth()->user();
-            if ($user && !$user->hasRole('Super Admin') && $user->campus_id) {
+            if ($user && !$user->hasRole('super_admin') && $user->campus_id) {
                 $builder->where($builder->getModel()->getTable() . '.campus_id', $user->campus_id);
             }
         });

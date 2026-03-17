@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
 
 const ProfileView = () => {
     const { user, setUser } = useAuth();
+    const { showSuccess, showError } = useNotifications();
     const [profileData, setProfileData] = useState({
         name: user?.name || '',
         email: user?.email || '',
@@ -16,7 +18,6 @@ const ProfileView = () => {
         password_confirmation: '',
     });
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState({ type: '', text: '' });
     const [showPasswords, setShowPasswords] = useState({
         current: false,
         new: false,
@@ -38,13 +39,13 @@ const ProfileView = () => {
     const updateProfile = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setMessage({ type: '', text: '' });
         try {
             const response = await axios.put('/api/profile', profileData);
             setUser(response.data.data);
-            setMessage({ type: 'success', text: response.data.message || 'Profile updated successfully!' });
+            showSuccess(response.data.message || 'Profile updated successfully!');
         } catch (error) {
-            setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to update profile.' });
+            const msg = error.response?.data?.message || 'Failed to update profile.';
+            showError(msg);
         } finally {
             setLoading(false);
         }
@@ -53,13 +54,13 @@ const ProfileView = () => {
     const updatePassword = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setMessage({ type: '', text: '' });
         try {
             const response = await axios.put('/api/password', passwordData);
             setPasswordData({ current_password: '', password: '', password_confirmation: '' });
-            setMessage({ type: 'success', text: response.data.message || 'Password changed successfully!' });
+            showSuccess(response.data.message || 'Password changed successfully!');
         } catch (error) {
-            setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to change password.' });
+            const msg = error.response?.data?.message || 'Failed to change password.';
+            showError(msg);
         } finally {
             setLoading(false);
         }
@@ -71,21 +72,6 @@ const ProfileView = () => {
                 <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Account Settings</h1>
                 <p className="text-slate-500 mt-1 font-medium">Manage your profile information and security settings.</p>
             </div>
-
-            {message.text && (
-                <div className={`p-4 rounded-2xl flex items-center gap-3 font-bold text-sm ${
-                    message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                }`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {message.type === 'success' ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                        ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
-                        )}
-                    </svg>
-                    {message.text}
-                </div>
-            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <Card className="p-8">

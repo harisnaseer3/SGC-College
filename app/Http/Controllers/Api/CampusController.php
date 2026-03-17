@@ -15,8 +15,12 @@ class CampusController extends BaseController
      */
     public function index(Organization $organization): JsonResponse
     {
-        $campuses = $organization->campuses;
-        return $this->sendResponse($campuses, 'Campuses retrieved successfully.');
+        try {
+            $campuses = $organization->campuses;
+            return $this->sendResponse($campuses, 'Campuses retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to retrieve campuses.', ['error' => $e->getMessage()], 500);
+        }
     }
 
     /**

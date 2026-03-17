@@ -10,14 +10,18 @@ class RoleController extends BaseController
 {
     public function index(): JsonResponse
     {
-        $roles = Role::all()->map(function ($role) {
-            return [
-                'id' => $role->id,
-                'name' => $role->name,
-                'label' => ucwords(str_replace('_', ' ', $role->name))
-            ];
-        });
+        try {
+            $roles = Role::all()->map(function ($role) {
+                return [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'label' => ucwords(str_replace('_', ' ', $role->name))
+                ];
+            });
 
-        return $this->sendResponse($roles, 'Roles retrieved successfully.');
+            return $this->sendResponse($roles, 'Roles retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to retrieve roles.', ['error' => $e->getMessage()], 500);
+        }
     }
 }

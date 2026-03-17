@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 
 const LoginForm = ({ onToggleRegister, onToggleForgot }) => {
     const { login } = useAuth();
+    const { showError } = useNotifications();
     const [credentials, setCredentials] = useState({ email: '', password: '' });
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -23,8 +25,11 @@ const LoginForm = ({ onToggleRegister, onToggleForgot }) => {
             console.error('Login error:', error);
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
+                showError('Login failed. Please check your credentials.');
             } else {
-                setErrors({ email: ['Invalid credentials or server error.'] });
+                const message = error.response?.data?.message || 'Invalid credentials or server error.';
+                setErrors({ email: [message] });
+                showError(message);
             }
         } finally {
             setLoading(false);

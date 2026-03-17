@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { NotificationProvider } from '../contexts/NotificationContext';
 import MainLayout from './Layout/MainLayout';
 import Dashboard from './Dashboard/Dashboard';
 import AdmissionList from './Admission/AdmissionList';
@@ -9,6 +10,7 @@ import OrganizationManagement from './Organization/OrganizationManagement';
 import ProfileView from './Profile/ProfileView';
 import UserManagement from './User/UserManagement';
 import AuthView from './Auth/AuthView';
+import ToastContainer from './UI/ToastContainer';
 
 const AppContent = () => {
     const { user, loading } = useAuth();
@@ -44,9 +46,12 @@ const AppContent = () => {
 
 const MainApp = () => {
     return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
+        <NotificationProvider>
+            <AuthProvider>
+                <AppContent />
+                <ToastContainer />
+            </AuthProvider>
+        </NotificationProvider>
     );
 };
 

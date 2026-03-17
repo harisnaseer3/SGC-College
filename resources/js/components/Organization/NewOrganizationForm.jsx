@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
 
 const NewOrganizationForm = ({ onSuccess }) => {
+    const { showSuccess, showError } = useNotifications();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: '',
@@ -54,11 +56,15 @@ const NewOrganizationForm = ({ onSuccess }) => {
             await axios.post('/api/organizations', data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
+            showSuccess('Organization registered successfully!');
             onSuccess();
         } catch (error) {
             if (error.response && error.response.data.errors) {
                 setErrors(error.response.data.errors);
+                showError('Please fix the validation errors.');
             } else {
+                const message = error.response?.data?.message || 'Failed to create organization';
+                showError(message);
                 console.error('Failed to create organization:', error);
             }
         } finally {

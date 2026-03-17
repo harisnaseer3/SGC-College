@@ -16,8 +16,12 @@ class UserController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $users = User::with(['roles', 'campus'])->get();
-        return $this->sendResponse($users, 'Users retrieved successfully.');
+        try {
+            $users = User::with(['roles', 'campus'])->get();
+            return $this->sendResponse($users, 'Users retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to retrieve users.', ['error' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -25,26 +29,34 @@ class UserController extends BaseController
      */
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $currentUser = $request->user();
-        $data = $request->validated();
-        
-        // Security check: only Super Admin can create Super Admins
-        if ($data['role'] === 'super_admin' && !$currentUser->hasRole('super_admin')) {
-            return $this->sendError('Unauthorized', ['role' => 'Only Super Admins can create other Super Admins.'], 403);
+        try {
+            $currentUser = $request->user();
+            $data = $request->validated();
+            
+            // Security check: only Super Admin can create Super Admins
+            if ($data['role'] === 'super_admin' && !$currentUser->hasRole('super_admin')) {
+                return $this->sendError('Unauthorized', ['role' => 'Only Super Admins can create other Super Admins.'], 403);
+            }
+
+            // Security check: non-Super Admins must assign users to their own campus
+            if (!$currentUser->hasRole('super_admin')) {
+                $data['campus_id'] = $currentUser->campus_id;
+            }
+
+            $data['password'] = Hash::make($data['password']);
+            $data['organization_id'] = $currentUser->organization_id;
+
+            $user = User::create($data);
+            
+            // Explicitly assign role using the 'web' guard format
+            // since the API route uses the 'api' guard but roles are seeded for 'web'
+            $role = Role::findByName($data['role'], 'web');
+            $user->assignRole($role);
+
+            return $this->sendResponse($user->load(['roles', 'campus']), 'User created successfully.', 201);
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to create user.', ['error' => $e->getMessage()], 500);
         }
-
-        // Security check: non-Super Admins must assign users to their own campus
-        if (!$currentUser->hasRole('super_admin')) {
-            $data['campus_id'] = $currentUser->campus_id;
-        }
-
-        $data['password'] = Hash::make($data['password']);
-        $data['organization_id'] = $currentUser->organization_id;
-
-        $user = User::create($data);
-        $user->assignRole($data['role']);
-
-        return $this->sendResponse($user->load(['roles', 'campus']), 'User created successfully.', 201);
     }
 
     /**
@@ -52,12 +64,16 @@ class UserController extends BaseController
      */
     public function show(User $user): JsonResponse
     {
-        $currentUser = auth()->user();
-        if (!$currentUser->hasRole('super_admin') && $user->campus_id !== $currentUser->campus_id) {
-            return $this->sendError('Unauthorized', [], 403);
-        }
+        try {
+            $currentUser = auth()->user();
+            if (!$currentUser->hasRole('super_admin') && $user->campus_id !== $currentUser->campus_id) {
+                return $this->sendError('Unauthorized', [], 403);
+            }
 
-        return $this->sendResponse($user->load(['roles', 'campus']), 'User retrieved successfully.');
+            return $this->sendResponse($user->load(['roles', 'campus']), 'User retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to retrieve user.', ['error' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -73,7 +89,7 @@ class UserController extends BaseController
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
-            'password' => 'sometimes|string|min:8|confirmed',
+            'password' => 'sometimes|string|min:8|confirmed|nullable',
             'role' => 'sometimes|string|exists:roles,name',
             'campus_id' => 'required_unless:role,super_admin,org_admin|nullable|exists:campuses,id',
         ]);
@@ -82,14 +98,18 @@ class UserController extends BaseController
             return $this->sendError('Unauthorized', ['role' => 'Only Super Admins can assign Super Admin role.'], 403);
         }
 
-        if (isset($data['password'])) {
+        if (!empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
+        } else {
+            unset($data['password']);
         }
 
         $user->update($data);
 
         if (isset($data['role'])) {
-            $user->syncRoles([$data['role']]);
+            // Explicitly sync role using the 'web' guard format
+            $role = Role::findByName($data['role'], 'web');
+            $user->syncRoles([$role]);
         }
 
         return $this->sendResponse($user->load(['roles', 'campus']), 'User updated successfully.');
@@ -100,12 +120,16 @@ class UserController extends BaseController
      */
     public function destroy(User $user): JsonResponse
     {
-        $currentUser = auth()->user();
-        if (!$currentUser->hasRole('super_admin') && $user->campus_id !== $currentUser->campus_id) {
-            return $this->sendError('Unauthorized', [], 403);
-        }
+        try {
+            $currentUser = auth()->user();
+            if (!$currentUser->hasRole('super_admin') && $user->campus_id !== $currentUser->campus_id) {
+                return $this->sendError('Unauthorized', [], 403);
+            }
 
-        $user->delete();
-        return $this->sendResponse(null, 'User deleted successfully.');
+            $user->delete();
+            return $this->sendResponse(null, 'User deleted successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to delete user.', ['error' => $e->getMessage()], 500);
+        }
     }
 }

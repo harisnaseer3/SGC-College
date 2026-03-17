@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useNotifications } from '../../contexts/NotificationContext';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
 
 const NewAdmissionForm = () => {
     const navigate = useNavigate();
+    const { showSuccess, showError } = useNotifications();
     const [formData, setFormData] = useState({
         campus_id: '',
         academic_class_id: '',
@@ -55,10 +57,12 @@ const NewAdmissionForm = () => {
         setSubmitting(true);
         try {
             await axios.post('/api/admissions', formData);
+            showSuccess('Student admitted successfully!');
             navigate('/admissions');
         } catch (error) {
+            const message = error.response?.data?.message || 'Error creating admission';
+            showError(message);
             console.error('Error submitting form:', error);
-            alert('Error creating admission. Please check the form.');
         } finally {
             setSubmitting(false);
         }

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
 
 const UserForm = ({ onSuccess, onCancel }) => {
     const { id } = useParams();
     const { user: currentUser } = useAuth();
+    const { showSuccess, showError } = useNotifications();
     const navigate = useNavigate();
     const isEdit = !!id;
 
@@ -84,17 +86,28 @@ const UserForm = ({ onSuccess, onCancel }) => {
         setLoading(true);
         setErrors({});
 
+        // Clean data: convert empty strings to null
+        const cleanData = Object.keys(formData).reduce((acc, key) => {
+            acc[key] = formData[key] === '' ? null : formData[key];
+            return acc;
+        }, {});
+
         try {
             if (isEdit) {
-                await axios.put(`/api/users/${id}`, formData);
+                await axios.put(`/api/users/${id}`, cleanData);
+                showSuccess('User updated successfully!');
             } else {
-                await axios.post('/api/users', formData);
+                await axios.post('/api/users', cleanData);
+                showSuccess('User created successfully!');
             }
             onSuccess();
         } catch (error) {
             if (error.response && error.response.data.errors) {
                 setErrors(error.response.data.errors);
+                showError('Please fix the validation errors.');
             } else {
+                const message = error.response?.data?.message || 'Error saving user';
+                showError(message);
                 console.error('Error saving user:', error);
             }
         } finally {

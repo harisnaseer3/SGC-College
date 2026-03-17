@@ -14,8 +14,12 @@ class OrganizationController extends BaseController
      */
     public function index(): JsonResponse
     {
-        $organizations = Organization::all();
-        return $this->sendResponse($organizations, 'Organizations retrieved successfully.');
+        try {
+            $organizations = Organization::all();
+            return $this->sendResponse($organizations, 'Organizations retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to retrieve organizations.', ['error' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -23,20 +27,28 @@ class OrganizationController extends BaseController
      */
     public function store(StoreOrganizationRequest $request): JsonResponse
     {
-        $data = $request->validated();
+        try {
+            $data = $request->validated();
 
-        if ($request->hasFile('logo')) {
-            $path = $request->file('logo')->store('logos/organizations', 'public');
-            $data['logo_url'] = '/storage/' . $path;
+            if ($request->hasFile('logo')) {
+                $path = $request->file('logo')->store('logos/organizations', 'public');
+                $data['logo_url'] = '/storage/' . $path;
+            }
+
+            $organization = Organization::create($data);
+            
+            return $this->sendResponse($organization, 'Organization created successfully.', 201);
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to create organization.', ['error' => $e->getMessage()], 500);
         }
-
-        $organization = Organization::create($data);
-        
-        return $this->sendResponse($organization, 'Organization created successfully.', 201);
     }
 
     public function show(Organization $organization): JsonResponse
     {
-        return $this->sendResponse($organization, 'Organization retrieved successfully.');
+        try {
+            return $this->sendResponse($organization, 'Organization retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to retrieve organization.', ['error' => $e->getMessage()], 500);
+        }
     }
 }

@@ -17,5 +17,28 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*')) {
+                $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+                
+                // Special handling for validation exceptions to keep standard format
+                if ($e instanceof \Illuminate\Validation\ValidationException) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The given data was invalid.',
+                        'errors' => $e->errors(),
+                    ], 422);
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage() ?: 'Server Error',
+                    'debug' => config('app.debug') ? [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => collect($e->getTrace())->take(5),
+                    ] : null,
+                ], $status);
+            }
+        });
     })->create();
