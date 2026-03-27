@@ -28,7 +28,7 @@ const OrganizationManagement = () => {
 
     const handleCreateSuccess = () => {
         fetchOrganizations();
-        navigate('/colleges');
+        navigate('/organizations');
     };
 
     return (
@@ -44,13 +44,13 @@ const OrganizationManagement = () => {
                 } />
                 <Route path="new" element={
                     <NewOrganizationForm 
-                        onCancel={() => navigate('/colleges')} 
+                        onCancel={() => navigate('/organizations')} 
                         onSuccess={handleCreateSuccess}
                     />
                 } />
                 <Route path=":orgId/campuses/*" element={
                     <CampusManagement 
-                        onBack={() => navigate('/colleges')}
+                        onBack={() => navigate('/organizations')}
                     />
                 } />
             </Routes>

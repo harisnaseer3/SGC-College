@@ -10,14 +10,24 @@ trait HasOrganizationScope
     protected static function bootHasOrganizationScope()
     {
         static::creating(function ($model) {
-            if (empty($model->organization_id) && session()->has('organization_id')) {
-                $model->organization_id = session()->get('organization_id');
+            $user = auth()->user();
+            if ($user && empty($model->organization_id) && !$user->hasRole('super_admin')) {
+                $model->organization_id = $user->organization_id;
+            } elseif ($user && $user->hasRole('super_admin') && request()->hasHeader('X-Organization-ID')) {
+                $model->organization_id = request()->header('X-Organization-ID');
             }
         });
 
         static::addGlobalScope('organization', function (Builder $builder) {
-            if (session()->has('organization_id')) {
-                $builder->where('organization_id', session()->get('organization_id'));
+            $user = auth()->user();
+            if ($user && !$user->hasRole('super_admin')) {
+                if ($user->organization_id) {
+                    $builder->where($builder->getModel()->getTable() . '.organization_id', $user->organization_id);
+                }
+            } elseif ($user && $user->hasRole('super_admin')) {
+                if (request()->hasHeader('X-Organization-ID')) {
+                    $builder->where($builder->getModel()->getTable() . '.organization_id', request()->header('X-Organization-ID'));
+                }
             }
         });
     }

@@ -10,10 +10,11 @@ import OrganizationManagement from './Organization/OrganizationManagement';
 import ProfileView from './Profile/ProfileView';
 import UserManagement from './User/UserManagement';
 import AuthView from './Auth/AuthView';
+import InstituteSelection from './Auth/InstituteSelection';
 import ToastContainer from './UI/ToastContainer';
 
 const AppContent = () => {
-    const { user, loading } = useAuth();
+    const { user, loading, selectedOrganization } = useAuth();
 
     if (loading) {
         return (
@@ -28,11 +29,17 @@ const AppContent = () => {
         return <AuthView />;
     }
 
+    const isSuperAdmin = user.roles?.some(role => role.name === 'super_admin');
+    
+    if (isSuperAdmin && !selectedOrganization) {
+        return <InstituteSelection />;
+    }
+
     return (
         <MainLayout>
             <Routes>
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/colleges/*" element={<OrganizationManagement />} />
+                {isSuperAdmin && <Route path="/organizations/*" element={<OrganizationManagement />} />}
                 <Route path="/users/*" element={<UserManagement />} />
                 <Route path="/admissions" element={<AdmissionList />} />
                 <Route path="/new-admission" element={<NewAdmissionForm />} />

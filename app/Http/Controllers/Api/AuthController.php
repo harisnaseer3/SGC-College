@@ -50,13 +50,8 @@ class AuthController extends BaseController
 
             $token = $user->createToken('auth_token')->accessToken;
 
-            // Set organization context in session if user has one
-            if ($user->organization_id) {
-                session(['organization_id' => $user->organization_id]);
-            }
-
             return $this->sendResponse([
-                'user' => $user->load(['organization', 'campus']),
+                'user' => $user->load(['organization', 'campus', 'roles']),
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ], 'User logged in successfully.');

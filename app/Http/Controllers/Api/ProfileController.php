@@ -11,7 +11,7 @@ class ProfileController extends BaseController
     public function show(Request $request)
     {
         try {
-            return $this->sendResponse($request->user()->load(['organization', 'campus']), 'Profile retrieved successfully.');
+            return $this->sendResponse($request->user()->load(['organization', 'campus', 'roles']), 'Profile retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve profile.', ['error' => $e->getMessage()], 500);
         }
@@ -23,7 +23,7 @@ class ProfileController extends BaseController
             $user = $request->user();
             $user->update($request->validated());
 
-            return $this->sendResponse($user->load(['organization', 'campus']), 'Profile updated successfully.');
+            return $this->sendResponse($user->load(['organization', 'campus', 'roles']), 'Profile updated successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to update profile.', ['error' => $e->getMessage()], 500);
         }
