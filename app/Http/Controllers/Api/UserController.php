@@ -34,17 +34,16 @@ class UserController extends BaseController
             $data = $request->validated();
             
             // Security check: only Super Admin can create Super Admins
-            if ($data['role'] === 'super_admin' && !$currentUser->hasRole('super_admin')) {
+            if ($data['role'] === 'super_admin' && !$currentUser->hasRole('super_admin', 'web')) {
                 return $this->sendError('Unauthorized', ['role' => 'Only Super Admins can create other Super Admins.'], 403);
             }
 
-            // Security check: non-Super Admins must assign users to their own campus
-            if (!$currentUser->hasRole('super_admin')) {
-                $data['campus_id'] = $currentUser->campus_id;
-            }
-
             $data['password'] = Hash::make($data['password']);
-            $data['organization_id'] = $currentUser->organization_id;
+            
+            if ($data['role'] === 'super_admin') {
+                $data['organization_id'] = null;
+                $data['campus_id'] = null;
+            }
 
             $user = User::create($data);
             
@@ -66,7 +65,7 @@ class UserController extends BaseController
     {
         try {
             $currentUser = auth()->user();
-            if (!$currentUser->hasRole('super_admin') && $user->campus_id !== $currentUser->campus_id) {
+            if (!$currentUser->hasRole('super_admin', 'web') && $user->campus_id !== $currentUser->campus_id) {
                 return $this->sendError('Unauthorized', [], 403);
             }
 
@@ -82,7 +81,7 @@ class UserController extends BaseController
     public function update(Request $request, User $user): JsonResponse
     {
         $currentUser = $request->user();
-        if (!$currentUser->hasRole('super_admin') && $user->campus_id !== $currentUser->campus_id) {
+        if (!$currentUser->hasRole('super_admin', 'web') && $user->campus_id !== $currentUser->campus_id) {
             return $this->sendError('Unauthorized', [], 403);
         }
 
@@ -94,8 +93,13 @@ class UserController extends BaseController
             'campus_id' => 'required_unless:role,super_admin,org_admin|nullable|exists:campuses,id',
         ]);
 
-        if (isset($data['role']) && $data['role'] === 'super_admin' && !$currentUser->hasRole('super_admin')) {
+        if (isset($data['role']) && $data['role'] === 'super_admin' && !$currentUser->hasRole('super_admin', 'web')) {
             return $this->sendError('Unauthorized', ['role' => 'Only Super Admins can assign Super Admin role.'], 403);
+        }
+
+        if (isset($data['role']) && $data['role'] === 'super_admin') {
+            $data['organization_id'] = null;
+            $data['campus_id'] = null;
         }
 
         if (!empty($data['password'])) {
@@ -122,7 +126,7 @@ class UserController extends BaseController
     {
         try {
             $currentUser = auth()->user();
-            if (!$currentUser->hasRole('super_admin') && $user->campus_id !== $currentUser->campus_id) {
+            if (!$currentUser->hasRole('super_admin', 'web') && $user->campus_id !== $currentUser->campus_id) {
                 return $this->sendError('Unauthorized', [], 403);
             }
 
