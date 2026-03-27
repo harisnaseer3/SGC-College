@@ -1,6 +1,5 @@
  import React from 'react';
 import SidebarItem from './SidebarItem';
-import OrgSwitcher from './OrgSwitcher';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Sidebar = () => {
@@ -39,18 +38,7 @@ const Sidebar = () => {
                 ))}
             </nav>
             
-            <div className="p-6 space-y-4">
-                <OrgSwitcher />
-                <button 
-                    onClick={logout}
-                    className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-300 font-bold group"
-                >
-                    <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span>Sign Out</span>
-                </button>
-            </div>
+
         </aside>
     );
 };

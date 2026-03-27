@@ -16,6 +16,13 @@ class CampusController extends BaseController
     public function index(Organization $organization): JsonResponse
     {
         try {
+            $user = auth()->user();
+            
+            // Explicit check for non-superadmins
+            if (!$user->hasRole('super_admin', 'web') && $user->organization_id !== $organization->id) {
+                return $this->sendError('Unauthorized access to this organization.', [], 403);
+            }
+
             $campuses = $organization->campuses;
             return $this->sendResponse($campuses, 'Campuses retrieved successfully.');
         } catch (\Exception $e) {
@@ -29,6 +36,13 @@ class CampusController extends BaseController
     public function store(StoreCampusRequest $request, Organization $organization): JsonResponse
     {
         try {
+            $user = auth()->user();
+            
+            // Explicit check for non-superadmins
+            if (!$user->hasRole('super_admin', 'web') && $user->organization_id !== $organization->id) {
+                return $this->sendError('Unauthorized access to this organization.', [], 403);
+            }
+
             $data = $request->validated();
 
             if ($request->hasFile('logo')) {

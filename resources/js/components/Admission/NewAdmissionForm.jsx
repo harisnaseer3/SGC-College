@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
@@ -8,6 +9,8 @@ import Button from '../UI/Button';
 const NewAdmissionForm = () => {
     const navigate = useNavigate();
     const { showSuccess, showError } = useNotifications();
+    const { selectedCampus } = useAuth();
+    
     const [formData, setFormData] = useState({
         campus_id: '',
         academic_class_id: '',
@@ -32,6 +35,12 @@ const NewAdmissionForm = () => {
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (selectedCampus) {
+            setFormData(prev => ({ ...prev, campus_id: selectedCampus }));
+        }
+    }, [selectedCampus]);
 
     useEffect(() => {
         fetchOptions();
