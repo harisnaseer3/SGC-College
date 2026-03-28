@@ -9,6 +9,7 @@ import NewAdmissionForm from './Admission/NewAdmissionForm';
 import OrganizationManagement from './Organization/OrganizationManagement';
 import ProfileView from './Profile/ProfileView';
 import UserManagement from './User/UserManagement';
+import AcademicManagement from './Academic/AcademicManagement';
 import AuthView from './Auth/AuthView';
 import InstituteSelection from './Auth/InstituteSelection';
 import ToastContainer from './UI/ToastContainer';
@@ -41,6 +42,7 @@ const AppContent = () => {
                 <Route path="/dashboard" element={<Dashboard />} />
                 {isSuperAdmin && <Route path="/organizations/*" element={<OrganizationManagement />} />}
                 <Route path="/users/*" element={<UserManagement />} />
+                <Route path="/academic/*" element={<AcademicManagement />} />
                 <Route path="/admissions" element={<AdmissionList />} />
                 <Route path="/new-admission" element={<NewAdmissionForm />} />
                 <Route path="/profile" element={<ProfileView />} />

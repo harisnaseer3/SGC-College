@@ -27,6 +27,9 @@ class Student extends Model
         'guardian_phone',
         'admission_date',
         'status',
+        'program_id',
+        'program_semester_id',
+        'academic_session_id',
     ];
 
     public function campus()
@@ -42,5 +45,20 @@ class Student extends Model
     public function section()
     {
         return $this->belongsTo(Section::class);
+    }
+
+    public function program()
+    {
+        return $this->belongsTo(Program::class);
+    }
+
+    public function programSemester()
+    {
+        return $this->belongsTo(ProgramSemester::class);
+    }
+
+    public function academicSession()
+    {
+        return $this->belongsTo(AcademicSession::class);
     }
 }

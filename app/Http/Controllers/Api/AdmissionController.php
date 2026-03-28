@@ -6,6 +6,8 @@ use App\Models\AcademicClass;
 use App\Models\Campus;
 use App\Models\Section;
 use App\Models\Student;
+use App\Models\Program;
+use App\Models\AcademicSession;
 use Illuminate\Http\Request;
 
 use App\Http\Requests\Api\Admission\StoreStudentRequest;
@@ -29,6 +31,8 @@ class AdmissionController extends BaseController
                 'campuses' => Campus::all(),
                 'classes' => AcademicClass::all(),
                 'sections' => Section::all(),
+                'programs' => Program::all(),
+                'sessions' => AcademicSession::all(),
             ], 'Form data retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve form data.', ['error' => $e->getMessage()], 500);

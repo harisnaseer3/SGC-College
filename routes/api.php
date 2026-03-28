@@ -10,6 +10,9 @@ use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\CampusController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\ProgramController;
+use App\Http\Controllers\Api\CourseController;
+use App\Http\Controllers\Api\AcademicSessionController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -38,4 +41,10 @@ Route::middleware('auth:api')->group(function () {
     // User & Role Routes
     Route::apiResource('users', UserController::class);
     Route::get('roles', [RoleController::class, 'index']);
+
+    // Academic Module Routes
+    Route::apiResource('programs', ProgramController::class);
+    Route::apiResource('courses', CourseController::class);
+    Route::apiResource('academic-sessions', AcademicSessionController::class);
+    Route::post('programs/{program}/semesters/{semester}/courses', [ProgramController::class, 'assignCourses']);
 });
