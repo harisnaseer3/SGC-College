@@ -30,9 +30,8 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::put('/password', [PasswordController::class, 'update']);
 
-    Route::get('/admissions', [App\Http\Controllers\Api\AdmissionController::class, 'index']);
-    Route::post('/admissions', [App\Http\Controllers\Api\AdmissionController::class, 'store']);
     Route::get('/admissions/form-data', [App\Http\Controllers\Api\AdmissionController::class, 'getFormData']);
+    Route::apiResource('admissions', App\Http\Controllers\Api\AdmissionController::class);
 
     // Organization & Campus Routes
     Route::get('/organizations', [OrganizationController::class, 'index']);

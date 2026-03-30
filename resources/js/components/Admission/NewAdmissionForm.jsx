@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
@@ -16,9 +16,11 @@ const SectionHeader = ({ title }) => (
 );
 
 const NewAdmissionForm = () => {
+    const { id } = useParams();
     const navigate = useNavigate();
     const { showSuccess, showError } = useNotifications();
     const { selectedCampus } = useAuth();
+    const isEdit = !!id;
 
     const [formData, setFormData] = useState({
         campus_id: '',
@@ -57,14 +59,22 @@ const NewAdmissionForm = () => {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        if (selectedCampus) {
-            setFormData(prev => ({ ...prev, campus_id: selectedCampus }));
-        }
-    }, [selectedCampus]);
+        const init = async () => {
+            setLoading(true);
+            await fetchOptions();
+            if (isEdit) {
+                await fetchStudentData();
+            }
+            setLoading(false);
+        };
+        init();
+    }, [id]);
 
     useEffect(() => {
-        fetchOptions();
-    }, []);
+        if (selectedCampus && !isEdit) {
+            setFormData(prev => ({ ...prev, campus_id: selectedCampus }));
+        }
+    }, [selectedCampus, isEdit]);
 
     const fetchOptions = async () => {
         try {
@@ -72,8 +82,44 @@ const NewAdmissionForm = () => {
             setFormOptions(response.data.data);
         } catch (error) {
             console.error('Error fetching form data:', error);
-        } finally {
-            setLoading(false);
+            showError('Failed to load form options.');
+        }
+    };
+
+    const fetchStudentData = async () => {
+        try {
+            const response = await axios.get(`/api/admissions/${id}`);
+            const s = response.data.data;
+            setFormData({
+                campus_id:           s.campus_id || '',
+                program_id:          s.program_id || '',
+                program_semester_id: s.program_semester_id || '',
+                academic_batch_id:   s.academic_batch_id || '',
+                intake_session:      s.intake_session || '',
+                admission_number:    s.admission_number || '',
+                first_name:          s.first_name || '',
+                last_name:           s.last_name || '',
+                student_cnic:        s.student_cnic || '',
+                date_of_birth:       s.date_of_birth || '',
+                phone:               s.phone || '',
+                email:               s.email || '',
+                gender:              s.gender || '',
+                is_transfer:         s.is_transfer ? 'true' : 'false',
+                address:             s.address || '',
+                religion:            s.religion || '',
+                is_enrolled:         s.status === 'Enrolled',
+                guardian_name:       s.guardian_name || '',
+                guardian_cnic:       s.guardian_cnic || '',
+                guardian_phone:      s.guardian_phone || '',
+                admission_date:      s.admission_date || '',
+            });
+            if (s.student_picture) {
+                setPicturePreview(`/storage/${s.student_picture}`);
+            }
+        } catch (error) {
+            console.error('Error fetching student:', error);
+            showError('Failed to load student data.');
+            navigate('/admissions');
         }
     };
 
@@ -95,6 +141,11 @@ const NewAdmissionForm = () => {
         setSubmitting(true);
         try {
             const payload = new FormData();
+            
+            if (isEdit) {
+                payload.append('_method', 'PUT'); // Laravel requirement for multipart PUT
+            }
+
             Object.entries(formData).forEach(([key, val]) => {
                 if (key === 'is_transfer') {
                     payload.append(key, val === 'true' || val === true ? '1' : '0');
@@ -104,13 +155,18 @@ const NewAdmissionForm = () => {
                     payload.append(key, val ?? '');
                 }
             });
+
             if (pictureFile) {
                 payload.append('student_picture', pictureFile);
             }
-            await axios.post('/api/admissions', payload, {
+
+            const url = isEdit ? `/api/admissions/${id}` : '/api/admissions';
+            
+            await axios.post(url, payload, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
-            showSuccess('Student admitted successfully!');
+
+            showSuccess(isEdit ? 'Student updated successfully!' : 'Student admitted successfully!');
             navigate('/admissions');
         } catch (error) {
             const errors = error.response?.data?.errors;
@@ -118,7 +174,7 @@ const NewAdmissionForm = () => {
                 const msgs = Object.values(errors).flat().join(' | ');
                 showError(msgs);
             } else {
-                showError(error.response?.data?.message || 'Error creating admission');
+                showError(error.response?.data?.message || 'Error processing admission');
             }
             console.error('Error submitting form:', error);
         } finally {
@@ -126,14 +182,23 @@ const NewAdmissionForm = () => {
         }
     };
 
-    if (loading) return <div className="text-center py-12 text-slate-500 font-medium">Loading form configuration...</div>;
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">Loading Registration Form...</p>
+        </div>
+    );
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">New Student Admission</h1>
-                    <p className="text-slate-500 mt-1 font-medium">Fill in the details to register a new student.</p>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+                        {isEdit ? 'Edit Student Admission' : 'New Student Admission'}
+                    </h1>
+                    <p className="text-slate-500 mt-1 font-medium">
+                        {isEdit ? 'Update the information for this student.' : 'Fill in the details to register a new student.'}
+                    </p>
                 </div>
                 <Button variant="secondary" onClick={() => navigate('/admissions')}>
                     Back to List
@@ -298,7 +363,7 @@ const NewAdmissionForm = () => {
                     <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                         <Button variant="secondary" onClick={() => navigate('/admissions')} type="button">Cancel</Button>
                         <Button type="submit" disabled={submitting}>
-                            {submitting ? 'Admitting...' : 'Register Student'}
+                            {submitting ? (isEdit ? 'Updating...' : 'Admitting...') : (isEdit ? 'Update Student' : 'Register Student')}
                         </Button>
                     </div>
                 </form>

@@ -45,6 +45,7 @@ const AppContent = () => {
                 <Route path="/academic/*" element={<AcademicManagement />} />
                 <Route path="/admissions" element={<AdmissionList />} />
                 <Route path="/new-admission" element={<NewAdmissionForm />} />
+                <Route path="/edit-admission/:id" element={<NewAdmissionForm />} />
                 <Route path="/profile" element={<ProfileView />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

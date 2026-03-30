@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 use App\Traits\HasOrganizationScope;
 use App\Traits\HasCampusScope;
 
 class Student extends Model
 {
-    use HasOrganizationScope, HasCampusScope;
+    use HasOrganizationScope, HasCampusScope, SoftDeletes;
 
     protected $fillable = [
         'organization_id',

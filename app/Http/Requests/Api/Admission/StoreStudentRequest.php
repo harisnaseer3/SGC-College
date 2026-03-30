@@ -21,16 +21,18 @@ class StoreStudentRequest extends FormRequest
      */
     public function rules(): array
     {
+        $studentId = $this->student?->id;
+
         return [
             'campus_id'           => 'required|exists:campuses,id',
             'program_id'          => 'required|exists:programs,id',
             'program_semester_id' => 'required|exists:program_semesters,id',
             'academic_batch_id'   => 'required|exists:academic_batches,id',
             'intake_session'      => 'required|in:Fall,Spring',
-            'admission_number'    => 'required|string|unique:students,admission_number',
+            'admission_number'    => 'required|string|unique:students,admission_number,' . $studentId,
             'first_name'          => 'required|string|max:255',
             'last_name'           => 'required|string|max:255',
-            'email'               => 'nullable|email|unique:students,email',
+            'email'               => 'nullable|email|unique:students,email,' . $studentId,
             'phone'               => 'required|string',
             'date_of_birth'       => 'required|date',
             'address'             => 'required|string',
@@ -39,7 +41,6 @@ class StoreStudentRequest extends FormRequest
             'guardian_cnic'       => 'nullable|string',
             'admission_date'      => 'required|date',
             'status'              => 'nullable|string',
-            // New fields
             'student_cnic'        => 'nullable|string',
             'gender'              => 'required|in:Male,Female,Other',
             'is_transfer'         => 'required|boolean',
