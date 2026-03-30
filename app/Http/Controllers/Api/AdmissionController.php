@@ -7,7 +7,7 @@ use App\Models\Campus;
 use App\Models\Section;
 use App\Models\Student;
 use App\Models\Program;
-use App\Models\AcademicSession;
+use App\Models\AcademicBatch;
 use Illuminate\Http\Request;
 
 use App\Http\Requests\Api\Admission\StoreStudentRequest;
@@ -17,7 +17,7 @@ class AdmissionController extends BaseController
     public function index()
     {
         try {
-            $students = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicSession'])->latest()->get();
+            $students = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch'])->latest()->get();
             return $this->sendResponse($students, 'Students retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve students.', ['error' => $e->getMessage()], 500);
@@ -32,7 +32,7 @@ class AdmissionController extends BaseController
                 'classes' => AcademicClass::all(),
                 'sections' => Section::all(),
                 'programs' => Program::with('semesters')->get(),
-                'sessions' => AcademicSession::all(),
+                'batches' => AcademicBatch::all(),
             ], 'Form data retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve form data.', ['error' => $e->getMessage()], 500);

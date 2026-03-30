@@ -29,7 +29,8 @@ class Student extends Model
         'status',
         'program_id',
         'program_semester_id',
-        'academic_session_id',
+        'academic_batch_id',
+        'intake_session',
     ];
 
     public function campus()
@@ -57,8 +58,8 @@ class Student extends Model
         return $this->belongsTo(ProgramSemester::class);
     }
 
-    public function academicSession()
+    public function academicBatch()
     {
-        return $this->belongsTo(AcademicSession::class);
+        return $this->belongsTo(AcademicBatch::class);
     }
 }

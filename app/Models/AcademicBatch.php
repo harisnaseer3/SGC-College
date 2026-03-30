@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasOrganizationScope;
 use App\Traits\HasCampusScope;
 
-class AcademicSession extends Model
+class AcademicBatch extends Model
 {
     use HasOrganizationScope, HasCampusScope;
 

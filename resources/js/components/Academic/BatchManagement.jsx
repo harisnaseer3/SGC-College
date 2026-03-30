@@ -3,8 +3,8 @@ import axios from 'axios';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 
-const SessionManagement = () => {
-    const [sessions, setSessions] = useState([]);
+const BatchManagement = () => {
+    const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [campuses, setCampuses] = useState([]);
@@ -16,16 +16,16 @@ const SessionManagement = () => {
     const { showSuccess, showError } = useNotifications();
 
     useEffect(() => {
-        fetchSessions();
+        fetchBatches();
         fetchCampuses();
     }, []);
 
-    const fetchSessions = async () => {
+    const fetchBatches = async () => {
         try {
-            const response = await axios.get('/api/academic-sessions');
-            setSessions(response.data.data);
+            const response = await axios.get('/api/academic-batches');
+            setBatches(response.data.data);
         } catch (error) {
-            showError('Failed to fetch sessions');
+            showError('Failed to fetch batches');
         } finally {
             setLoading(false);
         }
@@ -43,13 +43,13 @@ const SessionManagement = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('/api/academic-sessions', formData);
-            showSuccess('Session created successfully');
+            await axios.post('/api/academic-batches', formData);
+            showSuccess('Batch created successfully');
             setShowForm(false);
-            fetchSessions();
+            fetchBatches();
             setFormData({ name: '', is_active: true, campus_id: '' });
         } catch (error) {
-            showError(error.response?.data?.message || 'Failed to create session');
+            showError(error.response?.data?.message || 'Failed to create batch');
         }
     };
 
@@ -58,9 +58,9 @@ const SessionManagement = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-slate-800">Academic Sessions</h2>
+                <h2 className="text-xl font-bold text-slate-800">Academic Batches</h2>
                 <Button onClick={() => setShowForm(!showForm)}>
-                    {showForm ? 'Cancel' : 'New Session'}
+                    {showForm ? 'Cancel' : 'New Batch'}
                 </Button>
             </div>
 
@@ -68,7 +68,7 @@ const SessionManagement = () => {
                 <div className="mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200">
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Session Name (e.g. 2023-2027)</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Batch Name (e.g. 2023-2027)</label>
                             <input
                                 type="text"
                                 className="w-full p-2 border border-slate-300 rounded-lg"
@@ -98,10 +98,10 @@ const SessionManagement = () => {
                                 checked={formData.is_active}
                                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                             />
-                            <label htmlFor="is_active" className="text-sm font-medium text-slate-700">Active Session</label>
+                            <label htmlFor="is_active" className="text-sm font-medium text-slate-700">Active Batch</label>
                         </div>
                         <div className="md:col-span-2">
-                            <Button type="submit">Create Session</Button>
+                            <Button type="submit">Create Batch</Button>
                         </div>
                     </form>
                 </div>
@@ -117,15 +117,15 @@ const SessionManagement = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {sessions.map((session) => (
-                            <tr key={session.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 text-sm text-slate-700 font-medium">{session.name}</td>
-                                <td className="px-6 py-4 text-sm text-slate-500">{session.campus?.name}</td>
+                        {batches.map((batch) => (
+                            <tr key={batch.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                <td className="px-6 py-4 text-sm text-slate-700 font-medium">{batch.name}</td>
+                                <td className="px-6 py-4 text-sm text-slate-500">{batch.campus?.name}</td>
                                 <td className="px-6 py-4 text-sm">
                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                        session.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                                        batch.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
                                     }`}>
-                                        {session.is_active ? 'Active' : 'Inactive'}
+                                        {batch.is_active ? 'Active' : 'Inactive'}
                                     </span>
                                 </td>
                             </tr>
@@ -137,4 +137,4 @@ const SessionManagement = () => {
     );
 };
 
-export default SessionManagement;
+export default BatchManagement;

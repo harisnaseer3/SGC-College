@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import ProgramManagement from './ProgramManagement';
 import CourseManagement from './CourseManagement';
-import SessionManagement from './SessionManagement';
+import BatchManagement from './BatchManagement';
 
 const AcademicManagement = () => {
     const location = useLocation();
@@ -10,14 +10,14 @@ const AcademicManagement = () => {
     const tabs = [
         { name: 'Programs', path: '/academic/programs' },
         { name: 'Courses', path: '/academic/courses' },
-        { name: 'Sessions', path: '/academic/sessions' },
+        { name: 'Batches', path: '/academic/batches' },
     ];
 
     return (
         <div className="p-8">
             <div className="mb-8">
                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Academic Module</h1>
-                <p className="text-slate-500 mt-2">Manage programs, courses, and academic sessions.</p>
+                <p className="text-slate-500 mt-2">Manage programs, courses, and academic batches.</p>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -41,7 +41,7 @@ const AcademicManagement = () => {
                     <Routes>
                         <Route path="programs/*" element={<ProgramManagement />} />
                         <Route path="courses" element={<CourseManagement />} />
-                        <Route path="sessions" element={<SessionManagement />} />
+                        <Route path="batches" element={<BatchManagement />} />
                         <Route path="/" element={<ProgramManagement />} />
                     </Routes>
                 </div>

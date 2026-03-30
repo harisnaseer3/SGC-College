@@ -12,7 +12,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\ProgramController;
 use App\Http\Controllers\Api\CourseController;
-use App\Http\Controllers\Api\AcademicSessionController;
+use App\Http\Controllers\Api\AcademicBatchController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -45,6 +45,6 @@ Route::middleware('auth:api')->group(function () {
     // Academic Module Routes
     Route::apiResource('programs', ProgramController::class);
     Route::apiResource('courses', CourseController::class);
-    Route::apiResource('academic-sessions', AcademicSessionController::class);
+    Route::apiResource('academic-batches', AcademicBatchController::class);
     Route::post('programs/{program}/semesters/{semester}/courses', [ProgramController::class, 'assignCourses']);
 });

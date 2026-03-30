@@ -44,7 +44,8 @@ const AdmissionList = () => {
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Student Name</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Admission #</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Program / Semester</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Session</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Batch</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Intake</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Campus</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Status</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Actions</th>
@@ -53,11 +54,11 @@ const AdmissionList = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-medium">Loading admissions...</td>
+                                    <td colSpan="7" className="px-6 py-12 text-center text-slate-400 font-medium">Loading admissions...</td>
                                 </tr>
                             ) : students.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-medium">No student records found.</td>
+                                    <td colSpan="7" className="px-6 py-12 text-center text-slate-400 font-medium">No student records found.</td>
                                 </tr>
                             ) : (
                                 students.map((student) => (
@@ -81,7 +82,10 @@ const AdmissionList = () => {
                                             </p>
                                         </td>
                                         <td className="px-6 py-4 text-sm font-medium text-slate-600">
-                                            {student.academic_session?.name}
+                                            {student.academic_batch?.name}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                                            {student.intake_session}
                                         </td>
                                         <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.campus?.name}</td>
                                         <td className="px-6 py-4">

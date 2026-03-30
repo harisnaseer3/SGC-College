@@ -15,7 +15,8 @@ const NewAdmissionForm = () => {
         campus_id: '',
         program_id: '',
         program_semester_id: '',
-        academic_session_id: '',
+        academic_batch_id: '',
+        intake_session: '',
         admission_number: '',
         first_name: '',
         last_name: '',
@@ -31,7 +32,7 @@ const NewAdmissionForm = () => {
     const [formOptions, setFormOptions] = useState({
         campuses: [],
         programs: [],
-        sessions: [],
+        batches: [],
     });
 
     const [loading, setLoading] = useState(true);
@@ -99,7 +100,7 @@ const NewAdmissionForm = () => {
                         <div className="h-px bg-slate-100 w-full" />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Campus</label>
                             <select 
@@ -143,16 +144,30 @@ const NewAdmissionForm = () => {
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Academic Session</label>
+                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Academic Batch</label>
                             <select 
-                                name="academic_session_id" 
-                                value={formData.academic_session_id} 
+                                name="academic_batch_id" 
+                                value={formData.academic_batch_id} 
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                                 required
                             >
-                                <option value="">Select Session</option>
-                                {formOptions.sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.is_active ? '(Active)' : ''}</option>)}
+                                <option value="">Select Batch</option>
+                                {formOptions.batches.map(s => <option key={s.id} value={s.id}>{s.name} {s.is_active ? '(Active)' : ''}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Intake Session</label>
+                            <select 
+                                name="intake_session" 
+                                value={formData.intake_session} 
+                                onChange={handleChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                                required
+                            >
+                                <option value="">Select Intake</option>
+                                <option value="Fall">Fall</option>
+                                <option value="Spring">Spring</option>
                             </select>
                         </div>
                     </div>

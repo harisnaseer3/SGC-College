@@ -4,7 +4,7 @@ namespace App\Http\Requests\Api\Academic;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreSessionRequest extends FormRequest
+class StoreBatchRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
