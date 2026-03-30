@@ -42,7 +42,18 @@ class AdmissionController extends BaseController
     public function store(StoreStudentRequest $request)
     {
         try {
-            $student = Student::create($request->validated());
+            $data = $request->validated();
+
+            // Handle student picture upload
+            if ($request->hasFile('student_picture')) {
+                $path = $request->file('student_picture')->store('students/pictures', 'public');
+                $data['student_picture'] = $path;
+            }
+
+            // Handle status from "Mark as Enrolled" checkbox
+            $data['status'] = $request->boolean('is_enrolled') ? 'Enrolled' : 'Pending';
+
+            $student = Student::create($data);
             return $this->sendResponse($student, 'Student admitted successfully.', 201);
         } catch (\Exception $e) {
             return $this->sendError('Failed to admit student.', ['error' => $e->getMessage()], 500);

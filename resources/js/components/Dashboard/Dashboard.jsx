@@ -1,10 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../UI/Button';
 import StatCard from './StatCard';
 import EnrollmentChart from './EnrollmentChart';
 import RecentActivity from './RecentActivity';
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const stats = [
         { name: 'Total Students', value: '2,840', change: '+12.5%', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', color: 'bg-blue-500' },
         { name: 'Active Campuses', value: '12', change: '0%', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', color: 'bg-purple-500' },
@@ -21,7 +23,7 @@ const Dashboard = () => {
                 </div>
                 <div className="flex gap-3">
                     <Button variant="secondary">Download PDF</Button>
-                    <Button>Create Admission</Button>
+                    <Button onClick={() => navigate('/new-admission')}>Create Admission</Button>
                 </div>
             </div>
 
