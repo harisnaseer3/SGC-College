@@ -22,6 +22,9 @@ Route::post('/reset-password', [PasswordController::class, 'reset']);
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     
+    // Dashboard
+    Route::get('/dashboard/stats', [App\Http\Controllers\Api\DashboardController::class, 'stats']);
+
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);

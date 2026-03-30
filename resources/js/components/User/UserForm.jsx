@@ -189,7 +189,7 @@ const UserForm = ({ onSuccess, onCancel }) => {
                                 required
                             >
                                 <option value="">Select Role</option>
-                                {roles.map(r => <option key={r.id} value={r.name}>{r.label}</option>)}
+                                {roles.filter(r => r.name !== 'student').map(r => <option key={r.id} value={r.name}>{r.label}</option>)}
                             </select>
                             {errors.role && <p className="text-red-500 text-xs font-bold mt-1">{errors.role[0]}</p>}
                         </div>

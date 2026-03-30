@@ -11,20 +11,20 @@ trait HasOrganizationScope
     {
         static::creating(function ($model) {
             $user = auth()->user();
-            if ($user && empty($model->organization_id) && !$user->hasRole('super_admin', 'web')) {
+            if ($user && empty($model->organization_id) && !$user->hasRole('super_admin')) {
                 $model->organization_id = $user->organization_id;
-            } elseif ($user && $user->hasRole('super_admin', 'web') && request()->hasHeader('X-Organization-ID')) {
+            } elseif ($user && $user->hasRole('super_admin') && request()->hasHeader('X-Organization-ID')) {
                 $model->organization_id = request()->header('X-Organization-ID');
             }
         });
 
         static::addGlobalScope('organization', function (Builder $builder) {
             $user = auth()->user();
-            if ($user && !$user->hasRole('super_admin', 'web')) {
+            if ($user && !$user->hasRole('super_admin')) {
                 if ($user->organization_id) {
                     $builder->where($builder->getModel()->getTable() . '.organization_id', $user->organization_id);
                 }
-            } elseif ($user && $user->hasRole('super_admin', 'web')) {
+            } elseif ($user && $user->hasRole('super_admin')) {
                 if (request()->hasHeader('X-Organization-ID')) {
                     $builder->where($builder->getModel()->getTable() . '.organization_id', request()->header('X-Organization-ID'));
                 }
