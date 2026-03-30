@@ -13,8 +13,9 @@ const NewAdmissionForm = () => {
     
     const [formData, setFormData] = useState({
         campus_id: '',
-        academic_class_id: '',
-        section_id: '',
+        program_id: '',
+        program_semester_id: '',
+        academic_session_id: '',
         admission_number: '',
         first_name: '',
         last_name: '',
@@ -29,8 +30,8 @@ const NewAdmissionForm = () => {
 
     const [formOptions, setFormOptions] = useState({
         campuses: [],
-        classes: [],
-        sections: [],
+        programs: [],
+        sessions: [],
     });
 
     const [loading, setLoading] = useState(true);
@@ -79,10 +80,6 @@ const NewAdmissionForm = () => {
 
     if (loading) return <div className="text-center py-12 text-slate-500 font-medium">Loading form configuration...</div>;
 
-    const filteredSections = formOptions.sections.filter(
-        s => s.academic_class_id == formData.academic_class_id
-    );
-
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex items-center justify-between">
@@ -97,6 +94,11 @@ const NewAdmissionForm = () => {
 
             <Card className="p-8">
                 <form onSubmit={handleSubmit} className="space-y-8">
+                    <div className="h-px bg-slate-100 italic font-medium text-slate-400 text-xs uppercase tracking-widest flex items-center gap-4">
+                        <span className="shrink-0 text-indigo-600 font-bold">Academic Details</span>
+                        <div className="h-px bg-slate-100 w-full" />
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Campus</label>
@@ -112,30 +114,45 @@ const NewAdmissionForm = () => {
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Academic Class</label>
+                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Program</label>
                             <select 
-                                name="academic_class_id" 
-                                value={formData.academic_class_id} 
+                                name="program_id" 
+                                value={formData.program_id} 
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                                 required
                             >
-                                <option value="">Select Class</option>
-                                {formOptions.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                <option value="">Select Program</option>
+                                {formOptions.programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Section</label>
+                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Semester</label>
                             <select 
-                                name="section_id" 
-                                value={formData.section_id} 
+                                name="program_semester_id" 
+                                value={formData.program_semester_id} 
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                                 required
-                                disabled={!formData.academic_class_id}
+                                disabled={!formData.program_id}
                             >
-                                <option value="">Select Section</option>
-                                {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                <option value="">Select Semester</option>
+                                {formOptions.programs.find(p => p.id == formData.program_id)?.semesters?.map(s => (
+                                    <option key={s.id} value={s.id}>Semester {s.semester_number}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Academic Session</label>
+                            <select 
+                                name="academic_session_id" 
+                                value={formData.academic_session_id} 
+                                onChange={handleChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                                required
+                            >
+                                <option value="">Select Session</option>
+                                {formOptions.sessions.map(s => <option key={s.id} value={s.id}>{s.name} {s.is_active ? '(Active)' : ''}</option>)}
                             </select>
                         </div>
                     </div>

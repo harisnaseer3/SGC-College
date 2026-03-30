@@ -23,12 +23,13 @@ class StoreStudentRequest extends FormRequest
     {
         return [
             'campus_id' => 'required|exists:campuses,id',
-            'academic_class_id' => 'required|exists:academic_classes,id',
-            'section_id' => 'required|exists:sections,id',
-            'admission_number' => 'required|string',
+            'program_id' => 'required|exists:programs,id',
+            'program_semester_id' => 'required|exists:program_semesters,id',
+            'academic_session_id' => 'required|exists:academic_sessions,id',
+            'admission_number' => 'required|string|unique:students,admission_number',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'nullable|email',
+            'email' => 'nullable|email|unique:students,email',
             'phone' => 'nullable|string',
             'date_of_birth' => 'nullable|date',
             'address' => 'nullable|string',

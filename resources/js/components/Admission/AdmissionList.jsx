@@ -43,7 +43,8 @@ const AdmissionList = () => {
                             <tr className="bg-slate-50/50">
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Student Name</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Admission #</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Class</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Program / Semester</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Session</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Campus</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Status</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Actions</th>
@@ -74,8 +75,13 @@ const AdmissionList = () => {
                                         </td>
                                         <td className="px-6 py-4 text-sm font-semibold text-slate-600">{student.admission_number}</td>
                                         <td className="px-6 py-4">
-                                            <p className="text-sm font-bold text-slate-900">{student.academic_class?.name}</p>
-                                            <p className="text-xs text-slate-500 mt-0.5 font-medium">{student.section?.name}</p>
+                                            <p className="text-sm font-bold text-slate-900">{student.program?.name}</p>
+                                            <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                                                {student.program_semester ? `Semester ${student.program_semester.semester_number}` : 'N/A'}
+                                            </p>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                                            {student.academic_session?.name}
                                         </td>
                                         <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.campus?.name}</td>
                                         <td className="px-6 py-4">

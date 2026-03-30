@@ -17,7 +17,7 @@ class AdmissionController extends BaseController
     public function index()
     {
         try {
-            $students = Student::with(['campus', 'academicClass', 'section'])->latest()->get();
+            $students = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicSession'])->latest()->get();
             return $this->sendResponse($students, 'Students retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve students.', ['error' => $e->getMessage()], 500);
@@ -31,7 +31,7 @@ class AdmissionController extends BaseController
                 'campuses' => Campus::all(),
                 'classes' => AcademicClass::all(),
                 'sections' => Section::all(),
-                'programs' => Program::all(),
+                'programs' => Program::with('semesters')->get(),
                 'sessions' => AcademicSession::all(),
             ], 'Form data retrieved successfully.');
         } catch (\Exception $e) {
