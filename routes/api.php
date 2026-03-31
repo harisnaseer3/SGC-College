@@ -32,6 +32,8 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('/admissions/form-data', [App\Http\Controllers\Api\AdmissionController::class, 'getFormData']);
     Route::apiResource('admissions', App\Http\Controllers\Api\AdmissionController::class);
+    Route::post('/admissions/{student}/status', [App\Http\Controllers\Api\StudentStatusController::class, 'store']);
+    Route::get('/admissions/{student}/status-history', [App\Http\Controllers\Api\StudentStatusController::class, 'index']);
 
     // Organization & Campus Routes
     Route::get('/organizations', [OrganizationController::class, 'index']);

@@ -88,4 +88,12 @@ class Student extends Model
     {
         return $this->belongsTo(AcademicBatch::class);
     }
+
+    /**
+     * Get the status history logs for the student.
+     */
+    public function statusLogs()
+    {
+        return $this->hasMany(StudentStatusLog::class)->orderBy('action_date', 'desc');
+    }
 }

@@ -71,15 +71,25 @@ class DashboardController extends BaseController
                 'total' => $monthlyAdmissions->get($m, 0),
             ]);
 
+            // --- Status breakdown ---
+            $statusBreakdown = Student::select('status', DB::raw('count(*) as total'))
+                ->groupBy('status')
+                ->pluck('total', 'status');
+
             return $this->sendResponse([
                 'counts' => [
                     'students'  => $totalStudents,
                     'enrolled'  => $enrolledCount,
                     'pending'   => $pendingCount,
+                    'promoted'  => $statusBreakdown->get('Promoted', 0),
+                    'transferred' => $statusBreakdown->get('Transferred', 0),
+                    'passed_out' => $statusBreakdown->get('Passed Out', 0),
+                    'struck_off' => $statusBreakdown->get('Struck Off', 0),
                     'users'     => $totalUsers,
                     'campuses'  => $totalCampuses,
                     'programs'  => $totalPrograms,
                 ],
+                'status_breakdown'    => $statusBreakdown,
                 'debug' => [
                     'unscoped_students' => Student::withoutGlobalScopes()->count(),
                     'campus_id_header' => request()->header('X-Campus-ID'),

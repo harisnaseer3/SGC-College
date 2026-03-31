@@ -4,12 +4,8 @@ import axios from 'axios';
 import DataTable from '../UI/DataTable';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
-
-const statusColors = {
-    Enrolled: 'bg-emerald-100 text-emerald-700',
-    Pending:  'bg-amber-100 text-amber-700',
-    Active:   'bg-emerald-100 text-emerald-700',
-};
+import StatusBadge from '../UI/StatusBadge';
+import StatusUpdateModal from './Status/StatusUpdateModal';
 
 const DetailRow = ({ label, value }) => value ? (
     <div className="flex flex-col gap-0.5">
@@ -23,6 +19,13 @@ const AdmissionList = () => {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
+    
+    // Status Modal State
+    const [statusModal, setStatusModal] = useState({
+        isOpen: false,
+        student: null
+    });
+
     const [filters, setFilters] = useState({
         search: '',
         program_id: '',
@@ -31,6 +34,7 @@ const AdmissionList = () => {
         status: '',
         intake_session: ''
     });
+
     const [formOptions, setFormOptions] = useState({
         campuses: [],
         programs: [],
@@ -71,6 +75,13 @@ const AdmissionList = () => {
         } catch (error) {
             console.error('Error deleting student:', error);
             alert('Failed to delete student. Please try again.');
+        }
+    };
+
+    const handleStatusUpdated = (updatedStudent) => {
+        setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+        if (selected?.id === updatedStudent.id) {
+            setSelected(updatedStudent);
         }
     };
 
@@ -158,6 +169,10 @@ const AdmissionList = () => {
                     <select name="status" value={filters.status} onChange={handleFilterChange} className={filterInputCls}>
                         <option value="">All Status</option>
                         <option value="Enrolled">Enrolled</option>
+                        <option value="Struck Off">Struck Off</option>
+                        <option value="Passed Out">Passed Out</option>
+                        <option value="Promoted">Promoted</option>
+                        <option value="Transferred">Transferred</option>
                         <option value="Pending">Pending</option>
                     </select>
 
@@ -187,7 +202,6 @@ const AdmissionList = () => {
                 emptyMessage="No student records found."
                 renderRow={(student) => {
                     const pic = avatarSrc(student);
-                    const statusCls = statusColors[student.status] || 'bg-slate-100 text-slate-600';
                     return (
                         <>
                             <td className="px-6 py-4">
@@ -216,9 +230,7 @@ const AdmissionList = () => {
                             <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.intake_session ?? '—'}</td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.campus?.name}</td>
                             <td className="px-6 py-4">
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusCls}`}>
-                                    {student.status ?? 'Pending'}
-                                </span>
+                                <StatusBadge status={student.status} />
                             </td>
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-1">
@@ -230,6 +242,19 @@ const AdmissionList = () => {
                                     >
                                         <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            setStatusModal({ isOpen: true, student: student });
+                                        }}
+                                        title="Lifecycle Actions (Promote, Transfer, etc.)"
+                                        className="p-2 text-indigo-400 hover:text-indigo-600 transition-all rounded-xl hover:bg-indigo-50 border border-indigo-100/50 hover:border-indigo-200 shadow-sm bg-white"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                                         </svg>
                                     </button>
                                     <button
@@ -260,6 +285,15 @@ const AdmissionList = () => {
                         </>
                     );
                 }}
+            />
+
+            {/* ── Status Update Modal ── */}
+            <StatusUpdateModal
+                isOpen={statusModal.isOpen}
+                student={statusModal.student}
+                campuses={formOptions.campuses}
+                onClose={() => setStatusModal({ isOpen: false, student: null })}
+                onStatusUpdated={handleStatusUpdated}
             />
 
             {/* ── Detail Slide-over Panel ── */}
@@ -296,9 +330,9 @@ const AdmissionList = () => {
                                 <div>
                                     <h2 className="text-xl font-bold">{selected.first_name} {selected.last_name}</h2>
                                     <p className="text-indigo-200 text-sm mt-0.5">{selected.email || 'No email'}</p>
-                                    <span className={`inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white`}>
-                                        {selected.status ?? 'Pending'}
-                                    </span>
+                                    <div className="mt-2">
+                                        <StatusBadge status={selected.status} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
