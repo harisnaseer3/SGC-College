@@ -22,8 +22,33 @@ const AdmissionList = () => {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
+    const [filters, setFilters] = useState({
+        search: '',
+        program_id: '',
+        campus_id: '',
+        academic_batch_id: '',
+        status: '',
+        intake_session: ''
+    });
+    const [formOptions, setFormOptions] = useState({
+        campuses: [],
+        programs: [],
+        batches: [],
+    });
 
-    useEffect(() => { fetchStudents(); }, []);
+    useEffect(() => {
+        fetchStudents();
+        fetchOptions();
+    }, []);
+
+    const fetchOptions = async () => {
+        try {
+            const response = await axios.get('/api/admissions/form-data');
+            setFormOptions(response.data.data);
+        } catch (error) {
+            console.error('Error fetching form data:', error);
+        }
+    };
 
     const fetchStudents = async () => {
         try {
@@ -53,15 +78,106 @@ const AdmissionList = () => {
             ? `/storage/${student.student_picture}`
             : null;
 
+    const filteredStudents = students.filter(s => {
+        const matchesSearch = !filters.search || 
+            `${s.first_name} ${s.last_name} ${s.admission_number} ${s.email}`.toLowerCase()
+            .includes(filters.search.toLowerCase());
+        
+        const matchesProgram = !filters.program_id || s.program_id == filters.program_id;
+        const matchesCampus  = !filters.campus_id || s.campus_id == filters.campus_id;
+        const matchesBatch   = !filters.academic_batch_id || s.academic_batch_id == filters.academic_batch_id;
+        const matchesStatus  = !filters.status || s.status == filters.status;
+        const matchesIntake  = !filters.intake_session || s.intake_session == filters.intake_session;
+
+        return matchesSearch && matchesProgram && matchesCampus && matchesBatch && matchesStatus && matchesIntake;
+    });
+
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const clearFilters = () => {
+        setFilters({
+            search: '',
+            program_id: '',
+            campus_id: '',
+            academic_batch_id: '',
+            status: '',
+            intake_session: ''
+        });
+    };
+
+    const filterInputCls = "w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all";
+
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center justify-between">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Admission Register</h1>
-                    <p className="text-slate-500 mt-1 font-medium">Manage and view all student admissions.</p>
+                    <p className="text-slate-500 mt-1 font-medium italic">Advanced student lookup and registry management.</p>
                 </div>
                 <Button onClick={() => navigate('/new-admission')}>New Admission</Button>
             </div>
+
+            {/* ── Filter Bar ── */}
+            <Card className="p-5 bg-slate-50/50 border-slate-200/60 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                    <div className="relative group xl:col-span-1">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </span>
+                        <input
+                            type="text"
+                            name="search"
+                            placeholder="Name, ID or Email..."
+                            value={filters.search}
+                            onChange={handleFilterChange}
+                            className={`${filterInputCls} pl-9`}
+                        />
+                    </div>
+
+                    <select name="program_id" value={filters.program_id} onChange={handleFilterChange} className={filterInputCls}>
+                        <option value="">All Programs</option>
+                        {formOptions.programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+
+                    <select name="academic_batch_id" value={filters.academic_batch_id} onChange={handleFilterChange} className={filterInputCls}>
+                        <option value="">All Batches</option>
+                        {formOptions.batches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+
+                    <select name="campus_id" value={filters.campus_id} onChange={handleFilterChange} className={filterInputCls}>
+                        <option value="">All Campuses</option>
+                        {formOptions.campuses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+
+                    <select name="status" value={filters.status} onChange={handleFilterChange} className={filterInputCls}>
+                        <option value="">All Status</option>
+                        <option value="Enrolled">Enrolled</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+
+                    <div className="flex gap-2">
+                        <select name="intake_session" value={filters.intake_session} onChange={handleFilterChange} className={`${filterInputCls} flex-1`}>
+                            <option value="">Intake</option>
+                            <option value="Fall">Fall</option>
+                            <option value="Spring">Spring</option>
+                        </select>
+                        <button
+                            onClick={clearFilters}
+                            title="Reset Filters"
+                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl border border-slate-200 bg-white transition-all shadow-sm"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </Card>
 
             <Card className="overflow-hidden">
                 <div className="overflow-x-auto">
@@ -76,9 +192,9 @@ const AdmissionList = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr><td colSpan="8" className="px-6 py-12 text-center text-slate-400 font-medium">Loading admissions...</td></tr>
-                            ) : students.length === 0 ? (
+                            ) : filteredStudents.length === 0 ? (
                                 <tr><td colSpan="8" className="px-6 py-12 text-center text-slate-400 font-medium">No student records found.</td></tr>
-                            ) : students.map((student) => {
+                            ) : filteredStudents.map((student) => {
                                 const pic = avatarSrc(student);
                                 const statusCls = statusColors[student.status] || 'bg-slate-100 text-slate-600';
                                 return (
@@ -114,7 +230,7 @@ const AdmissionList = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-1">
                                                 <button
                                                     type="button"
                                                     onClick={(e) => { e.stopPropagation(); setSelected(student); }}
