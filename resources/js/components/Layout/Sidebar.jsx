@@ -18,7 +18,7 @@ const Sidebar = () => {
     ];
 
     return (
-        <aside className="w-72 bg-white min-h-screen flex flex-col sticky top-0 border-r border-slate-200">
+        <aside className="w-72 bg-white h-screen flex flex-col border-r border-slate-200 overflow-y-auto shrink-0">
             <div className="p-8 border-b border-slate-100">
                 <div className="flex items-center gap-3">
                     <img 
