@@ -10,6 +10,7 @@ import OrganizationManagement from './Organization/OrganizationManagement';
 import ProfileView from './Profile/ProfileView';
 import UserManagement from './User/UserManagement';
 import AcademicManagement from './Academic/AcademicManagement';
+import AdmissionByDateReport from './Reports/AdmissionByDateReport';
 import AuthView from './Auth/AuthView';
 import InstituteSelection from './Auth/InstituteSelection';
 import ToastContainer from './UI/ToastContainer';
@@ -46,6 +47,7 @@ const AppContent = () => {
                 <Route path="/admissions" element={<AdmissionList />} />
                 <Route path="/new-admission" element={<NewAdmissionForm />} />
                 <Route path="/edit-admission/:id" element={<NewAdmissionForm />} />
+                <Route path="/reports/admissions-by-date" element={<AdmissionByDateReport />} />
                 <Route path="/profile" element={<ProfileView />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

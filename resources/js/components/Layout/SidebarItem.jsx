@@ -11,12 +11,16 @@ const SidebarItem = ({ name, icon, path }) => {
                     : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50'}`
             }
         >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
-            </svg>
-            <span className="font-medium tracking-wide">{name}</span>
-            {({ isActive }) => isActive && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white opacity-50"></div>
+            {({ isActive }) => (
+                <>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon} />
+                    </svg>
+                    <span className="font-medium tracking-wide">{name}</span>
+                    {isActive && (
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white opacity-50"></div>
+                    )}
+                </>
             )}
         </NavLink>
     );

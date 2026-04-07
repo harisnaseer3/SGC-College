@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\ProgramController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\AcademicBatchController;
+use App\Http\Controllers\Api\Reports\AdmissionReportController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -51,4 +52,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('courses', CourseController::class);
     Route::apiResource('academic-batches', AcademicBatchController::class);
     Route::post('programs/{program}/semesters/{semester}/courses', [ProgramController::class, 'assignCourses']);
+
+    // Reports
+    Route::get('/reports/admissions/by-date', [AdmissionReportController::class, 'byDate']);
 });
