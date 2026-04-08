@@ -15,7 +15,7 @@ return new class extends Migration
             $blueprint->id();
             $blueprint->unsignedBigInteger('organization_id');
             $blueprint->unsignedBigInteger('campus_id');
-            $blueprint->string('name');
+            $blueprint->string('name')->nullable();
             $blueprint->unsignedBigInteger('program_id')->nullable();
             $blueprint->unsignedBigInteger('academic_batch_id')->nullable();
             $blueprint->timestamps();

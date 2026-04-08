@@ -178,7 +178,7 @@ const StudentFeeManagement = () => {
                                         <div className="text-[10px] text-slate-500">Roll No: {fee.student?.roll_number}</div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-slate-600 font-medium">{fee.fee_head?.name}</td>
-                                    <td className="px-6 py-4 text-sm font-bold text-slate-900">${fee.amount}</td>
+                                    <td className="px-6 py-4 text-sm font-bold text-slate-900">Rs. {fee.amount}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                                             fee.status === 'unpaid' ? 'bg-rose-100 text-rose-700' :

@@ -11,11 +11,12 @@ const FeeStructureManagement = () => {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({
-        name: '',
         program_id: '',
         academic_batch_id: '',
         items: []
     });
+    const [editingId, setEditingId] = useState(null);
+    const [viewingStruct, setViewingStruct] = useState(null);
     const { showError, showSuccess } = useNotifications();
 
     useEffect(() => {
@@ -63,13 +64,40 @@ const FeeStructureManagement = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('/api/fee-structures', formData);
-            showSuccess('Fee structure created successfully');
+            if (editingId) {
+                await axios.put(`/api/fee-structures/${editingId}`, formData);
+                showSuccess('Fee structure updated successfully');
+            } else {
+                await axios.post('/api/fee-structures', formData);
+                showSuccess('Fee structure created successfully');
+            }
             setShowForm(false);
+            setEditingId(null);
             fetchInitialData();
-            setFormData({ name: '', program_id: '', academic_batch_id: '', items: [] });
+            setFormData({ program_id: '', academic_batch_id: '', items: [] });
         } catch (error) {
-            showError(error.response?.data?.message || 'Failed to create fee structure');
+            showError(error.response?.data?.message || 'Failed to save fee structure');
+        }
+    };
+
+    const handleEdit = (struct) => {
+        setFormData({
+            program_id: struct.program_id,
+            academic_batch_id: struct.academic_batch_id,
+            items: struct.items.map(i => ({ fee_head_id: i.fee_head_id, amount: i.amount }))
+        });
+        setEditingId(struct.id);
+        setShowForm(true);
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm('Are you sure you want to delete this fee structure?')) return;
+        try {
+            await axios.delete(`/api/fee-structures/${id}`);
+            showSuccess('Fee structure deleted successfully');
+            fetchInitialData();
+        } catch (error) {
+            showError('Failed to delete fee structure');
         }
     };
 
@@ -86,7 +114,13 @@ const FeeStructureManagement = () => {
                     <h2 className="text-xl font-bold text-slate-800">Fee Structures</h2>
                     <p className="text-slate-500 text-sm">Create templates for program-specific fees.</p>
                 </div>
-                <Button onClick={() => setShowForm(!showForm)}>
+                <Button onClick={() => {
+                    setShowForm(!showForm);
+                    if (showForm) {
+                        setEditingId(null);
+                        setFormData({ program_id: '', academic_batch_id: '', items: [] });
+                    }
+                }}>
                     {showForm ? 'Cancel' : 'New Structure'}
                 </Button>
             </div>
@@ -95,17 +129,6 @@ const FeeStructureManagement = () => {
                 <div className="mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-4 duration-300">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Structure Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="e.g. BSCS Fall 2024 Semester 1"
-                                    required
-                                />
-                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Program</label>
                                 <select
@@ -226,7 +249,29 @@ const FeeStructureManagement = () => {
                                         {struct.items?.length || 0} Heads
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button className="text-indigo-600 hover:text-indigo-800 text-xs font-bold uppercase tracking-wider">View Details</button>
+                                        <div className="flex justify-end gap-2">
+                                            <button 
+                                                onClick={() => setViewingStruct(struct)}
+                                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                title="View Details"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            </button>
+                                            <button 
+                                                onClick={() => handleEdit(struct)}
+                                                className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                                title="Edit"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDelete(struct.id)}
+                                                className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                title="Delete"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
@@ -234,6 +279,54 @@ const FeeStructureManagement = () => {
                     </tbody>
                 </table>
             </div>
+            {/* View Details Modal */}
+            {viewingStruct && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800">{viewingStruct.name}</h3>
+                                <p className="text-sm text-slate-500">{viewingStruct.program?.name} | {viewingStruct.academic_batch?.name || 'All Batches'}</p>
+                            </div>
+                            <button onClick={() => setViewingStruct(null)} className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-400">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                        <th className="pb-3">Fee Head</th>
+                                        <th className="pb-3">Frequency</th>
+                                        <th className="pb-3 text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {viewingStruct.items.map((item, idx) => (
+                                        <tr key={idx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                                            <td className="py-4 text-sm font-medium text-slate-700">{item.fee_head?.name}</td>
+                                            <td className="py-4 text-xs">
+                                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold uppercase">
+                                                    {item.fee_head?.frequency.replace('_', ' ')}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 text-sm font-bold text-slate-900 text-right">Rs. {item.amount}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr className="border-t-2 border-slate-100">
+                                        <td colSpan="2" className="pt-4 text-sm font-bold text-slate-800 text-right">Total:</td>
+                                        <td className="pt-4 text-lg font-black text-indigo-600 text-right">
+                                            Rs. {viewingStruct.items.reduce((sum, item) => sum + parseFloat(item.amount), 0).toFixed(2)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

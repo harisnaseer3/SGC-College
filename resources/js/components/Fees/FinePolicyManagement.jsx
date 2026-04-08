@@ -146,7 +146,7 @@ const FinePolicyManagement = () => {
                                     <td className="px-6 py-4 text-sm text-slate-500 text-center">{policy.grace_days} Days</td>
                                     <td className="px-6 py-4 text-sm text-center">
                                         <span className="font-bold text-slate-700">
-                                            {policy.fine_type === 'fixed' ? `$${policy.fine_amount}` : `${policy.fine_amount}%`}
+                                            {policy.fine_type === 'fixed' ? `Rs. ${policy.fine_amount}` : `${policy.fine_amount}%`}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">

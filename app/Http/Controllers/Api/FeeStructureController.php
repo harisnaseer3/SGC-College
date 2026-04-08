@@ -25,8 +25,8 @@ class FeeStructureController extends BaseController
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'program_id' => 'nullable|exists:programs,id',
+            'name' => 'nullable|string|max:255',
+            'program_id' => 'required|exists:programs,id',
             'academic_batch_id' => 'nullable|exists:academic_batches,id',
             'items' => 'required|array|min:1',
             'items.*.fee_head_id' => 'required|exists:fee_heads,id',
@@ -34,14 +34,21 @@ class FeeStructureController extends BaseController
         ]);
 
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 422);
+            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
         }
 
         try {
             DB::beginTransaction();
 
+            $name = $request->name;
+            if (!$name) {
+                $program = \App\Models\Program::find($request->program_id);
+                $batch = $request->academic_batch_id ? \App\Models\AcademicBatch::find($request->academic_batch_id) : null;
+                $name = $program->name . ($batch ? " - " . $batch->name : "") . " Fee Structure";
+            }
+
             $structure = FeeStructure::create([
-                'name' => $request->name,
+                'name' => $name,
                 'program_id' => $request->program_id,
                 'academic_batch_id' => $request->academic_batch_id,
             ]);
@@ -77,8 +84,8 @@ class FeeStructureController extends BaseController
     public function update(Request $request, FeeStructure $feeStructure)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'program_id' => 'nullable|exists:programs,id',
+            'name' => 'nullable|string|max:255',
+            'program_id' => 'required|exists:programs,id',
             'academic_batch_id' => 'nullable|exists:academic_batches,id',
             'items' => 'required|array|min:1',
             'items.*.fee_head_id' => 'required|exists:fee_heads,id',
@@ -86,7 +93,7 @@ class FeeStructureController extends BaseController
         ]);
 
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 422);
+            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
         }
 
         try {
