@@ -1,0 +1,145 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useNotifications } from '../../contexts/NotificationContext';
+import Button from '../UI/Button';
+
+const FeeHeadManagement = () => {
+    const [heads, setHeads] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showForm, setShowForm] = useState(false);
+    const [formData, setFormData] = useState({
+        name: '',
+        frequency: 'monthly',
+        description: ''
+    });
+    const { showError, showSuccess } = useNotifications();
+
+    useEffect(() => {
+        fetchHeads();
+    }, []);
+
+    const fetchHeads = async () => {
+        try {
+            const response = await axios.get('/api/fee-heads');
+            setHeads(response.data.data);
+        } catch (error) {
+            showError('Failed to fetch fee heads');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post('/api/fee-heads', formData);
+            showSuccess('Fee head created successfully');
+            setShowForm(false);
+            fetchHeads();
+            setFormData({ name: '', frequency: 'monthly', description: '' });
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to create fee head');
+        }
+    };
+
+    if (loading) return (
+        <div className="flex justify-center p-12">
+            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h2 className="text-xl font-bold text-slate-800">Fee Heads</h2>
+                    <p className="text-slate-500 text-sm">Define types of fees and their billing frequency.</p>
+                </div>
+                <Button onClick={() => setShowForm(!showForm)}>
+                    {showForm ? 'Cancel' : 'New Fee Head'}
+                </Button>
+            </div>
+
+            {showForm && (
+                <div className="mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Fee Head Name</label>
+                            <input
+                                type="text"
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                placeholder="e.g. Tuition Fee"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Billing Frequency</label>
+                            <select
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                value={formData.frequency}
+                                onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
+                                required
+                            >
+                                <option value="one_time">One-time</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="semester">Semester-wise</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <textarea
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                rows="2"
+                                placeholder="Optional details about this fee type..."
+                            ></textarea>
+                        </div>
+                        <div className="md:col-span-2">
+                            <Button type="submit">Create Fee Head</Button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Name</th>
+                            <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Frequency</th>
+                            <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {heads.length === 0 ? (
+                            <tr>
+                                <td colSpan="3" className="px-6 py-8 text-center text-slate-400 italic">No fee heads defined yet.</td>
+                            </tr>
+                        ) : (
+                            heads.map((head) => (
+                                <tr key={head.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                    <td className="px-6 py-4 text-sm text-slate-700 font-semibold">{head.name}</td>
+                                    <td className="px-6 py-4 text-sm">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${
+                                            head.frequency === 'monthly' ? 'bg-blue-100 text-blue-700' :
+                                            head.frequency === 'semester' ? 'bg-emerald-100 text-emerald-700' :
+                                            'bg-slate-100 text-slate-700'
+                                        }`}>
+                                            {head.frequency.replace('_', ' ')}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-slate-500">{head.description || '-'}</td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+export default FeeHeadManagement;

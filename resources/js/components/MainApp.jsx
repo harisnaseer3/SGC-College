@@ -11,6 +11,7 @@ import ProfileView from './Profile/ProfileView';
 import UserManagement from './User/UserManagement';
 import AcademicManagement from './Academic/AcademicManagement';
 import AdmissionByDateReport from './Reports/AdmissionByDateReport';
+import FeeManagement from './Fees/FeeManagement';
 import AuthView from './Auth/AuthView';
 import InstituteSelection from './Auth/InstituteSelection';
 import ToastContainer from './UI/ToastContainer';
@@ -44,6 +45,7 @@ const AppContent = () => {
                 {isSuperAdmin && <Route path="/organizations/*" element={<OrganizationManagement />} />}
                 <Route path="/users/*" element={<UserManagement />} />
                 <Route path="/academic/*" element={<AcademicManagement />} />
+                <Route path="/fees/*" element={<FeeManagement />} />
                 <Route path="/admissions" element={<AdmissionList />} />
                 <Route path="/new-admission" element={<NewAdmissionForm />} />
                 <Route path="/edit-admission/:id" element={<NewAdmissionForm />} />

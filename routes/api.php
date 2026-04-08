@@ -55,4 +55,12 @@ Route::middleware('auth:api')->group(function () {
 
     // Reports
     Route::get('/reports/admissions/by-date', [AdmissionReportController::class, 'byDate']);
+
+    // Fee Module Routes
+    Route::apiResource('fee-heads', App\Http\Controllers\Api\FeeHeadController::class);
+    Route::apiResource('fee-structures', App\Http\Controllers\Api\FeeStructureController::class);
+    Route::apiResource('fee-fine-policies', App\Http\Controllers\Api\FeeFinePolicyController::class);
+    Route::get('student-fees', [App\Http\Controllers\Api\StudentFeeController::class, 'index']);
+    Route::post('student-fees/generate', [App\Http\Controllers\Api\StudentFeeController::class, 'generate']);
+    Route::post('student-fees/apply-fines', [App\Http\Controllers\Api\StudentFeeController::class, 'applyFines']);
 });
