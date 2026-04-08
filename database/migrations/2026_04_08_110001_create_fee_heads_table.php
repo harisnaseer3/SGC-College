@@ -17,6 +17,8 @@ return new class extends Migration
             $blueprint->unsignedBigInteger('campus_id');
             $blueprint->string('name');
             $blueprint->enum('frequency', ['one_time', 'monthly', 'semester'])->default('monthly');
+            $blueprint->string('frequency_name')->nullable(); // e.g., "One-Time at First Fee"
+            $blueprint->integer('priority')->default(0);
             $blueprint->text('description')->nullable();
             $blueprint->timestamps();
 

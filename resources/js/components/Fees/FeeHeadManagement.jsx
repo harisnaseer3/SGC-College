@@ -10,6 +10,8 @@ const FeeHeadManagement = () => {
     const [formData, setFormData] = useState({
         name: '',
         frequency: 'monthly',
+        frequency_name: '',
+        priority: 0,
         description: ''
     });
     const { showError, showSuccess } = useNotifications();
@@ -36,7 +38,7 @@ const FeeHeadManagement = () => {
             showSuccess('Fee head created successfully');
             setShowForm(false);
             fetchHeads();
-            setFormData({ name: '', frequency: 'monthly', description: '' });
+            setFormData({ name: '', frequency: 'monthly', frequency_name: '', priority: 0, description: '' });
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to create fee head');
         }
@@ -87,6 +89,30 @@ const FeeHeadManagement = () => {
                                 <option value="semester">Semester-wise</option>
                             </select>
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Frequency Name</label>
+                            <select
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+                                value={formData.frequency_name}
+                                onChange={(e) => setFormData({ ...formData, frequency_name: e.target.value })}
+                            >
+                                <option value="">Select Frequency Name</option>
+                                <option value="Once at First Fee">Once at First Fee</option>
+                                <option value="Monthly Fee">Monthly Fee</option>
+                                <option value="Annual Fee">Annual Fee</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Priority Order</label>
+                            <input
+                                type="number"
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                value={formData.priority}
+                                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                                placeholder="e.g. 1"
+                                min="0"
+                            />
+                        </div>
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
                             <textarea
@@ -108,9 +134,10 @@ const FeeHeadManagement = () => {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Priority</th>
                             <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Name</th>
                             <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Frequency</th>
-                            <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Description</th>
+                            <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Frequency Name</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -121,6 +148,7 @@ const FeeHeadManagement = () => {
                         ) : (
                             heads.map((head) => (
                                 <tr key={head.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                    <td className="px-6 py-4 text-sm text-slate-500">{head.priority}</td>
                                     <td className="px-6 py-4 text-sm text-slate-700 font-semibold">{head.name}</td>
                                     <td className="px-6 py-4 text-sm">
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${
@@ -131,7 +159,7 @@ const FeeHeadManagement = () => {
                                             {head.frequency.replace('_', ' ')}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-slate-500">{head.description || '-'}</td>
+                                    <td className="px-6 py-4 text-sm text-slate-500">{head.frequency_name || '-'}</td>
                                 </tr>
                             ))
                         )}

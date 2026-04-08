@@ -15,6 +15,8 @@ class FeeHead extends Model
         'campus_id',
         'name',
         'frequency',
+        'frequency_name',
+        'priority',
         'description',
     ];
 

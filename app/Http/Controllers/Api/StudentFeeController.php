@@ -53,7 +53,7 @@ class StudentFeeController extends BaseController
         ]);
 
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 422);
+            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
         }
 
         $count = $this->feeService->generateFees(

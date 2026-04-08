@@ -25,11 +25,13 @@ class FeeHeadController extends BaseController
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'frequency' => 'required|in:one_time,monthly,semester',
+            'frequency_name' => 'nullable|string|max:255',
+            'priority' => 'nullable|integer',
             'description' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 422);
+            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
         }
 
         $head = FeeHead::create($request->all());
@@ -53,11 +55,13 @@ class FeeHeadController extends BaseController
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'frequency' => 'required|in:one_time,monthly,semester',
+            'frequency_name' => 'nullable|string|max:255',
+            'priority' => 'nullable|integer',
             'description' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 422);
+            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
         }
 
         $feeHead->update($request->all());
