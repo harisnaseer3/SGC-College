@@ -4,9 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\FeeStructure;
 use App\Models\FeeStructureItem;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
 class FeeStructureController extends BaseController
 {
@@ -22,20 +20,8 @@ class FeeStructureController extends BaseController
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(\App\Http\Requests\Api\Fees\StoreFeeStructureRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255',
-            'program_id' => 'required|exists:programs,id',
-            'academic_batch_id' => 'nullable|exists:academic_batches,id',
-            'items' => 'required|array|min:1',
-            'items.*.fee_head_id' => 'required|exists:fee_heads,id',
-            'items.*.amount' => 'required|numeric|min:0',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
-        }
 
         try {
             DB::beginTransaction();
@@ -81,20 +67,8 @@ class FeeStructureController extends BaseController
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, FeeStructure $feeStructure)
+    public function update(\App\Http\Requests\Api\Fees\UpdateFeeStructureRequest $request, FeeStructure $feeStructure)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255',
-            'program_id' => 'required|exists:programs,id',
-            'academic_batch_id' => 'nullable|exists:academic_batches,id',
-            'items' => 'required|array|min:1',
-            'items.*.fee_head_id' => 'required|exists:fee_heads,id',
-            'items.*.amount' => 'required|numeric|min:0',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
-        }
 
         try {
             DB::beginTransaction();

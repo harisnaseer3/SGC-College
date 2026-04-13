@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\FeeHead;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class FeeHeadController extends BaseController
 {
@@ -20,23 +18,14 @@ class FeeHeadController extends BaseController
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(\App\Http\Requests\Api\Fees\StoreFeeHeadRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'frequency' => 'required|in:one_time,monthly,semester',
-            'frequency_name' => 'nullable|string|max:255',
-            'priority' => 'nullable|integer',
-            'description' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
+        try {
+            $head = FeeHead::create($request->validated());
+            return $this->sendResponse($head, 'Fee head created successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
         }
-
-        $head = FeeHead::create($request->all());
-
-        return $this->sendResponse($head, 'Fee head created successfully.');
     }
 
     /**
@@ -50,23 +39,14 @@ class FeeHeadController extends BaseController
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, FeeHead $feeHead)
+    public function update(\App\Http\Requests\Api\Fees\UpdateFeeHeadRequest $request, FeeHead $feeHead)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'frequency' => 'required|in:one_time,monthly,semester',
-            'frequency_name' => 'nullable|string|max:255',
-            'priority' => 'nullable|integer',
-            'description' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
+        try {
+            $feeHead->update($request->validated());
+            return $this->sendResponse($feeHead, 'Fee head updated successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
         }
-
-        $feeHead->update($request->all());
-
-        return $this->sendResponse($feeHead, 'Fee head updated successfully.');
     }
 
     /**
@@ -74,7 +54,11 @@ class FeeHeadController extends BaseController
      */
     public function destroy(FeeHead $feeHead)
     {
-        $feeHead->delete();
-        return $this->sendResponse([], 'Fee head deleted successfully.');
+        try {
+            $feeHead->delete();
+            return $this->sendResponse([], 'Fee head deleted successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
+        }
     }
 }

@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\FeeFinePolicy;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class FeeFinePolicyController extends BaseController
 {
@@ -20,22 +18,14 @@ class FeeFinePolicyController extends BaseController
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(\App\Http\Requests\Api\Fees\StoreFeeFinePolicyRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'fee_head_id' => 'required|exists:fee_heads,id',
-            'grace_days' => 'required|integer|min:0',
-            'fine_amount' => 'required|numeric|min:0',
-            'fine_type' => 'required|in:fixed,percentage',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 422);
+        try {
+            $policy = FeeFinePolicy::create($request->validated());
+            return $this->sendResponse($policy->load('feeHead'), 'Fee fine policy created successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
         }
-
-        $policy = FeeFinePolicy::create($request->all());
-
-        return $this->sendResponse($policy->load('feeHead'), 'Fee fine policy created successfully.');
     }
 
     /**
@@ -49,22 +39,14 @@ class FeeFinePolicyController extends BaseController
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, FeeFinePolicy $feeFinePolicy)
+    public function update(\App\Http\Requests\Api\Fees\UpdateFeeFinePolicyRequest $request, FeeFinePolicy $feeFinePolicy)
     {
-        $validator = Validator::make($request->all(), [
-            'fee_head_id' => 'required|exists:fee_heads,id',
-            'grace_days' => 'required|integer|min:0',
-            'fine_amount' => 'required|numeric|min:0',
-            'fine_type' => 'required|in:fixed,percentage',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 422);
+        try {
+            $feeFinePolicy->update($request->validated());
+            return $this->sendResponse($feeFinePolicy->load('feeHead'), 'Fee fine policy updated successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
         }
-
-        $feeFinePolicy->update($request->all());
-
-        return $this->sendResponse($feeFinePolicy->load('feeHead'), 'Fee fine policy updated successfully.');
     }
 
     /**
@@ -72,7 +54,11 @@ class FeeFinePolicyController extends BaseController
      */
     public function destroy(FeeFinePolicy $feeFinePolicy)
     {
-        $feeFinePolicy->delete();
-        return $this->sendResponse([], 'Fee fine policy deleted successfully.');
+        try {
+            $feeFinePolicy->delete();
+            return $this->sendResponse([], 'Fee fine policy deleted successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
+        }
     }
 }

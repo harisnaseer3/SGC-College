@@ -4,8 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\StudentFee;
 use App\Services\FeeService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class StudentFeeController extends BaseController
 {
@@ -19,7 +17,7 @@ class StudentFeeController extends BaseController
     /**
      * Display a listing of student fees.
      */
-    public function index(Request $request)
+    public function index(\Illuminate\Http\Request $request)
     {
         $query = StudentFee::with(['student', 'feeHead']);
 
@@ -43,35 +41,32 @@ class StudentFeeController extends BaseController
     /**
      * Bulk generate fees for students (The Billing Engine).
      */
-    public function generate(Request $request)
+    public function generate(\App\Http\Requests\Api\Fees\GenerateStudentFeeRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'campus_id' => 'required|exists:campuses,id',
-            'program_id' => 'nullable|exists:programs,id',
-            'academic_batch_id' => 'nullable|exists:academic_batches,id',
-            'due_date' => 'nullable|date',
-        ]);
+        try {
+            $count = $this->feeService->generateFees(
+                $request->campus_id,
+                $request->program_id,
+                $request->academic_batch_id,
+                $request->due_date
+            );
 
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors()->toArray(), 422);
+            return $this->sendResponse(['count' => $count], "Billing process completed. $count fee records generated.");
+        } catch (\Exception $e) {
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
         }
-
-        $count = $this->feeService->generateFees(
-            $request->campus_id,
-            $request->program_id,
-            $request->academic_batch_id,
-            $request->due_date
-        );
-
-        return $this->sendResponse(['count' => $count], "Billing process completed. $count fee records generated.");
     }
 
     /**
      * Trigger manual fine application.
      */
-    public function applyFines(Request $request)
+    public function applyFines(\Illuminate\Http\Request $request)
     {
-        $count = $this->feeService->applyFines($request->campus_id);
-        return $this->sendResponse(['count' => $count], "Fine application process completed. $count records updated.");
+        try {
+            $count = $this->feeService->applyFines($request->campus_id);
+            return $this->sendResponse(['count' => $count], "Fine application process completed. $count records updated.");
+        } catch (\Exception $e) {
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
+        }
     }
 }
