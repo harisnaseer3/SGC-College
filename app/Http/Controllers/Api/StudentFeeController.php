@@ -19,23 +19,31 @@ class StudentFeeController extends BaseController
      */
     public function index(\Illuminate\Http\Request $request)
     {
-        $query = StudentFee::with(['student', 'feeHead']);
+        try {
+            $currentMonth = now()->startOfMonth();
+            $query = StudentFee::with('student')
+                ->selectRaw("student_id, SUM(amount) as total_amount, SUM(paid_amount) as total_paid, SUM(balance_amount) as total_balance, SUM(CASE WHEN due_date < '{$currentMonth->toDateString()}' THEN balance_amount ELSE 0 END) as total_arrears, MIN(due_date) as earliest_due_date, MAX(status) as aggregated_status");
 
-        if ($request->has('student_id')) {
-            $query->where('student_id', $request->student_id);
+            if ($request->has('student_id')) {
+                $query->where('student_id', $request->student_id);
+            }
+
+            if ($request->has('status')) {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->has('campus_id')) {
+                $query->where('campus_id', $request->campus_id);
+            }
+
+            $fees = $query->groupBy('student_id')
+                ->orderBy('earliest_due_date', 'asc')
+                ->get();
+
+            return $this->sendResponse($fees, 'Student fee summaries retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to retrieve fee summaries.', ['error' => $e->getMessage()], 500);
         }
-
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->has('campus_id')) {
-            $query->where('campus_id', $request->campus_id);
-        }
-
-        $fees = $query->orderBy('due_date', 'desc')->paginate(20);
-
-        return $this->sendResponse($fees, 'Student fees retrieved successfully.');
     }
 
     /**
@@ -67,6 +75,19 @@ class StudentFeeController extends BaseController
             return $this->sendResponse(['count' => $count], "Fine application process completed. $count records updated.");
         } catch (\Exception $e) {
             return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get voucher data for a student.
+     */
+    public function voucher($studentId)
+    {
+        try {
+            $data = $this->feeService->getVoucherData($studentId);
+            return $this->sendResponse($data, 'Voucher data generated successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Voucher Generation Error.', ['error' => $e->getMessage()], 400);
         }
     }
 }

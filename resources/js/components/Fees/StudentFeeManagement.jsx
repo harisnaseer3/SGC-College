@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
+import DataTable from '../UI/DataTable';
 
 const StudentFeeManagement = () => {
+    const navigate = useNavigate();
     const [fees, setFees] = useState([]);
     const [campuses, setCampuses] = useState([]);
     const [programs, setPrograms] = useState([]);
@@ -42,7 +45,8 @@ const StudentFeeManagement = () => {
         setLoading(true);
         try {
             const response = await axios.get('/api/student-fees');
-            setFees(response.data.data.data || []);
+            // Assuming response.data.data is now the array from ->get()
+            setFees(response.data.data || []);
         } catch (error) {
             showError('Failed to fetch fee records');
         } finally {
@@ -147,54 +151,44 @@ const StudentFeeManagement = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase">Student</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase">Fee Type</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase">Amount</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase">Status</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-600 uppercase">Due Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading ? (
-                             <tr>
-                                <td colSpan="5" className="px-6 py-12 text-center">
-                                    <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
-                                    <span className="text-slate-500 text-sm">Loading records...</span>
-                                </td>
-                            </tr>
-                        ) : fees.length === 0 ? (
-                            <tr>
-                                <td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic text-sm">No billing records found. Run the engine to generate fees.</td>
-                            </tr>
-                        ) : (
-                            fees.map((fee) => (
-                                <tr key={fee.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-semibold text-slate-800">{fee.student?.first_name} {fee.student?.last_name}</div>
-                                        <div className="text-[10px] text-slate-500">Roll No: {fee.student?.roll_number}</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-slate-600 font-medium">{fee.fee_head?.name}</td>
-                                    <td className="px-6 py-4 text-sm font-bold text-slate-900">Rs. {fee.amount}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                                            fee.status === 'unpaid' ? 'bg-rose-100 text-rose-700' :
-                                            fee.status === 'partial' ? 'bg-amber-100 text-amber-700' :
-                                            'bg-emerald-100 text-emerald-700'
-                                        }`}>
-                                            {fee.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-slate-500">{new Date(fee.due_date).toLocaleDateString()}</td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <DataTable
+                columns={['Student', 'Total Payable', 'Arrears', 'Balance', 'Status', 'Due Date', 'Actions']}
+                data={fees}
+                loading={loading}
+                emptyMessage="No billing records found. Run the engine to generate fees."
+                renderRow={(fee) => (
+                    <>
+                        <td className="px-6 py-4">
+                            <div className="text-sm font-semibold text-slate-800">{fee.student?.first_name} {fee.student?.last_name}</div>
+                            <div className="text-[10px] text-slate-500">Roll No: {fee.student?.roll_number}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-900">Rs. {Number(fee.total_amount).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-rose-600">Rs. {Number(fee.total_arrears || 0).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-indigo-600">Rs. {Number(fee.total_balance).toLocaleString()}</td>
+                        <td className="px-6 py-4">
+                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                fee.aggregated_status === 'unpaid' ? 'bg-rose-100 text-rose-700' :
+                                fee.aggregated_status === 'partial' ? 'bg-amber-100 text-amber-700' :
+                                'bg-emerald-100 text-emerald-700'
+                            }`}>
+                                {fee.aggregated_status}
+                            </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-500">{new Date(fee.earliest_due_date).toLocaleDateString()}</td>
+                        <td className="px-6 py-4">
+                            <button 
+                                onClick={() => navigate(`/fees/voucher/${fee.student_id}`)}
+                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 group"
+                            >
+                                <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                                Print Voucher
+                            </button>
+                        </td>
+                    </>
+                )}
+            />
         </div>
     );
 };

@@ -110,4 +110,103 @@ class FeeService
 
         return $appliedCount;
     }
+
+    /**
+     * Get aggregated voucher data for a student, matching the official format.
+     */
+    public function getVoucherData($studentId)
+    {
+        $student = Student::with(['program', 'academicBatch', 'campus'])->findOrFail($studentId);
+        
+        // Get all unpaid or partially paid fees
+        $allPendingFees = StudentFee::with('feeHead')
+            ->where('student_id', $studentId)
+            ->whereIn('status', ['unpaid', 'partially_paid'])
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        if ($allPendingFees->isEmpty()) {
+            throw new \Exception("No pending fees found for this student.");
+        }
+
+        $currentMonth = Carbon::now()->startOfMonth();
+        
+        // Separate current month fees and arrears
+        $currentFees = $allPendingFees->filter(function ($fee) use ($currentMonth) {
+            return $fee->due_date->startOfMonth()->equalTo($currentMonth);
+        });
+
+        $arrearsFees = $allPendingFees->filter(function ($fee) use ($currentMonth) {
+            return $fee->due_date->startOfMonth()->lessThan($currentMonth);
+        });
+
+        // If no fees in current month, take the latest month's fees as current
+        if ($currentFees->isEmpty() && !$allPendingFees->isEmpty()) {
+            $latestMonth = $allPendingFees->max('due_date')->startOfMonth();
+            $currentFees = $allPendingFees->filter(function ($fee) use ($latestMonth) {
+                return $fee->due_date->startOfMonth()->equalTo($latestMonth);
+            });
+            $arrearsFees = $allPendingFees->filter(function ($fee) use ($latestMonth) {
+                return $fee->due_date->startOfMonth()->lessThan($latestMonth);
+            });
+        }
+
+        $feeMonth = $currentFees->isNotEmpty() ? $currentFees->first()->due_date->format('M Y') : Carbon::now()->format('M Y');
+        $dueDate = $currentFees->isNotEmpty() ? $currentFees->first()->due_date : $allPendingFees->min('due_date');
+        $validDate = $dueDate->copy()->endOfMonth();
+
+        $arrearsAmount = $arrearsFees->sum('balance_amount');
+        $previousFine = $allPendingFees->sum('fine_amount') - $currentFees->sum('fine_amount');
+        
+        $totalCurrent = $currentFees->sum('balance_amount');
+        $payableWithinDueDate = $totalCurrent + $arrearsAmount;
+
+        // Relation label (S/O or D/O)
+        $relationLabel = (strtolower($student->gender) === 'female') ? 'D/O' : 'S/O';
+
+        $voucherNumber = '15' . str_pad($studentId, 4, '0', STR_PAD_LEFT); // Matching the 5-digit number in image
+
+        return [
+            'voucher_number' => $voucherNumber,
+            'copy_names' => ["Parent's Copy", "School's Copy", "Bank's Copy"],
+            'institution' => [
+                'name' => 'TIGES - River Bliss Campus', // In image
+                'location' => 'Muzaffarabad',
+                'logo_url' => $student->campus->logo_url,
+            ],
+            'academic' => [
+                'fee_month' => $feeMonth,
+                'issue_date' => Carbon::now()->format('d M Y'),
+                'due_date' => $dueDate->format('d M Y'),
+                'valid_date' => $validDate->format('d M Y'),
+                'roll_no' => $student->roll_number,
+                'student_id' => $student->admission_number,
+                'adm_reg_no' => 'TIGES/MZD/' . $student->admission_number . '/',
+            ],
+            'student' => [
+                'full_name' => $student->first_name . ' ' . $student->last_name,
+                'parent_relation' => $relationLabel,
+                'guardian_name' => $student->guardian_name,
+                'class' => $student->program ? $student->program->name : 'N/A',
+            ],
+            'fee_items' => $currentFees->map(function ($fee, $index) {
+                return [
+                    'sr_no' => $index + 1,
+                    'head' => $fee->feeHead->name,
+                    'amount' => number_format($fee->amount, 0),
+                ];
+            }),
+            'summary' => [
+                'arrears' => number_format($arrearsAmount, 0),
+                'previous_fine' => number_format($previousFine, 0),
+                'payable_within_due_date' => number_format($payableWithinDueDate, 0),
+                'late_fee_fine' => '0', // Placeholder as per image
+                'absent_fine' => '0',   // Placeholder as per image
+                'payable_after_due_date' => number_format($payableWithinDueDate + 500, 0), // Assuming 500 late fee
+            ],
+            'bank' => [
+                'info' => 'Bank Islami Pakistan Limited-31000223490001-The Integrity Global Education System',
+            ]
+        ];
+    }
 }

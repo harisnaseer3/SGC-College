@@ -12,6 +12,7 @@ import UserManagement from './User/UserManagement';
 import AcademicManagement from './Academic/AcademicManagement';
 import AdmissionByDateReport from './Reports/AdmissionByDateReport';
 import FeeManagement from './Fees/FeeManagement';
+import FeeVoucher from './Fees/FeeVoucher';
 import AuthView from './Auth/AuthView';
 import InstituteSelection from './Auth/InstituteSelection';
 import ToastContainer from './UI/ToastContainer';
@@ -39,22 +40,30 @@ const AppContent = () => {
     }
 
     return (
-        <MainLayout>
-            <Routes>
-                <Route path="/dashboard" element={<Dashboard />} />
-                {isSuperAdmin && <Route path="/organizations/*" element={<OrganizationManagement />} />}
-                <Route path="/users/*" element={<UserManagement />} />
-                <Route path="/academic/*" element={<AcademicManagement />} />
-                <Route path="/fees/*" element={<FeeManagement />} />
-                <Route path="/admissions" element={<AdmissionList />} />
-                <Route path="/new-admission" element={<NewAdmissionForm />} />
-                <Route path="/edit-admission/:id" element={<NewAdmissionForm />} />
-                <Route path="/reports/admissions-by-date" element={<AdmissionByDateReport />} />
-                <Route path="/profile" element={<ProfileView />} />
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-        </MainLayout>
+        <Routes>
+            <Route path="/fees/voucher/:studentId" element={<FeeVoucher />} />
+            <Route
+                path="*"
+                element={
+                    <MainLayout>
+                        <Routes>
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            {isSuperAdmin && <Route path="/organizations/*" element={<OrganizationManagement />} />}
+                            <Route path="/users/*" element={<UserManagement />} />
+                            <Route path="/academic/*" element={<AcademicManagement />} />
+                            <Route path="/fees/*" element={<FeeManagement />} />
+                            <Route path="/admissions" element={<AdmissionList />} />
+                            <Route path="/new-admission" element={<NewAdmissionForm />} />
+                            <Route path="/edit-admission/:id" element={<NewAdmissionForm />} />
+                            <Route path="/reports/admissions-by-date" element={<AdmissionByDateReport />} />
+                            <Route path="/profile" element={<ProfileView />} />
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                        </Routes>
+                    </MainLayout>
+                }
+            />
+        </Routes>
     );
 };
 

@@ -15,6 +15,10 @@ class Campus extends Model
         'location',
         'code',
         'status',
+        'bank_name',
+        'account_title',
+        'account_number',
+        'branch_code',
     ];
 
     public function organization()
