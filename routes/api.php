@@ -40,6 +40,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/organizations', [OrganizationController::class, 'index']);
     Route::get('/organizations/{organization}', [OrganizationController::class, 'show']);
     Route::post('/organizations', [OrganizationController::class, 'store']);
+    Route::put('/organizations/{organization}', [OrganizationController::class, 'update']);
     Route::get('/organizations/{organization}/campuses', [CampusController::class, 'index']);
     Route::post('/organizations/{organization}/campuses', [CampusController::class, 'store']);
 

@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreOrganizationRequest;
+use App\Http\Requests\Api\UpdateOrganizationRequest;
 use App\Models\Organization;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class OrganizationController extends BaseController
 {
@@ -49,6 +51,33 @@ class OrganizationController extends BaseController
             return $this->sendResponse($organization, 'Organization retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve organization.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update the specified organization in storage.
+     */
+    public function update(UpdateOrganizationRequest $request, Organization $organization): JsonResponse
+    {
+        try {
+            $data = $request->validated();
+
+            if ($request->hasFile('logo')) {
+                // Delete old logo if it exists
+                if ($organization->logo_url) {
+                    $oldPath = str_replace('/storage/', '', $organization->logo_url);
+                    Storage::disk('public')->delete($oldPath);
+                }
+
+                $path = $request->file('logo')->store('logos/organizations', 'public');
+                $data['logo_url'] = '/storage/' . $path;
+            }
+
+            $organization->update($data);
+            
+            return $this->sendResponse($organization, 'Organization updated successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to update organization.', ['error' => $e->getMessage()], 500);
         }
     }
 }

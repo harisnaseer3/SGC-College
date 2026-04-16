@@ -5,20 +5,22 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
 
-const NewOrganizationForm = ({ onSuccess }) => {
+const NewOrganizationForm = ({ onSuccess, organization = null }) => {
     const { showSuccess, showError } = useNotifications();
     const navigate = useNavigate();
+    const isEdit = !!organization;
+
     const [formData, setFormData] = useState({
-        name: '',
-        slug: '',
+        name: organization?.name || '',
+        slug: organization?.slug || '',
         logo: null,
-        logo_url: '',
-        status: 'active'
+        logo_url: organization?.logo_url || '',
+        status: organization?.status || 'active'
     });
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
 
-    const onCancel = () => navigate('/colleges');
+    const onCancel = () => navigate('/organizations');
 
     const handleChange = (e) => {
         const { name, value, files } = e.target;
@@ -30,7 +32,7 @@ const NewOrganizationForm = ({ onSuccess }) => {
         setFormData(prev => {
             const newData = { ...prev, [name]: value };
             // Auto-generate slug from name if name changes and slug is empty or was auto-generated
-            if (name === 'name' && (!prev.slug || prev.slug === prev.name.toLowerCase().replace(/\s+/g, '-'))) {
+            if (!isEdit && name === 'name' && (!prev.slug || prev.slug === prev.name.toLowerCase().replace(/\s+/g, '-'))) {
                 newData.slug = value.toLowerCase().replace(/\s+/g, '-');
             }
             return newData;
@@ -52,20 +54,25 @@ const NewOrganizationForm = ({ onSuccess }) => {
             }
         });
 
+        if (isEdit) {
+            data.append('_method', 'PUT');
+        }
+
         try {
-            await axios.post('/api/organizations', data, {
+            const url = isEdit ? `/api/organizations/${organization.id}` : '/api/organizations';
+            await axios.post(url, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            showSuccess('Organization registered successfully!');
+            showSuccess(isEdit ? 'Organization updated successfully!' : 'Organization registered successfully!');
             onSuccess();
         } catch (error) {
             if (error.response && error.response.data.errors) {
                 setErrors(error.response.data.errors);
                 showError('Please fix the validation errors.');
             } else {
-                const message = error.response?.data?.message || 'Failed to create organization';
+                const message = error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} organization`;
                 showError(message);
-                console.error('Failed to create organization:', error);
+                console.error(`Failed to ${isEdit ? 'update' : 'create'} organization:`, error);
             }
         } finally {
             setLoading(false);
@@ -83,7 +90,9 @@ const NewOrganizationForm = ({ onSuccess }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
                 </button>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">New Organization</h1>
+                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+                    {isEdit ? 'Edit Organization' : 'New Organization'}
+                </h1>
             </div>
 
             <Card className="p-8 border-slate-200 shadow-xl overflow-visible">
@@ -144,6 +153,9 @@ const NewOrganizationForm = ({ onSuccess }) => {
                                         </label>
                                     </div>
                                     {errors.logo && <p className="text-red-500 text-xs font-bold mt-1 uppercase tracking-tight">{errors.logo[0]}</p>}
+                                    {isEdit && organization.logo_url && !formData.logo && (
+                                        <p className="text-xs text-slate-500 font-medium mt-1">Leave empty to keep current logo</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -165,7 +177,7 @@ const NewOrganizationForm = ({ onSuccess }) => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Initial Status</label>
+                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Status</label>
                             <select 
                                 name="status"
                                 value={formData.status}
@@ -189,7 +201,7 @@ const NewOrganizationForm = ({ onSuccess }) => {
                                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                     <span>Processing...</span>
                                 </div>
-                            ) : 'Register Organization'}
+                            ) : (isEdit ? 'Update Organization' : 'Register Organization')}
                         </Button>
                         <Button 
                             variant="secondary" 

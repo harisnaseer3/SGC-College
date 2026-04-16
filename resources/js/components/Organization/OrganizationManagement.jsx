@@ -1,9 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import OrganizationList from './OrganizationList';
 import NewOrganizationForm from './NewOrganizationForm';
 import CampusManagement from './CampusManagement';
+
+const EditOrganizationWrapper = ({ organizations, onCancel, onSuccess }) => {
+    const { orgId } = useParams();
+    const organization = organizations.find(o => o.id === parseInt(orgId));
+
+    if (!organization) {
+        return (
+            <div className="p-8 text-center bg-white rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-lg font-bold text-slate-800">Organization Not Found</h3>
+                <p className="text-slate-500 mt-2">The organization you're trying to edit doesn't exist.</p>
+                <button 
+                    onClick={onCancel}
+                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                    Back to List
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <NewOrganizationForm 
+            organization={organization}
+            onCancel={onCancel}
+            onSuccess={onSuccess}
+        />
+    );
+};
 
 const OrganizationManagement = () => {
     const navigate = useNavigate();
@@ -39,6 +67,7 @@ const OrganizationManagement = () => {
                         organizations={organizations} 
                         loading={loading}
                         onAddNew={() => navigate('new')}
+                        onEdit={(org) => navigate(`${org.id}/edit`)}
                         onManageCampuses={(org) => navigate(`${org.id}/campuses`)}
                     />
                 } />
@@ -47,6 +76,15 @@ const OrganizationManagement = () => {
                         onCancel={() => navigate('/organizations')} 
                         onSuccess={handleCreateSuccess}
                     />
+                } />
+                <Route path=":orgId/edit" element={
+                    <React.Suspense fallback={<div>Loading...</div>}>
+                        <EditOrganizationWrapper 
+                            organizations={organizations}
+                            onCancel={() => navigate('/organizations')}
+                            onSuccess={handleCreateSuccess}
+                        />
+                    </React.Suspense>
                 } />
                 <Route path=":orgId/campuses/*" element={
                     <CampusManagement 

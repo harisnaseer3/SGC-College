@@ -2,7 +2,7 @@ import React from 'react';
 import DataTable from '../UI/DataTable';
 import Button from '../UI/Button';
 
-const OrganizationList = ({ organizations, loading, onAddNew, onManageCampuses }) => {
+const OrganizationList = ({ organizations, loading, onAddNew, onEdit, onManageCampuses }) => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -46,13 +46,22 @@ const OrganizationList = ({ organizations, loading, onAddNew, onManageCampuses }
                             {new Date(org.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 text-right">
-                            <Button 
-                                variant="secondary" 
-                                size="sm" 
-                                onClick={() => onManageCampuses(org)}
-                            >
-                                Manage Colleges
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                                <Button 
+                                    variant="secondary" 
+                                    size="sm" 
+                                    onClick={() => onManageCampuses(org)}
+                                >
+                                    Manage Colleges
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => onEdit(org)}
+                                >
+                                    Edit
+                                </Button>
+                            </div>
                         </td>
                     </>
                 )}
