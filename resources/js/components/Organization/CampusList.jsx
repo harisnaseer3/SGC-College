@@ -24,7 +24,7 @@ const CampusList = ({ organization, campuses, loading, onAddNew, onBack }) => {
             </div>
 
             <DataTable
-                columns={['Campus Name', 'Code', 'Location', 'Status', 'Created At']}
+                columns={['Campus Name', 'Code', 'Location', 'Status', { name: 'Created At', align: 'center' }]}
                 data={campuses}
                 loading={loading}
                 emptyMessage="No campuses found for this organization."

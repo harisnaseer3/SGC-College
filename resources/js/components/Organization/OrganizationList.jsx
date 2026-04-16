@@ -14,7 +14,7 @@ const OrganizationList = ({ organizations, loading, onAddNew, onEdit, onManageCa
             </div>
 
             <DataTable
-                columns={['Name', 'Slug', 'Status', 'Created At', 'Actions']}
+                columns={['Name', 'Slug', 'Status', 'Created At', { name: 'Actions', align: 'center' }]}
                 data={organizations}
                 loading={loading}
                 emptyMessage="No organizations found. Click 'Add New' to get started."

@@ -30,14 +30,19 @@ const DataTable = ({
                 <table className="w-full text-left border-separate border-spacing-0">
                     <thead>
                         <tr className="bg-slate-50/50">
-                            {columns.map((col, idx) => (
-                                <th 
-                                    key={idx} 
-                                    className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 whitespace-nowrap"
-                                >
-                                    {col}
-                                </th>
-                            ))}
+                            {columns.map((col, idx) => {
+                                const name = typeof col === 'string' ? col : col.name;
+                                const align = typeof col === 'object' && col.align ? `text-${col.align}` : 'text-left';
+                                
+                                return (
+                                    <th 
+                                        key={idx} 
+                                        className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 whitespace-nowrap ${align}`}
+                                    >
+                                        {name}
+                                    </th>
+                                );
+                            })}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">

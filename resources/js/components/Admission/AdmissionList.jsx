@@ -196,7 +196,7 @@ const AdmissionList = () => {
             </Card>
 
             <DataTable
-                columns={['Student Name', 'Admission #', 'Program / Semester', 'Batch', 'Intake', 'Campus', 'Status', 'Actions']}
+                columns={['Student Name', 'Admission #', 'Program / Semester', 'Batch', 'Intake', 'Campus', 'Status', { name: 'Actions', align: 'left' }]}
                 data={filteredStudents}
                 loading={loading}
                 emptyMessage="No student records found."
@@ -232,8 +232,8 @@ const AdmissionList = () => {
                             <td className="px-6 py-4">
                                 <StatusBadge status={student.status} />
                             </td>
-                            <td className="px-6 py-4">
-                                <div className="flex items-center gap-1">
+                            <td className="px-6 py-4 text-center">
+                                <div className="flex items-center justify-end gap-1">
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); setSelected(student); }}

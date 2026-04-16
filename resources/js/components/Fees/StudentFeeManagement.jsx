@@ -152,7 +152,7 @@ const StudentFeeManagement = () => {
             </div>
 
             <DataTable
-                columns={['Student', 'Total Payable', 'Arrears', 'Balance', 'Status', 'Due Date', 'Actions']}
+                columns={['Student', 'Total Payable', 'Arrears', 'Balance', 'Status', 'Due Date', { name: 'Actions', align: 'center' }]}
                 data={fees}
                 loading={loading}
                 emptyMessage="No billing records found. Run the engine to generate fees."
@@ -175,16 +175,18 @@ const StudentFeeManagement = () => {
                             </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-500">{new Date(fee.earliest_due_date).toLocaleDateString()}</td>
-                        <td className="px-6 py-4">
-                            <button 
-                                onClick={() => navigate(`/fees/voucher/${fee.student_id}`)}
-                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 group"
-                            >
-                                <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                </svg>
-                                Print Voucher
-                            </button>
+                        <td className="px-6 py-4 text-center">
+                            <div className="flex justify-end items-center">
+                                <button 
+                                    onClick={() => navigate(`/fees/voucher/${fee.student_id}`)}
+                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 group"
+                                >
+                                    <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print Voucher
+                                </button>
+                            </div>
                         </td>
                     </>
                 )}
