@@ -19,9 +19,17 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
             if ($request->is('api/*')) {
-                $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+                $status = 500;
                 
-                // Special handling for validation exceptions to keep standard format
+                if (method_exists($e, 'getStatusCode')) {
+                    $status = $e->getStatusCode();
+                } elseif ($e instanceof \Illuminate\Auth\AuthenticationException || 
+                          str_contains(get_class($e), 'InvalidTokenStructure') ||
+                          str_contains(get_class($e), 'TokenParsingException')) {
+                    $status = 401;
+                }
+
+                // Special handling for validation exceptions
                 if ($e instanceof \Illuminate\Validation\ValidationException) {
                     return response()->json([
                         'success' => false,
@@ -32,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage() ?: 'Server Error',
+                    'message' => $status === 401 ? 'Unauthenticated or invalid token.' : ($e->getMessage() ?: 'Server Error'),
                     'debug' => config('app.debug') ? [
                         'file' => $e->getFile(),
                         'line' => $e->getLine(),

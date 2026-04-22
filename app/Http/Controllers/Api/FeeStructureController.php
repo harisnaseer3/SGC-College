@@ -52,7 +52,7 @@ class FeeStructureController extends BaseController
             return $this->sendResponse($structure->load('items.feeHead'), 'Fee structure created successfully.');
         } catch (\Exception $e) {
             DB::rollback();
-            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()]);
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
         }
     }
 
@@ -95,7 +95,7 @@ class FeeStructureController extends BaseController
             return $this->sendResponse($feeStructure->load('items.feeHead'), 'Fee structure updated successfully.');
         } catch (\Exception $e) {
             DB::rollback();
-            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()]);
+            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
         }
     }
 

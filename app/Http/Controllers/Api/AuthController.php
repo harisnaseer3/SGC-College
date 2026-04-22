@@ -63,7 +63,10 @@ class AuthController extends BaseController
     public function logout(Request $request)
     {
         try {
-            $request->user()->token()->revoke();
+            $user = $request->user();
+            if ($user && $user->token()) {
+                $user->token()->revoke();
+            }
             return $this->sendResponse([], 'Logged out successfully');
         } catch (\Exception $e) {
             return $this->sendError('Logout failed.', ['error' => $e->getMessage()], 500);
