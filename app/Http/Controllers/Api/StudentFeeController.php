@@ -112,8 +112,22 @@ class StudentFeeController extends BaseController
     public function voucher(\Illuminate\Http\Request $request, $studentId)
     {
         try {
-            $data = $this->feeService->getVoucherData($studentId, $request->month, $request->year);
-            return $this->sendResponse($data, 'Voucher data generated successfully.');
+            $vouchers = [];
+            
+            if ($request->has('periods')) {
+                // periods=5-2026,6-2026
+                $periods = explode(',', $request->periods);
+                foreach ($periods as $p) {
+                    if (str_contains($p, '-')) {
+                        [$m, $y] = explode('-', $p);
+                        $vouchers[] = $this->feeService->getVoucherData($studentId, (int)$m, (int)$y);
+                    }
+                }
+            } else {
+                $vouchers[] = $this->feeService->getVoucherData($studentId, $request->month, $request->year);
+            }
+            
+            return $this->sendResponse($vouchers, 'Voucher data generated successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Voucher Generation Error.', ['error' => $e->getMessage()], 400);
         }

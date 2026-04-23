@@ -14,6 +14,7 @@ const StudentLedgerDetail = () => {
     const [adjustment, setAdjustment] = useState({ discount_amount: 0, fine_amount: 0, discount_type: 'fixed', apply_to_all: false });
     const [splittingFee, setSplittingFee] = useState(null);
     const [installments, setInstallments] = useState([]);
+    const [selectedPeriods, setSelectedPeriods] = useState([]);
     const { showSuccess, showError } = useNotifications();
 
     useEffect(() => {
@@ -91,6 +92,15 @@ const StudentLedgerDetail = () => {
                 >
                     Print Current Voucher
                 </Button>
+                {selectedPeriods.length > 0 && (
+                    <Button 
+                        onClick={() => navigate(`/fees/voucher/${studentId}?periods=${selectedPeriods.join(',')}`)} 
+                        variant="primary"
+                        className="animate-bounce"
+                    >
+                        Print Selected ({selectedPeriods.length})
+                    </Button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -125,9 +135,24 @@ const StudentLedgerDetail = () => {
                     acc[key].fees.push(fee);
                     return acc;
                 }, {})).sort((a, b) => new Date(a.year, a.month - 1) - new Date(b.year, b.month - 1)).map((group) => (
-                    <Card key={group.label} className="overflow-hidden border-slate-200 shadow-sm">
+                    <Card key={group.label} className={`overflow-hidden border-slate-200 shadow-sm transition-all duration-300 ${selectedPeriods.includes(`${group.month}-${group.year}`) ? 'ring-2 ring-indigo-500 bg-indigo-50/10' : ''}`}>
                         <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
-                            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">{group.label}</h3>
+                            <div className="flex items-center gap-3">
+                                <input 
+                                    type="checkbox"
+                                    className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                    checked={selectedPeriods.includes(`${group.month}-${group.year}`)}
+                                    onChange={() => {
+                                        const key = `${group.month}-${group.year}`;
+                                        if (selectedPeriods.includes(key)) {
+                                            setSelectedPeriods(selectedPeriods.filter(p => p !== key));
+                                        } else {
+                                            setSelectedPeriods([...selectedPeriods, key]);
+                                        }
+                                    }}
+                                />
+                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">{group.label}</h3>
+                            </div>
                             <Button 
                                 onClick={() => navigate(`/fees/voucher/${studentId}?month=${group.month}&year=${group.year}`)} 
                                 variant="secondary" 

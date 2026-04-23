@@ -45,20 +45,24 @@ const FeeVoucher = () => {
                     >
                         ← Back
                     </button>
-                    <h1 className="font-bold">Fee Voucher - {data.student.full_name}</h1>
+                    <h1 className="font-bold">Fee Vouchers ({data.length})</h1>
                 </div>
                 <button 
                     onClick={handlePrint}
                     className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-lg font-bold transition-all shadow-lg"
                 >
-                    Print Voucher
+                    Print All Selected Vouchers
                 </button>
             </div>
 
             {/* Voucher Container */}
-            <div className="voucher-container max-w-7xl mx-auto p-4 flex gap-4 overflow-x-auto">
-                {data.copy_names.map((copyName, index) => (
-                    <VoucherCopy key={index} copyName={copyName} data={data} />
+            <div className="space-y-0">
+                {data.map((voucherData, vIndex) => (
+                    <div key={vIndex} className="voucher-container max-w-7xl mx-auto p-4 flex gap-4 overflow-x-auto page-break-after-always">
+                        {voucherData.copy_names.map((copyName, index) => (
+                            <VoucherCopy key={index} copyName={copyName} data={voucherData} />
+                        ))}
+                    </div>
                 ))}
             </div>
 
@@ -83,8 +87,11 @@ const FeeVoucher = () => {
                         border: 1px solid #000 !important;
                         height: auto !important;
                     }
-                    .print\\:hidden {
+                    .print\:hidden {
                         display: none !important;
+                    }
+                    .page-break-after-always {
+                        page-break-after: always;
                     }
                 }
 

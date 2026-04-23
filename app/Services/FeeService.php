@@ -192,7 +192,7 @@ class FeeService
         });
 
         $arrearsFees = $allPendingFees->filter(function ($fee) use ($targetMonth) {
-            return $fee->due_date->format('Y-m') < $targetMonth->format('Y-m');
+            return $fee->due_date->format('Y-m') < $targetMonth->format('Y-m') && $fee->due_date->isPast();
         });
 
         // If no fees in target month, and it was default (now), take latest
