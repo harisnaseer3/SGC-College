@@ -17,6 +17,9 @@ const StudentLedgerList = () => {
         academic_batch_id: '',
         status: 'Enrolled',
     });
+    const [selectedStudents, setSelectedStudents] = useState([]);
+    const [printMonth, setPrintMonth] = useState(new Date().getMonth() + 1);
+    const [printYear, setPrintYear] = useState(new Date().getFullYear());
     const { showSuccess, showError } = useNotifications();
 
     useEffect(() => {
@@ -125,13 +128,74 @@ const StudentLedgerList = () => {
                 </div>
             </div>
 
+            <div className="flex justify-between items-center bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                <div className="flex items-center gap-4">
+                    <div className="text-sm font-bold text-indigo-900">Bulk Printing:</div>
+                    <select 
+                        className="p-1.5 border border-indigo-200 rounded bg-white text-xs font-bold"
+                        value={printMonth}
+                        onChange={(e) => setPrintMonth(e.target.value)}
+                    >
+                        {Array.from({length: 12}, (_, i) => (
+                            <option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('default', {month: 'long'})}</option>
+                        ))}
+                    </select>
+                    <select 
+                        className="p-1.5 border border-indigo-200 rounded bg-white text-xs font-bold"
+                        value={printYear}
+                        onChange={(e) => setPrintYear(e.target.value)}
+                    >
+                        {[2024, 2025, 2026, 2027].map(y => (
+                            <option key={y} value={y}>{y}</option>
+                        ))}
+                    </select>
+                </div>
+                <button 
+                    disabled={selectedStudents.length === 0}
+                    onClick={() => navigate(`/fees/voucher/bulk?student_ids=${selectedStudents.join(',')}&month=${printMonth}&year=${printYear}`)}
+                    className={`px-6 py-2 rounded-lg font-bold text-sm shadow-lg transition-all ${
+                        selectedStudents.length > 0 
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-500 animate-pulse' 
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                >
+                    Print Vouchers for {selectedStudents.length} Students
+                </button>
+            </div>
+
             <DataTable
-                columns={['Student', 'Admission #', 'Program', 'Payable', 'Paid', 'Balance', 'Status', { name: 'Actions', align: 'center' }]}
+                columns={[
+                    {
+                        name: <input 
+                            type="checkbox" 
+                            onChange={(e) => {
+                                if (e.target.checked) setSelectedStudents(fees.map(f => f.student_id));
+                                else setSelectedStudents([]);
+                            }}
+                            checked={selectedStudents.length === fees.length && fees.length > 0}
+                        />,
+                        width: '40px'
+                    },
+                    'Student', 'Admission #', 'Program', 'Payable', 'Paid', 'Balance', 'Status', { name: 'Actions', align: 'center' }
+                ]}
                 data={fees}
                 loading={loading}
                 emptyMessage="No students found."
                 renderRow={(fee) => (
                     <>
+                        <td className="px-6 py-4">
+                            <input 
+                                type="checkbox" 
+                                checked={selectedStudents.includes(fee.student_id)}
+                                onChange={() => {
+                                    if (selectedStudents.includes(fee.student_id)) {
+                                        setSelectedStudents(selectedStudents.filter(id => id !== fee.student_id));
+                                    } else {
+                                        setSelectedStudents([...selectedStudents, fee.student_id]);
+                                    }
+                                }}
+                            />
+                        </td>
                         <td className="px-6 py-4">
                             <div className="text-sm font-semibold text-slate-800">{fee.student?.first_name} {fee.student?.last_name}</div>
                             <div className="text-[10px] text-slate-500">Roll No: {fee.student?.roll_number}</div>

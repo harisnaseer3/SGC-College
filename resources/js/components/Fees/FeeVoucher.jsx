@@ -14,7 +14,10 @@ const FeeVoucher = () => {
         const fetchVoucherData = async () => {
             try {
                 // Pass along the query parameters (month/year) if present
-                const response = await axios.get(`/api/student-fees/voucher/${studentId}${location.search}`);
+                const endpoint = studentId === 'bulk' 
+                    ? `/api/student-fees/vouchers/bulk${location.search}`
+                    : `/api/student-fees/voucher/${studentId}${location.search}`;
+                const response = await axios.get(endpoint);
                 setData(response.data.data);
             } catch (err) {
                 setError(err.response?.data?.message || 'Failed to fetch voucher data');

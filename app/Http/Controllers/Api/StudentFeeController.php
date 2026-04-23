@@ -134,6 +134,36 @@ class StudentFeeController extends BaseController
     }
 
     /**
+     * Get voucher data for multiple students in bulk.
+     */
+    public function bulkVouchers(\Illuminate\Http\Request $request)
+    {
+        try {
+            $studentIds = explode(',', $request->student_ids);
+            $month = $request->month;
+            $year = $request->year;
+            $vouchers = [];
+
+            foreach ($studentIds as $id) {
+                try {
+                    $vouchers[] = $this->feeService->getVoucherData($id, $month, $year);
+                } catch (\Exception $e) {
+                    // Skip students with no fees for that month instead of failing the whole batch
+                    continue;
+                }
+            }
+
+            if (empty($vouchers)) {
+                throw new \Exception("No vouchers could be generated for the selected students/period.");
+            }
+
+            return $this->sendResponse($vouchers, count($vouchers) . ' vouchers generated successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Bulk Voucher Generation Error.', ['error' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
      * Get all fee records for a specific student (Ledger).
      */
     public function studentLedger($studentId)
