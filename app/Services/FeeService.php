@@ -70,21 +70,18 @@ class FeeService
      */
     public function assignInitialFees(Student $student)
     {
-        if ($student->status !== 'Enrolled') {
+        // Allow assigning fees to both Enrolled and Pending students
+        if (!in_array($student->status, ['Enrolled', 'Pending'])) {
             return 0;
         }
 
         $dueDate = Carbon::now()->addDays(10);
         
-        // Fetch structures that apply to this student
+        // Fetch structures that apply to this student (Campus + Program)
         $structures = FeeStructure::where('campus_id', $student->campus_id)
             ->where(function ($query) use ($student) {
                 $query->whereNull('program_id')
                       ->orWhere('program_id', $student->program_id);
-            })
-            ->where(function ($query) use ($student) {
-                $query->whereNull('academic_batch_id')
-                      ->orWhere('academic_batch_id', $student->academic_batch_id);
             })
             ->with('items.feeHead')
             ->get();

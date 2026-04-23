@@ -8,9 +8,11 @@ const FeeStructureManagement = () => {
     const [heads, setHeads] = useState([]);
     const [programs, setPrograms] = useState([]);
     const [batches, setBatches] = useState([]);
+    const [campuses, setCampuses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({
+        campus_id: '',
         program_id: '',
         academic_batch_id: '',
         items: []
@@ -25,16 +27,18 @@ const FeeStructureManagement = () => {
 
     const fetchInitialData = async () => {
         try {
-            const [structRes, headRes, progRes, batchRes] = await Promise.all([
+            const [structRes, headRes, progRes, batchRes, campusRes] = await Promise.all([
                 axios.get('/api/fee-structures'),
                 axios.get('/api/fee-heads'),
                 axios.get('/api/programs'),
-                axios.get('/api/academic-batches')
+                axios.get('/api/academic-batches'),
+                axios.get('/api/admissions/form-data')
             ]);
             setStructures(structRes.data.data);
             setHeads(headRes.data.data);
             setPrograms(progRes.data.data);
             setBatches(batchRes.data.data);
+            setCampuses(campusRes.data.data.campuses);
         } catch (error) {
             showError('Failed to fetch data');
         } finally {
@@ -74,7 +78,7 @@ const FeeStructureManagement = () => {
             setShowForm(false);
             setEditingId(null);
             fetchInitialData();
-            setFormData({ program_id: '', academic_batch_id: '', items: [] });
+            setFormData({ campus_id: '', program_id: '', academic_batch_id: '', items: [] });
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to save fee structure');
         }
@@ -82,6 +86,7 @@ const FeeStructureManagement = () => {
 
     const handleEdit = (struct) => {
         setFormData({
+            campus_id: struct.campus_id,
             program_id: struct.program_id,
             academic_batch_id: struct.academic_batch_id,
             items: struct.items.map(i => ({ fee_head_id: i.fee_head_id, amount: i.amount }))
@@ -118,7 +123,7 @@ const FeeStructureManagement = () => {
                     setShowForm(!showForm);
                     if (showForm) {
                         setEditingId(null);
-                        setFormData({ program_id: '', academic_batch_id: '', items: [] });
+                        setFormData({ campus_id: '', program_id: '', academic_batch_id: '', items: [] });
                     }
                 }}>
                     {showForm ? 'Cancel' : 'New Structure'}
@@ -128,7 +133,21 @@ const FeeStructureManagement = () => {
             {showForm && (
                 <div className="mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-4 duration-300">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Campus</label>
+                                <select
+                                    className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                                    value={formData.campus_id}
+                                    onChange={(e) => setFormData({ ...formData, campus_id: e.target.value })}
+                                    required
+                                >
+                                    <option value="">Select Campus</option>
+                                    {campuses.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Program</label>
                                 <select
@@ -225,6 +244,7 @@ const FeeStructureManagement = () => {
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                             <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase">Structure Name</th>
+                            <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase">Campus</th>
                             <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase">Applicability</th>
                             <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase">Total Items</th>
                             <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase text-right">Actions</th>
@@ -240,6 +260,9 @@ const FeeStructureManagement = () => {
                                 <tr key={struct.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="text-sm text-slate-700 font-semibold">{struct.name}</div>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-slate-500">
+                                        {struct.campus?.name}
                                     </td>
                                     <td className="px-6 py-4 text-xs text-slate-500">
                                         {struct.program?.name || 'All Programs'} <br/>

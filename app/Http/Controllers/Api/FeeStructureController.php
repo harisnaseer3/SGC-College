@@ -13,7 +13,7 @@ class FeeStructureController extends BaseController
      */
     public function index()
     {
-        $structures = FeeStructure::with(['program', 'academicBatch', 'items.feeHead'])->get();
+        $structures = FeeStructure::with(['campus', 'program', 'academicBatch', 'items.feeHead'])->get();
         return $this->sendResponse($structures, 'Fee structures retrieved successfully.');
     }
 
@@ -35,6 +35,7 @@ class FeeStructureController extends BaseController
 
             $structure = FeeStructure::create([
                 'name' => $name,
+                'campus_id' => $request->campus_id,
                 'program_id' => $request->program_id,
                 'academic_batch_id' => $request->academic_batch_id,
             ]);
@@ -49,7 +50,7 @@ class FeeStructureController extends BaseController
 
             DB::commit();
 
-            return $this->sendResponse($structure->load('items.feeHead'), 'Fee structure created successfully.');
+            return $this->sendResponse($structure->load(['campus', 'items.feeHead']), 'Fee structure created successfully.');
         } catch (\Exception $e) {
             DB::rollback();
             return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
@@ -61,7 +62,7 @@ class FeeStructureController extends BaseController
      */
     public function show(FeeStructure $feeStructure)
     {
-        return $this->sendResponse($feeStructure->load(['program', 'academicBatch', 'items.feeHead']), 'Fee structure retrieved successfully.');
+        return $this->sendResponse($feeStructure->load(['campus', 'program', 'academicBatch', 'items.feeHead']), 'Fee structure retrieved successfully.');
     }
 
     /**
@@ -75,6 +76,7 @@ class FeeStructureController extends BaseController
 
             $feeStructure->update([
                 'name' => $request->name,
+                'campus_id' => $request->campus_id,
                 'program_id' => $request->program_id,
                 'academic_batch_id' => $request->academic_batch_id,
             ]);
@@ -92,7 +94,7 @@ class FeeStructureController extends BaseController
 
             DB::commit();
 
-            return $this->sendResponse($feeStructure->load('items.feeHead'), 'Fee structure updated successfully.');
+            return $this->sendResponse($feeStructure->load(['campus', 'items.feeHead']), 'Fee structure updated successfully.');
         } catch (\Exception $e) {
             DB::rollback();
             return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);

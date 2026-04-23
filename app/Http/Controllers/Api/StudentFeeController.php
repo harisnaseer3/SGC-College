@@ -155,15 +155,38 @@ class StudentFeeController extends BaseController
             $validated = $request->validate([
                 'amount' => 'nullable|numeric',
                 'discount_amount' => 'nullable|numeric',
+                'discount_type' => 'nullable|string|in:fixed,percentage',
                 'fine_amount' => 'nullable|numeric',
                 'due_date' => 'nullable|date',
+                'apply_to_all' => 'nullable|boolean'
             ]);
 
-            $studentFee->update($validated);
+            $discountVal = $request->discount_amount ?? 0;
+            $discountType = $request->discount_type ?? 'fixed';
 
-            return $this->sendResponse($studentFee, 'Fee record updated successfully.');
+            if ($request->apply_to_all) {
+                $fees = StudentFee::where('student_id', $studentFee->student_id)
+                    ->whereIn('status', ['unpaid', 'partially_paid'])
+                    ->get();
+                
+                foreach ($fees as $fee) {
+                    $actualDiscount = ($discountType === 'percentage') 
+                        ? ($fee->amount * $discountVal) / 100 
+                        : $discountVal;
+
+                    $fee->discount_amount = $actualDiscount;
+                    $fee->save();
+                }
+            } else {
+                if ($discountType === 'percentage') {
+                    $validated['discount_amount'] = ($studentFee->amount * $discountVal) / 100;
+                }
+                $studentFee->update($validated);
+            }
+
+            return $this->sendResponse($studentFee, 'Fee record(s) updated successfully.');
         } catch (\Exception $e) {
-            return $this->sendError('Failed to update fee record.', ['error' => $e->getMessage()], 422);
+            return $this->sendError('Failed to update fee record.', ['error' => $e->getMessage()], 500);
         }
     }
 
@@ -176,7 +199,8 @@ class StudentFeeController extends BaseController
             $count = $this->feeService->assignInitialFees($student);
             
             if ($count === 0) {
-                return $this->sendError('No matching fee structure found for this student.', [], 404);
+                $details = "Student Status: {$student->status}, Campus: {$student->campus_id}, Program: " . ($student->program_id ?? 'None') . ", Batch: " . ($student->academic_batch_id ?? 'None');
+                return $this->sendError("No matching fee structure found for this student. ({$details})", [], 404);
             }
 
             return $this->sendResponse(['count' => $count], "Fees assigned successfully. $count records created.");

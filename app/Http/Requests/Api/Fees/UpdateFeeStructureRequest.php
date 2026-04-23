@@ -21,6 +21,7 @@ class UpdateFeeStructureRequest extends FormRequest
     {
         return [
             'name' => 'nullable|string|max:255',
+            'campus_id' => 'required|exists:campuses,id',
             'program_id' => 'required|exists:programs,id',
             'academic_batch_id' => 'nullable|exists:academic_batches,id',
             'items' => 'required|array|min:1',

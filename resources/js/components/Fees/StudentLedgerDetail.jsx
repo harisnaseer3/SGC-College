@@ -11,7 +11,7 @@ const StudentLedgerDetail = () => {
     const [ledger, setLedger] = useState(null);
     const [loading, setLoading] = useState(true);
     const [editingFee, setEditingFee] = useState(null);
-    const [adjustment, setAdjustment] = useState({ discount_amount: 0, fine_amount: 0 });
+    const [adjustment, setAdjustment] = useState({ discount_amount: 0, fine_amount: 0, discount_type: 'fixed', apply_to_all: false });
     const { showSuccess, showError } = useNotifications();
 
     useEffect(() => {
@@ -117,7 +117,12 @@ const StudentLedgerDetail = () => {
                                     <button 
                                         onClick={() => {
                                             setEditingFee(fee);
-                                            setAdjustment({ discount_amount: fee.discount_amount || 0, fine_amount: fee.fine_amount || 0 });
+                                            setAdjustment({ 
+                                                discount_amount: fee.discount_amount || 0, 
+                                                fine_amount: fee.fine_amount || 0, 
+                                                discount_type: 'fixed',
+                                                apply_to_all: false 
+                                            });
                                         }}
                                         className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
                                     >
@@ -142,13 +147,24 @@ const StudentLedgerDetail = () => {
                         </div>
                         <form onSubmit={handleUpdateFee} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Discount Amount</label>
-                                <input 
-                                    type="number" 
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    value={adjustment.discount_amount}
-                                    onChange={(e) => setAdjustment({ ...adjustment, discount_amount: e.target.value })}
-                                />
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Discount</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="number" 
+                                        className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        value={adjustment.discount_amount}
+                                        onChange={(e) => setAdjustment({ ...adjustment, discount_amount: e.target.value })}
+                                        placeholder="0.00"
+                                    />
+                                    <select 
+                                        className="w-24 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-bold"
+                                        value={adjustment.discount_type}
+                                        onChange={(e) => setAdjustment({ ...adjustment, discount_type: e.target.value })}
+                                    >
+                                        <option value="fixed">Fixed</option>
+                                        <option value="percentage">%</option>
+                                    </select>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Fine Amount</label>
@@ -158,6 +174,16 @@ const StudentLedgerDetail = () => {
                                     value={adjustment.fine_amount}
                                     onChange={(e) => setAdjustment({ ...adjustment, fine_amount: e.target.value })}
                                 />
+                            </div>
+                            <div className="flex items-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                                <input 
+                                    type="checkbox" 
+                                    id="apply_to_all"
+                                    className="w-4 h-4 text-indigo-600 rounded"
+                                    checked={adjustment.apply_to_all}
+                                    onChange={(e) => setAdjustment({ ...adjustment, apply_to_all: e.target.checked })}
+                                />
+                                <label htmlFor="apply_to_all" className="text-sm font-bold text-indigo-700">Apply to all semester fees</label>
                             </div>
                             <div className="pt-4 flex gap-3">
                                 <Button type="button" variant="secondary" className="flex-1" onClick={() => setEditingFee(null)}>Cancel</Button>
