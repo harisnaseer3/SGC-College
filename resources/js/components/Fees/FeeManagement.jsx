@@ -12,7 +12,7 @@ const FeeManagement = () => {
         { name: 'Fee Heads', path: '/fees/heads' },
         { name: 'Fee Structures', path: '/fees/structures' },
         { name: 'Fine Policies', path: '/fees/policies' },
-        { name: 'Billing Engine', path: '/fees/billing' },
+        { name: 'Misc Fee Operations', path: '/fees/billing' },
     ];
 
     return (

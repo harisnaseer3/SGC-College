@@ -46,6 +46,25 @@ class Student extends Model
         parent::boot();
 
         static::creating(function ($student) {
+            // Determine organization_id for sequence generation
+            $orgId = $student->organization_id;
+            if (empty($orgId)) {
+                $user = auth()->user();
+                if ($user && !$user->hasRole('super_admin')) {
+                    $orgId = $user->organization_id;
+                } elseif ($user && $user->hasRole('super_admin')) {
+                    $orgId = request()->header('X-Organization-ID');
+                }
+            }
+
+            // Auto-generate admission_number per organization starting from 1001
+            if (empty($student->admission_number) && $orgId) {
+                $max = static::withoutGlobalScopes()
+                    ->where('organization_id', $orgId)
+                    ->max(\DB::raw('CAST(admission_number AS UNSIGNED)'));
+                $student->admission_number = $max ? $max + 1 : 1001;
+            }
+
             // Auto-generate roll_number per campus starting from 100
             if (empty($student->roll_number)) {
                 $max = static::where('campus_id', $student->campus_id)->max('roll_number');

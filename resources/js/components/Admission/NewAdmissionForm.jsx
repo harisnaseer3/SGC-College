@@ -79,7 +79,16 @@ const NewAdmissionForm = () => {
     const fetchOptions = async () => {
         try {
             const response = await axios.get('/api/admissions/form-data');
-            setFormOptions(response.data.data);
+            const data = response.data.data;
+            setFormOptions(data);
+            
+            // Auto-fill admission number for new admissions
+            if (!isEdit && data.next_admission_number) {
+                setFormData(prev => ({ 
+                    ...prev, 
+                    admission_number: data.next_admission_number.toString() 
+                }));
+            }
         } catch (error) {
             console.error('Error fetching form data:', error);
             showError('Failed to load form options.');
@@ -256,7 +265,15 @@ const NewAdmissionForm = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <label className={labelCls}>Admission #</label>
-                            <input type="text" name="admission_number" placeholder="e.g. AD-2024-001" value={formData.admission_number} onChange={handleChange} className={inputCls} required />
+                            <input 
+                                type="text" 
+                                name="admission_number" 
+                                placeholder="Auto-generated" 
+                                value={formData.admission_number} 
+                                onChange={handleChange} 
+                                className={`${inputCls} bg-slate-100 text-slate-500 cursor-not-allowed`} 
+                                readOnly 
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className={labelCls}>First Name</label>

@@ -8,9 +8,17 @@ use App\Http\Requests\Api\Admission\StoreStudentStatusRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use App\Services\FeeService;
 
 class StudentStatusController extends BaseController
 {
+    protected $feeService;
+
+    public function __construct(FeeService $feeService)
+    {
+        $this->feeService = $feeService;
+    }
+
     /**
      * Store a new student status change in history and update the student record.
      *
@@ -71,6 +79,10 @@ class StudentStatusController extends BaseController
             $student->update([
                 'status' => $validated['status']
             ]);
+
+            if ($student->status === 'Enrolled') {
+                $this->feeService->assignInitialFees($student);
+            }
 
             DB::commit();
 

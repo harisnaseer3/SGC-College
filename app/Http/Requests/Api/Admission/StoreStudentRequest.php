@@ -29,7 +29,7 @@ class StoreStudentRequest extends FormRequest
             'program_semester_id' => 'required|exists:program_semesters,id',
             'academic_batch_id'   => 'required|exists:academic_batches,id',
             'intake_session'      => 'required|in:Fall,Spring',
-            'admission_number'    => 'required|string|unique:students,admission_number,' . $studentId,
+            'admission_number'    => 'nullable|string|unique:students,admission_number,' . $studentId,
             'first_name'          => 'required|string|max:255',
             'last_name'           => 'required|string|max:255',
             'email'               => 'nullable|email|unique:students,email,' . $studentId,

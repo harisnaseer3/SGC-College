@@ -90,7 +90,7 @@ const StudentFeeManagement = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800">Billing Engine</h2>
+                    <h2 className="text-xl font-bold text-slate-800">Misc Fee Operations</h2>
                     <p className="text-slate-500 text-sm">Generate invoices and manage student dues.</p>
                 </div>
                 <div className="flex gap-2">

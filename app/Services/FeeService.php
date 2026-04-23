@@ -66,6 +66,60 @@ class FeeService
     }
 
     /**
+     * Assign initial fees to a newly enrolled student based on their program/batch.
+     */
+    public function assignInitialFees(Student $student)
+    {
+        if ($student->status !== 'Enrolled') {
+            return 0;
+        }
+
+        $dueDate = Carbon::now()->addDays(10);
+        
+        // Fetch structures that apply to this student
+        $structures = FeeStructure::where('campus_id', $student->campus_id)
+            ->where(function ($query) use ($student) {
+                $query->whereNull('program_id')
+                      ->orWhere('program_id', $student->program_id);
+            })
+            ->where(function ($query) use ($student) {
+                $query->whereNull('academic_batch_id')
+                      ->orWhere('academic_batch_id', $student->academic_batch_id);
+            })
+            ->with('items.feeHead')
+            ->get();
+
+        $generatedCount = 0;
+
+        foreach ($structures as $structure) {
+            foreach ($structure->items as $item) {
+                // Check for duplicates in the current month
+                $exists = StudentFee::where('student_id', $student->id)
+                    ->where('fee_head_id', $item->fee_head_id)
+                    ->whereMonth('due_date', $dueDate->month)
+                    ->whereYear('due_date', $dueDate->year)
+                    ->exists();
+
+                if (!$exists) {
+                    StudentFee::create([
+                        'organization_id' => $student->organization_id,
+                        'campus_id' => $student->campus_id,
+                        'student_id' => $student->id,
+                        'fee_head_id' => $item->fee_head_id,
+                        'amount' => $item->amount,
+                        'balance_amount' => $item->amount,
+                        'due_date' => $dueDate,
+                        'status' => 'unpaid'
+                    ]);
+                    $generatedCount++;
+                }
+            }
+        }
+
+        return $generatedCount;
+    }
+
+    /**
      * Apply fines to overdue student fees.
      */
     public function applyFines($campusId = null)

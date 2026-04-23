@@ -11,9 +11,17 @@ use App\Models\AcademicBatch;
 use Illuminate\Http\Request;
 
 use App\Http\Requests\Api\Admission\StoreStudentRequest;
+use App\Services\FeeService;
 
 class AdmissionController extends BaseController
 {
+    protected $feeService;
+
+    public function __construct(FeeService $feeService)
+    {
+        $this->feeService = $feeService;
+    }
+
     public function index()
     {
         try {
@@ -27,12 +35,27 @@ class AdmissionController extends BaseController
     public function getFormData()
     {
         try {
+            $user = auth()->user();
+            $orgId = $user->organization_id;
+            if ($user->hasRole('super_admin')) {
+                $orgId = request()->header('X-Organization-ID');
+            }
+
+            $nextAdmissionNumber = 1001;
+            if ($orgId) {
+                $max = Student::withoutGlobalScopes()
+                    ->where('organization_id', $orgId)
+                    ->max(\DB::raw('CAST(admission_number AS UNSIGNED)'));
+                $nextAdmissionNumber = $max ? $max + 1 : 1001;
+            }
+
             return $this->sendResponse([
                 'campuses' => Campus::all(),
                 'classes' => AcademicClass::all(),
                 'sections' => Section::all(),
                 'programs' => Program::with('semesters')->get(),
                 'batches' => AcademicBatch::all(),
+                'next_admission_number' => $nextAdmissionNumber,
             ], 'Form data retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve form data.', ['error' => $e->getMessage()], 500);
@@ -52,6 +75,11 @@ class AdmissionController extends BaseController
             $data['status'] = $request->boolean('is_enrolled') ? 'Enrolled' : 'Pending';
 
             $student = Student::create($data);
+
+            if ($student->status === 'Enrolled') {
+                $this->feeService->assignInitialFees($student);
+            }
+
             return $this->sendResponse($student, 'Student admitted successfully.', 201);
         } catch (\Exception $e) {
             return $this->sendError('Failed to admit student.', ['error' => $e->getMessage()], 500);
@@ -84,6 +112,11 @@ class AdmissionController extends BaseController
             }
 
             $admission->update($data);
+
+            if ($admission->status === 'Enrolled') {
+                $this->feeService->assignInitialFees($admission);
+            }
+
             return $this->sendResponse($admission, 'Student updated successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to update student.', ['error' => $e->getMessage()], 500);
