@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 const FeeVoucher = () => {
     const { studentId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -12,7 +13,8 @@ const FeeVoucher = () => {
     useEffect(() => {
         const fetchVoucherData = async () => {
             try {
-                const response = await axios.get(`/api/student-fees/voucher/${studentId}`);
+                // Pass along the query parameters (month/year) if present
+                const response = await axios.get(`/api/student-fees/voucher/${studentId}${location.search}`);
                 setData(response.data.data);
             } catch (err) {
                 setError(err.response?.data?.message || 'Failed to fetch voucher data');
@@ -22,7 +24,7 @@ const FeeVoucher = () => {
         };
 
         fetchVoucherData();
-    }, [studentId]);
+    }, [studentId, location.search]);
 
     const handlePrint = () => {
         window.print();

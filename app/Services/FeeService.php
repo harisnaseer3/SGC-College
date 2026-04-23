@@ -165,7 +165,7 @@ class FeeService
     /**
      * Get aggregated voucher data for a student, matching the official format.
      */
-    public function getVoucherData($studentId)
+    public function getVoucherData($studentId, $month = null, $year = null)
     {
         $student = Student::with(['program', 'academicBatch', 'campus'])->findOrFail($studentId);
         
@@ -180,19 +180,23 @@ class FeeService
             throw new \Exception("No pending fees found for this student.");
         }
 
-        $currentMonth = Carbon::now()->startOfMonth();
+        if ($month && $year) {
+            $targetMonth = Carbon::createFromDate($year, $month, 1)->startOfMonth();
+        } else {
+            $targetMonth = Carbon::now()->startOfMonth();
+        }
         
         // Separate current month fees and arrears
-        $currentFees = $allPendingFees->filter(function ($fee) use ($currentMonth) {
-            return $fee->due_date->startOfMonth()->equalTo($currentMonth);
+        $currentFees = $allPendingFees->filter(function ($fee) use ($targetMonth) {
+            return $fee->due_date->startOfMonth()->equalTo($targetMonth);
         });
 
-        $arrearsFees = $allPendingFees->filter(function ($fee) use ($currentMonth) {
-            return $fee->due_date->startOfMonth()->lessThan($currentMonth);
+        $arrearsFees = $allPendingFees->filter(function ($fee) use ($targetMonth) {
+            return $fee->due_date->startOfMonth()->lessThan($targetMonth);
         });
 
-        // If no fees in current month, take the latest month's fees as current
-        if ($currentFees->isEmpty() && !$allPendingFees->isEmpty()) {
+        // If no fees in target month, and it was default (now), take latest
+        if ($currentFees->isEmpty() && !$month && !$allPendingFees->isEmpty()) {
             $latestMonth = $allPendingFees->max('due_date')->startOfMonth();
             $currentFees = $allPendingFees->filter(function ($fee) use ($latestMonth) {
                 return $fee->due_date->startOfMonth()->equalTo($latestMonth);
@@ -200,14 +204,19 @@ class FeeService
             $arrearsFees = $allPendingFees->filter(function ($fee) use ($latestMonth) {
                 return $fee->due_date->startOfMonth()->lessThan($latestMonth);
             });
+            $targetMonth = $latestMonth;
         }
 
-        $feeMonth = $currentFees->isNotEmpty() ? $currentFees->first()->due_date->format('M Y') : Carbon::now()->format('M Y');
-        $dueDate = $currentFees->isNotEmpty() ? $currentFees->first()->due_date : $allPendingFees->min('due_date');
+        if ($currentFees->isEmpty() && $month) {
+            throw new \Exception("No fees found for " . Carbon::createFromDate($year, $month, 1)->format('M Y'));
+        }
+
+        $feeMonth = $targetMonth->format('M Y');
+        $dueDate = $currentFees->isNotEmpty() ? $currentFees->first()->due_date : $targetMonth->copy()->day(10);
         $validDate = $dueDate->copy()->endOfMonth();
 
         $arrearsAmount = $arrearsFees->sum('balance_amount');
-        $previousFine = $allPendingFees->sum('fine_amount') - $currentFees->sum('fine_amount');
+        $previousFine = $allPendingFees->filter(fn($f) => $f->due_date->startOfMonth()->lt($targetMonth))->sum('fine_amount');
         
         $totalCurrent = $currentFees->sum('balance_amount');
         $payableWithinDueDate = $totalCurrent + $arrearsAmount;
@@ -228,8 +237,8 @@ class FeeService
             'academic' => [
                 'fee_month' => $feeMonth,
                 'issue_date' => Carbon::now()->format('d M Y'),
-                'due_date' => $dueDate->format('d M Y'),
-                'valid_date' => $validDate->format('d M Y'),
+                'due_date' => Carbon::now()->addDays(15)->format('d M Y'),
+                'valid_date' => $targetMonth->copy()->endOfMonth()->format('d M Y'),
                 'roll_no' => $student->roll_number,
                 'student_id' => $student->admission_number,
                 'adm_reg_no' => 'TIGES/MZD/' . $student->admission_number . '/',

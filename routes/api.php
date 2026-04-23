@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ProgramController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\AcademicBatchController;
 use App\Http\Controllers\Api\Reports\AdmissionReportController;
+use App\Http\Controllers\Api\StudentFeeController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -61,11 +62,12 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('fee-heads', App\Http\Controllers\Api\FeeHeadController::class);
     Route::apiResource('fee-structures', App\Http\Controllers\Api\FeeStructureController::class);
     Route::apiResource('fee-fine-policies', App\Http\Controllers\Api\FeeFinePolicyController::class);
-    Route::get('student-fees', [App\Http\Controllers\Api\StudentFeeController::class, 'index']);
-    Route::post('student-fees/generate', [App\Http\Controllers\Api\StudentFeeController::class, 'generate']);
-    Route::post('student-fees/apply-fines', [App\Http\Controllers\Api\StudentFeeController::class, 'applyFines']);
-    Route::get('student-fees/ledger/{student}', [App\Http\Controllers\Api\StudentFeeController::class, 'studentLedger']);
-    Route::put('student-fees/{studentFee}', [App\Http\Controllers\Api\StudentFeeController::class, 'update']);
-    Route::post('student-fees/assign/{student}', [App\Http\Controllers\Api\StudentFeeController::class, 'manualAssign']);
-    Route::get('student-fees/voucher/{student}', [App\Http\Controllers\Api\StudentFeeController::class, 'voucher']);
+    Route::get('student-fees', [StudentFeeController::class, 'index']);
+    Route::post('student-fees/generate', [StudentFeeController::class, 'generate']);
+    Route::post('student-fees/apply-fines', [StudentFeeController::class, 'applyFines']);
+    Route::get('student-fees/ledger/{student}', [StudentFeeController::class, 'studentLedger']);
+    Route::put('student-fees/{studentFee}', [StudentFeeController::class, 'update']);
+    Route::post('student-fees/split/{studentFee}', [StudentFeeController::class, 'split']);
+    Route::post('student-fees/assign/{student}', [StudentFeeController::class, 'manualAssign']);
+    Route::get('student-fees/voucher/{student}', [StudentFeeController::class, 'voucher']);
 });

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\StudentFee;
 use App\Services\FeeService;
+use Illuminate\Support\Facades\DB;
 
 class StudentFeeController extends BaseController
 {
@@ -108,10 +109,10 @@ class StudentFeeController extends BaseController
     /**
      * Get voucher data for a student.
      */
-    public function voucher($studentId)
+    public function voucher(\Illuminate\Http\Request $request, $studentId)
     {
         try {
-            $data = $this->feeService->getVoucherData($studentId);
+            $data = $this->feeService->getVoucherData($studentId, $request->month, $request->year);
             return $this->sendResponse($data, 'Voucher data generated successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Voucher Generation Error.', ['error' => $e->getMessage()], 400);
@@ -206,6 +207,67 @@ class StudentFeeController extends BaseController
             return $this->sendResponse(['count' => $count], "Fees assigned successfully. $count records created.");
         } catch (\Exception $e) {
             return $this->sendError('Failed to assign fees.', ['error' => $e->getMessage()], 500);
+        }
+    }
+    /**
+     * Split a fee record into multiple installments.
+     */
+    public function split(\Illuminate\Http\Request $request, StudentFee $studentFee)
+    {
+        try {
+            $request->validate([
+                'installments' => 'required|array|min:2',
+                'installments.*.amount' => 'required|numeric|min:1',
+                'installments.*.due_date' => 'required|date',
+            ]);
+
+            $totalSplit = collect($request->installments)->sum('amount');
+            $currentBalance = $studentFee->balance_amount;
+
+            // Use a small epsilon for float comparison if needed, but balance is usually decimal/numeric
+            if (abs($totalSplit - $currentBalance) > 0.01) {
+                return $this->sendError("Total installments (Rs. $totalSplit) must equal the current balance (Rs. $currentBalance).", [], 422);
+            }
+
+            DB::beginTransaction();
+
+            $count = count($request->installments);
+            $firstDueDate = $request->installments[0]['due_date'];
+
+            // If splitting tuition, move all other unpaid fees to the first installment's due date
+            if (str_contains(strtolower($studentFee->feeHead->name), 'tuition')) {
+                \App\Models\StudentFee::where('student_id', $studentFee->student_id)
+                    ->where('id', '!=', $studentFee->id)
+                    ->whereIn('status', ['unpaid', 'partially_paid'])
+                    ->update(['due_date' => $firstDueDate]);
+            }
+
+            foreach ($request->installments as $index => $inst) {
+                StudentFee::create([
+                    'organization_id' => $studentFee->organization_id,
+                    'campus_id' => $studentFee->campus_id,
+                    'student_id' => $studentFee->student_id,
+                    'fee_head_id' => $studentFee->fee_head_id,
+                    'amount' => $inst['amount'],
+                    'discount_amount' => 0, // Discounts should be applied to installments individually or pre-split
+                    'fine_amount' => 0,
+                    'paid_amount' => 0,
+                    'balance_amount' => $inst['amount'],
+                    'due_date' => $inst['due_date'],
+                    'status' => 'unpaid',
+                    'remarks' => $studentFee->feeHead->name . " (Installment " . ($index + 1) . "/$count)"
+                ]);
+            }
+
+            // Delete the original record
+            $studentFee->delete();
+
+            DB::commit();
+
+            return $this->sendResponse([], 'Fee successfully split into installments.');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return $this->sendError('Failed to split fee.', ['error' => $e->getMessage()], 500);
         }
     }
 }
