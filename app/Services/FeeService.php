@@ -188,21 +188,21 @@ class FeeService
         
         // Separate current month fees and arrears
         $currentFees = $allPendingFees->filter(function ($fee) use ($targetMonth) {
-            return $fee->due_date->startOfMonth()->equalTo($targetMonth);
+            return $fee->due_date->format('Y-m') === $targetMonth->format('Y-m');
         });
 
         $arrearsFees = $allPendingFees->filter(function ($fee) use ($targetMonth) {
-            return $fee->due_date->startOfMonth()->lessThan($targetMonth);
+            return $fee->due_date->format('Y-m') < $targetMonth->format('Y-m');
         });
 
         // If no fees in target month, and it was default (now), take latest
         if ($currentFees->isEmpty() && !$month && !$allPendingFees->isEmpty()) {
             $latestMonth = $allPendingFees->max('due_date')->startOfMonth();
             $currentFees = $allPendingFees->filter(function ($fee) use ($latestMonth) {
-                return $fee->due_date->startOfMonth()->equalTo($latestMonth);
+                return $fee->due_date->format('Y-m') === $latestMonth->format('Y-m');
             });
             $arrearsFees = $allPendingFees->filter(function ($fee) use ($latestMonth) {
-                return $fee->due_date->startOfMonth()->lessThan($latestMonth);
+                return $fee->due_date->format('Y-m') < $latestMonth->format('Y-m');
             });
             $targetMonth = $latestMonth;
         }
@@ -224,7 +224,20 @@ class FeeService
         // Relation label (S/O or D/O)
         $relationLabel = (strtolower($student->gender) === 'female') ? 'D/O' : 'S/O';
 
-        $voucherNumber = '15' . str_pad($studentId, 4, '0', STR_PAD_LEFT); // Matching the 5-digit number in image
+        // Get or Generate persistent voucher number
+        $existingVoucher = $currentFees->whereNotNull('voucher_number')->first();
+        if ($existingVoucher) {
+            $voucherNumber = $existingVoucher->voucher_number;
+        } else {
+            // Start from 1001 or next available
+            $maxVoucher = StudentFee::whereRaw('voucher_number REGEXP "^[0-9]+$"')->max(DB::raw('CAST(voucher_number AS UNSIGNED)'));
+            $voucherNumber = $maxVoucher ? $maxVoucher + 1 : 1001;
+            
+            // Persist to all fees in this group
+            foreach ($currentFees as $fee) {
+                $fee->update(['voucher_number' => $voucherNumber]);
+            }
+        }
 
         return [
             'voucher_number' => $voucherNumber,
@@ -235,6 +248,7 @@ class FeeService
                 'logo_url' => $student->campus->logo_url,
             ],
             'academic' => [
+                'voucher_number' => $voucherNumber,
                 'fee_month' => $feeMonth,
                 'issue_date' => Carbon::now()->format('d M Y'),
                 'due_date' => Carbon::now()->addDays(15)->format('d M Y'),
@@ -249,13 +263,13 @@ class FeeService
                 'guardian_name' => $student->guardian_name,
                 'class' => $student->program ? $student->program->name : 'N/A',
             ],
-            'fee_items' => $currentFees->map(function ($fee, $index) {
+            'fee_items' => $currentFees->values()->map(function ($fee, $index) {
                 return [
                     'sr_no' => $index + 1,
                     'head' => $fee->feeHead->name,
                     'amount' => number_format($fee->amount, 0),
                 ];
-            }),
+            })->all(),
             'summary' => [
                 'arrears' => number_format($arrearsAmount, 0),
                 'previous_fine' => number_format($previousFine, 0),

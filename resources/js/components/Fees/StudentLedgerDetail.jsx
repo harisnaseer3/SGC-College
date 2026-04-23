@@ -124,7 +124,7 @@ const StudentLedgerDetail = () => {
                     };
                     acc[key].fees.push(fee);
                     return acc;
-                }, {})).sort((a, b) => new Date(b.year, b.month - 1) - new Date(a.year, a.month - 1)).map((group) => (
+                }, {})).sort((a, b) => new Date(a.year, a.month - 1) - new Date(b.year, b.month - 1)).map((group) => (
                     <Card key={group.label} className="overflow-hidden border-slate-200 shadow-sm">
                         <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
                             <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">{group.label}</h3>

@@ -47,6 +47,7 @@ class StudentFee extends Model
         'balance_amount',
         'due_date',
         'status',
+        'voucher_number',
     ];
 
     protected $casts = [
