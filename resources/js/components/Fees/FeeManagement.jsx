@@ -4,6 +4,8 @@ import FeeHeadManagement from './FeeHeadManagement';
 import FeeStructureManagement from './FeeStructureManagement';
 import FinePolicyManagement from './FinePolicyManagement';
 import StudentFeeManagement from './StudentFeeManagement';
+import StudentLedgerList from './StudentLedgerList';
+import StudentLedgerDetail from './StudentLedgerDetail';
 
 const FeeManagement = () => {
     const location = useLocation();
@@ -12,6 +14,7 @@ const FeeManagement = () => {
         { name: 'Fee Heads', path: '/fees/heads' },
         { name: 'Fee Structures', path: '/fees/structures' },
         { name: 'Fine Policies', path: '/fees/policies' },
+        { name: 'Student Ledgers', path: '/fees/ledgers' },
         { name: 'Misc Fee Operations', path: '/fees/billing' },
     ];
 
@@ -44,6 +47,8 @@ const FeeManagement = () => {
                         <Route path="heads" element={<FeeHeadManagement />} />
                         <Route path="structures" element={<FeeStructureManagement />} />
                         <Route path="policies" element={<FinePolicyManagement />} />
+                        <Route path="ledgers" element={<StudentLedgerList />} />
+                        <Route path="ledger/:studentId" element={<StudentLedgerDetail />} />
                         <Route path="billing" element={<StudentFeeManagement />} />
                         <Route path="/" element={<Navigate to="heads" replace />} />
                     </Routes>

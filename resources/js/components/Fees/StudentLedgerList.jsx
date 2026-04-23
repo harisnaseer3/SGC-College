@@ -2,25 +2,22 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../contexts/NotificationContext';
-import Button from '../UI/Button';
 import DataTable from '../UI/DataTable';
 
-const StudentFeeManagement = () => {
+const StudentLedgerList = () => {
     const navigate = useNavigate();
     const [fees, setFees] = useState([]);
     const [campuses, setCampuses] = useState([]);
     const [programs, setPrograms] = useState([]);
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [generating, setGenerating] = useState(false);
     const [filterData, setFilterData] = useState({
         campus_id: '',
         program_id: '',
         academic_batch_id: '',
         status: 'Enrolled',
-        due_date: new Date().toISOString().split('T')[0]
     });
-    const { showError, showSuccess } = useNotifications();
+    const { showSuccess, showError } = useNotifications();
 
     useEffect(() => {
         fetchInitialData();
@@ -36,7 +33,7 @@ const StudentFeeManagement = () => {
             setCampuses(campusRes.data.data.campuses);
             setPrograms(progRes.data.data);
             setBatches(batchRes.data.data);
-            // No need to call fetchFees here as the useEffect will catch it
+            fetchFees();
         } catch (error) {
             showError('Failed to fetch filter data');
         }
@@ -46,7 +43,6 @@ const StudentFeeManagement = () => {
         setLoading(true);
         try {
             const response = await axios.get('/api/student-fees', { params: filterData });
-            // Assuming response.data.data is now the array from ->get()
             setFees(response.data.data || []);
         } catch (error) {
             showError('Failed to fetch fee records');
@@ -55,72 +51,38 @@ const StudentFeeManagement = () => {
         }
     };
 
+    const handleAssignFee = async (studentId) => {
+        try {
+            await axios.post(`/api/student-fees/assign/${studentId}`);
+            showSuccess('Fees assigned successfully');
+            fetchFees();
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to assign fees');
+        }
+    };
+
     useEffect(() => {
         fetchFees();
     }, [filterData.campus_id, filterData.program_id, filterData.academic_batch_id, filterData.status]);
 
-    const handleGenerate = async () => {
-        if (!filterData.campus_id) {
-            showError('Please select a campus first');
-            return;
-        }
-
-        if (!confirm('This will generate fee invoices for all students matching the selected criteria. Continue?')) return;
-
-        setGenerating(true);
-        try {
-            const response = await axios.post('/api/student-fees/generate', filterData);
-            showSuccess(response.data.message);
-            fetchFees();
-        } catch (error) {
-            showError(error.response?.data?.message || 'Failed to generate fees');
-        } finally {
-            setGenerating(false);
-        }
-    };
-
-    const handleApplyFines = async () => {
-        if (!confirm('This will apply late fees to all overdue records. Continue?')) return;
-        
-        try {
-            const response = await axios.post('/api/student-fees/apply-fines', { campus_id: filterData.campus_id });
-            showSuccess(response.data.message);
-            fetchFees();
-        } catch (error) {
-            showError('Failed to apply fines');
-        }
-    };
-
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-xl font-bold text-slate-800">Misc Fee Operations</h2>
-                    <p className="text-slate-500 text-sm">Generate invoices and manage student dues.</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="secondary" onClick={handleApplyFines}>Apply Overdue Fines</Button>
-                    <Button onClick={handleGenerate} loading={generating}>Run Billing Module</Button>
-                </div>
-            </div>
-
-            <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Campus</label>
                     <select
                         className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                         value={filterData.campus_id}
                         onChange={(e) => setFilterData({ ...filterData, campus_id: e.target.value })}
-                        required
                     >
-                        <option value="">Select Campus</option>
+                        <option value="">All Campuses</option>
                         {campuses.map(c => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Program (Optional)</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Program</label>
                     <select
                         className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                         value={filterData.program_id}
@@ -133,7 +95,7 @@ const StudentFeeManagement = () => {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Batch (Optional)</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Batch</label>
                     <select
                         className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                         value={filterData.academic_batch_id}
@@ -146,7 +108,7 @@ const StudentFeeManagement = () => {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Student Status</label>
                     <select
                         className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                         value={filterData.status}
@@ -161,33 +123,30 @@ const StudentFeeManagement = () => {
                         <option value="Struck Off">Struck Off</option>
                     </select>
                 </div>
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Due Date</label>
-                    <input
-                        type="date"
-                        className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                        value={filterData.due_date}
-                        onChange={(e) => setFilterData({ ...filterData, due_date: e.target.value })}
-                    />
-                </div>
             </div>
 
             <DataTable
-                columns={['Student', 'Total Payable', 'Arrears', 'Balance', 'Status', 'Due Date', { name: 'Actions', align: 'center' }]}
+                columns={['Student', 'Admission #', 'Program', 'Payable', 'Paid', 'Balance', 'Status', { name: 'Actions', align: 'center' }]}
                 data={fees}
                 loading={loading}
-                emptyMessage="No billing records found. Run the engine to generate fees."
+                emptyMessage="No students found."
                 renderRow={(fee) => (
                     <>
                         <td className="px-6 py-4">
                             <div className="text-sm font-semibold text-slate-800">{fee.student?.first_name} {fee.student?.last_name}</div>
                             <div className="text-[10px] text-slate-500">Roll No: {fee.student?.roll_number}</div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-bold text-slate-900">Rs. {Number(fee.total_amount).toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-rose-600">Rs. {Number(fee.total_arrears || 0).toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-indigo-600">Rs. {Number(fee.total_balance).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600 font-medium">{fee.student?.admission_number}</td>
                         <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-slate-700">{fee.student?.program?.name || 'N/A'}</div>
+                            <div className="text-[10px] text-slate-400">{fee.student?.academic_class?.name}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">Rs. {Number(fee.total_amount).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-emerald-600 text-right">Rs. {Number(fee.total_paid).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-indigo-600 text-right">Rs. {Number(fee.total_balance).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-center">
                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                fee.aggregated_status === 'no fees' ? 'bg-slate-100 text-slate-600' :
                                 fee.aggregated_status === 'unpaid' ? 'bg-rose-100 text-rose-700' :
                                 fee.aggregated_status === 'partial' ? 'bg-amber-100 text-amber-700' :
                                 'bg-emerald-100 text-emerald-700'
@@ -195,19 +154,22 @@ const StudentFeeManagement = () => {
                                 {fee.aggregated_status}
                             </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">{new Date(fee.earliest_due_date).toLocaleDateString()}</td>
                         <td className="px-6 py-4 text-center">
-                            <div className="flex justify-end items-center">
+                            {fee.aggregated_status === 'no fees' ? (
                                 <button 
-                                    onClick={() => navigate(`/fees/voucher/${fee.student_id}`)}
-                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 group"
+                                    onClick={() => handleAssignFee(fee.student_id)}
+                                    className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 shadow-sm transition-all duration-200"
                                 >
-                                    <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Print Voucher
+                                    Assign Fee
                                 </button>
-                            </div>
+                            ) : (
+                                <button 
+                                    onClick={() => navigate(`/fees/ledger/${fee.student_id}`)}
+                                    className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200"
+                                >
+                                View Ledger
+                                </button>
+                            )}
                         </td>
                     </>
                 )}
@@ -216,4 +178,4 @@ const StudentFeeManagement = () => {
     );
 };
 
-export default StudentFeeManagement;
+export default StudentLedgerList;

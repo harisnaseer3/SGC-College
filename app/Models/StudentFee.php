@@ -10,6 +10,31 @@ class StudentFee extends Model
 {
     use HasOrganizationScope, HasCampusScope;
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            // Recalculate balance
+            $amount = $model->amount ?? 0;
+            $fine = $model->fine_amount ?? 0;
+            $discount = $model->discount_amount ?? 0;
+            $paid = $model->paid_amount ?? 0;
+
+            $model->balance_amount = ($amount + $fine) - $discount - $paid;
+            
+            // Adjust balance and status
+            if ($model->balance_amount <= 0) {
+                $model->status = 'paid';
+                $model->balance_amount = 0;
+            } elseif ($paid > 0) {
+                $model->status = 'partially_paid';
+            } else {
+                $model->status = 'unpaid';
+            }
+        });
+    }
+
     protected $fillable = [
         'organization_id',
         'campus_id',

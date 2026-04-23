@@ -64,5 +64,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('student-fees', [App\Http\Controllers\Api\StudentFeeController::class, 'index']);
     Route::post('student-fees/generate', [App\Http\Controllers\Api\StudentFeeController::class, 'generate']);
     Route::post('student-fees/apply-fines', [App\Http\Controllers\Api\StudentFeeController::class, 'applyFines']);
+    Route::get('student-fees/ledger/{student}', [App\Http\Controllers\Api\StudentFeeController::class, 'studentLedger']);
+    Route::put('student-fees/{studentFee}', [App\Http\Controllers\Api\StudentFeeController::class, 'update']);
+    Route::post('student-fees/assign/{student}', [App\Http\Controllers\Api\StudentFeeController::class, 'manualAssign']);
     Route::get('student-fees/voucher/{student}', [App\Http\Controllers\Api\StudentFeeController::class, 'voucher']);
 });

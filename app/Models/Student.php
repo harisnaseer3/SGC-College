@@ -115,4 +115,9 @@ class Student extends Model
     {
         return $this->hasMany(StudentStatusLog::class)->orderBy('action_date', 'desc');
     }
+
+    public function studentFees()
+    {
+        return $this->hasMany(StudentFee::class);
+    }
 }
