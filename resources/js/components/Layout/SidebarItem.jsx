@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
-const SidebarItem = ({ name, icon, path, subItems }) => {
+const SidebarItem = ({ name, icon, path, subItems, isOpen, onToggle }) => {
     const location = useLocation();
-    const [isOpen, setIsOpen] = useState(location.pathname.startsWith(path));
 
     const hasSubItems = subItems && subItems.length > 0;
 
     const toggleOpen = (e) => {
         if (hasSubItems) {
             e.preventDefault();
-            setIsOpen(!isOpen);
+            onToggle();
         }
     };
 

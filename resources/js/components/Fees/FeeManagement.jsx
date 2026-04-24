@@ -19,8 +19,8 @@ const FeeManagement = () => {
     ];
 
     return (
-        <div className="p-8">
-            <div className="mb-8">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div>
                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Fee Management</h1>
                 <p className="text-slate-500 mt-2">Configure fee heads, structures, and late fee policies.</p>
             </div>
