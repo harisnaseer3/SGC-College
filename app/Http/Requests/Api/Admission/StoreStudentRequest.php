@@ -21,7 +21,8 @@ class StoreStudentRequest extends FormRequest
      */
     public function rules(): array
     {
-        $studentId = $this->student?->id;
+        $admission = $this->route('admission');
+        $studentId = is_object($admission) ? $admission->id : $admission;
 
         return [
             'campus_id'           => 'required|exists:campuses,id',
