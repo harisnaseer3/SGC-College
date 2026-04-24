@@ -25,23 +25,26 @@ class StudentFeeController extends BaseController
             $query = \App\Models\Student::with(['program', 'academicClass']);
 
             if ($request->filled('status')) {
-                $query->where('status', $request->status);
+                $status = is_array($request->status) ? $request->status : explode(',', $request->status);
+                $query->whereIn('status', $status);
             }
 
             if ($request->filled('campus_id')) {
                 $query->where('campus_id', $request->campus_id);
             }
             if ($request->filled('program_id')) {
-                $query->where('program_id', $request->program_id);
+                $programIds = is_array($request->program_id) ? $request->program_id : explode(',', $request->program_id);
+                $query->whereIn('program_id', $programIds);
             }
             if ($request->filled('academic_batch_id')) {
-                $query->where('academic_batch_id', $request->academic_batch_id);
+                $batchIds = is_array($request->academic_batch_id) ? $request->academic_batch_id : explode(',', $request->academic_batch_id);
+                $query->whereIn('academic_batch_id', $batchIds);
             }
 
             $students = $query->withSum('studentFees as total_amount', 'amount')
                 ->withSum('studentFees as total_paid', 'paid_amount')
                 ->withSum('studentFees as total_balance', 'balance_amount')
-                ->orderBy('first_name')
+                ->orderBy('id', 'desc')
                 ->get()
                 ->map(function ($student) {
                     $totalAmount = $student->total_amount ?? 0;

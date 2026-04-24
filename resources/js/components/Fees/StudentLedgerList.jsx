@@ -11,11 +11,14 @@ const StudentLedgerList = () => {
     const [programs, setPrograms] = useState([]);
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+    const [showProgramDropdown, setShowProgramDropdown] = useState(false);
+    const [showBatchDropdown, setShowBatchDropdown] = useState(false);
     const [filterData, setFilterData] = useState({
         campus_id: '',
-        program_id: '',
-        academic_batch_id: '',
-        status: 'Enrolled',
+        program_id: [],
+        academic_batch_id: [],
+        status: ['Enrolled'],
     });
     const [selectedStudents, setSelectedStudents] = useState([]);
     const [printMonth, setPrintMonth] = useState(new Date().getMonth() + 1);
@@ -45,7 +48,13 @@ const StudentLedgerList = () => {
     const fetchFees = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/student-fees', { params: filterData });
+            const params = { 
+                ...filterData, 
+                status: filterData.status.join(','),
+                program_id: filterData.program_id.join(','),
+                academic_batch_id: filterData.academic_batch_id.join(',')
+            };
+            const response = await axios.get('/api/student-fees', { params });
             setFees(response.data.data || []);
         } catch (error) {
             showError('Failed to fetch fee records');
@@ -84,47 +93,120 @@ const StudentLedgerList = () => {
                         ))}
                     </select>
                 </div>
-                <div>
+                <div className="relative">
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Program</label>
-                    <select
-                        className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                        value={filterData.program_id}
-                        onChange={(e) => setFilterData({ ...filterData, program_id: e.target.value })}
+                    <div 
+                        className="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white cursor-pointer flex justify-between items-center transition-all hover:border-indigo-400"
+                        onClick={() => setShowProgramDropdown(!showProgramDropdown)}
                     >
-                        <option value="">All Programs</option>
-                        {programs.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                    </select>
+                        <span className="truncate max-w-[150px]">
+                            {filterData.program_id.length === 0 ? 'All Programs' : 
+                                programs.filter(p => filterData.program_id.includes(p.id.toString())).map(p => p.name).join(', ') || 'Multiple Selected'}
+                        </span>
+                        <svg className={`w-4 h-4 transition-transform duration-200 ${showProgramDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                    {showProgramDropdown && (
+                        <>
+                            <div className="fixed inset-0 z-10" onClick={() => setShowProgramDropdown(false)}></div>
+                            <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto">
+                                {programs.map(p => (
+                                    <label key={p.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors group">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                            checked={filterData.program_id.includes(p.id.toString())}
+                                            onChange={(e) => {
+                                                const val = p.id.toString();
+                                                const newPrograms = e.target.checked 
+                                                    ? [...filterData.program_id, val]
+                                                    : filterData.program_id.filter(x => x !== val);
+                                                setFilterData({ ...filterData, program_id: newPrograms });
+                                            }}
+                                        />
+                                        <span className="text-sm font-medium text-slate-700 group-hover:text-indigo-600">{p.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
-                <div>
+                <div className="relative">
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Batch</label>
-                    <select
-                        className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                        value={filterData.academic_batch_id}
-                        onChange={(e) => setFilterData({ ...filterData, academic_batch_id: e.target.value })}
+                    <div 
+                        className="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white cursor-pointer flex justify-between items-center transition-all hover:border-indigo-400"
+                        onClick={() => setShowBatchDropdown(!showBatchDropdown)}
                     >
-                        <option value="">All Batches</option>
-                        {batches.map(b => (
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                        ))}
-                    </select>
+                        <span className="truncate max-w-[150px]">
+                            {filterData.academic_batch_id.length === 0 ? 'All Batches' : 
+                                batches.filter(b => filterData.academic_batch_id.includes(b.id.toString())).map(b => b.name).join(', ') || 'Multiple Selected'}
+                        </span>
+                        <svg className={`w-4 h-4 transition-transform duration-200 ${showBatchDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                    {showBatchDropdown && (
+                        <>
+                            <div className="fixed inset-0 z-10" onClick={() => setShowBatchDropdown(false)}></div>
+                            <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto">
+                                {batches.map(b => (
+                                    <label key={b.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors group">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                            checked={filterData.academic_batch_id.includes(b.id.toString())}
+                                            onChange={(e) => {
+                                                const val = b.id.toString();
+                                                const newBatches = e.target.checked 
+                                                    ? [...filterData.academic_batch_id, val]
+                                                    : filterData.academic_batch_id.filter(x => x !== val);
+                                                setFilterData({ ...filterData, academic_batch_id: newBatches });
+                                            }}
+                                        />
+                                        <span className="text-sm font-medium text-slate-700 group-hover:text-indigo-600">{b.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
-                <div>
+                <div className="relative">
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Student Status</label>
-                    <select
-                        className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                        value={filterData.status}
-                        onChange={(e) => setFilterData({ ...filterData, status: e.target.value })}
+                    <div 
+                        className="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white cursor-pointer flex justify-between items-center transition-all hover:border-indigo-400"
+                        onClick={() => setShowStatusDropdown(!showStatusDropdown)}
                     >
-                        <option value="">All Statuses</option>
-                        <option value="Enrolled">Enrolled</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Promoted">Promoted</option>
-                        <option value="Passed Out">Passed Out</option>
-                        <option value="Transferred">Transferred</option>
-                        <option value="Struck Off">Struck Off</option>
-                    </select>
+                        <span className="truncate max-w-[150px]">
+                            {filterData.status.length === 0 ? 'All Statuses' : filterData.status.join(', ')}
+                        </span>
+                        <svg className={`w-4 h-4 transition-transform duration-200 ${showStatusDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                    {showStatusDropdown && (
+                        <>
+                            <div className="fixed inset-0 z-10" onClick={() => setShowStatusDropdown(false)}></div>
+                            <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200">
+                                {['Enrolled', 'Pending', 'Promoted', 'Passed Out', 'Transferred', 'Struck Off'].map(s => (
+                                    <label key={s} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors group">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                            checked={filterData.status.includes(s)}
+                                            onChange={(e) => {
+                                                const newStatus = e.target.checked 
+                                                    ? [...filterData.status, s]
+                                                    : filterData.status.filter(x => x !== s);
+                                                setFilterData({ ...filterData, status: newStatus });
+                                            }}
+                                        />
+                                        <span className="text-sm font-medium text-slate-700 group-hover:text-indigo-600">{s}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
