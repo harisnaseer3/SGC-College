@@ -28,7 +28,7 @@ class StudentFee extends Model
                 $model->status = 'paid';
                 $model->balance_amount = 0;
             } elseif ($paid > 0) {
-                $model->status = 'partially_paid';
+                $model->status = 'partial';
             } else {
                 $model->status = 'unpaid';
             }

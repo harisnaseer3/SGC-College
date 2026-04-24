@@ -52,7 +52,9 @@ const StudentLedgerList = () => {
                 ...filterData, 
                 status: filterData.status.join(','),
                 program_id: filterData.program_id.join(','),
-                academic_batch_id: filterData.academic_batch_id.join(',')
+                academic_batch_id: filterData.academic_batch_id.join(','),
+                month: printMonth,
+                year: printYear
             };
             const response = await axios.get('/api/student-fees', { params });
             setFees(response.data.data || []);
@@ -75,7 +77,7 @@ const StudentLedgerList = () => {
 
     useEffect(() => {
         fetchFees();
-    }, [filterData.campus_id, filterData.program_id, filterData.academic_batch_id, filterData.status]);
+    }, [filterData.campus_id, filterData.program_id, filterData.academic_batch_id, filterData.status, printMonth, printYear]);
 
     return (
         <div className="space-y-6">
@@ -227,7 +229,7 @@ const StudentLedgerList = () => {
                         value={printYear}
                         onChange={(e) => setPrintYear(e.target.value)}
                     >
-                        {[2024, 2025, 2026, 2027].map(y => (
+                        {Array.from({length: 21}, (_, i) => 2020 + i).map(y => (
                             <option key={y} value={y}>{y}</option>
                         ))}
                     </select>
@@ -241,7 +243,7 @@ const StudentLedgerList = () => {
                         : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                     }`}
                 >
-                    Print Vouchers for {selectedStudents.length} Students
+                    Generate Vouchers for {selectedStudents.length} Students
                 </button>
             </div>
 

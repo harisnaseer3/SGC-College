@@ -33,6 +33,7 @@ const Sidebar = () => {
                 { name: 'Fee Structures', path: '/fees/structures' },
                 { name: 'Fine Policies', path: '/fees/policies' },
                 { name: 'Student Ledgers', path: '/fees/ledgers' },
+                { name: 'Fee Deposit', path: '/fees/deposit' },
                 { name: 'Misc Fee Operations', path: '/fees/billing' },
             ]
         },

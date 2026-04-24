@@ -123,6 +123,9 @@ const StudentLedgerDetail = () => {
             </div>
 
             <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-black text-slate-800 uppercase tracking-widest">Fee Billing Details</h2>
+                </div>
                 {Object.values(ledger.fees.reduce((acc, fee) => {
                     const date = new Date(fee.due_date);
                     const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
@@ -190,7 +193,7 @@ const StudentLedgerDetail = () => {
                                         <td className="px-6 py-4 text-center">
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                                                 fee.status === 'unpaid' ? 'bg-rose-100 text-rose-700' :
-                                                fee.status === 'partially_paid' ? 'bg-amber-100 text-amber-700' :
+                                                fee.status === 'partial' ? 'bg-amber-100 text-amber-700' :
                                                 'bg-emerald-100 text-emerald-700'
                                             }`}>
                                                 {fee.status}
@@ -199,6 +202,7 @@ const StudentLedgerDetail = () => {
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex flex-col gap-1">
                                                 <button 
+                                                    disabled={fee.status === 'paid'}
                                                     onClick={() => {
                                                         setEditingFee(fee);
                                                         setAdjustment({ 
@@ -208,7 +212,11 @@ const StudentLedgerDetail = () => {
                                                             apply_to_all: false 
                                                         });
                                                     }}
-                                                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
+                                                    className={`text-[10px] font-bold underline underline-offset-4 ${
+                                                        fee.status === 'paid' 
+                                                        ? 'text-slate-300 cursor-not-allowed decoration-slate-100' 
+                                                        : 'text-indigo-600 hover:text-indigo-800 decoration-indigo-200'
+                                                    }`}
                                                 >
                                                     Adjust
                                                 </button>
@@ -234,6 +242,63 @@ const StudentLedgerDetail = () => {
                         </table>
                     </Card>
                 ))}
+            </div>
+
+            {/* Payment History / Receipts Section */}
+            <div className="space-y-6 pt-10">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                            <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <h2 className="text-lg font-black text-slate-800 uppercase tracking-widest">Payment History (Receipts)</h2>
+                    </div>
+                </div>
+
+                <Card className="overflow-hidden border-slate-200 shadow-sm">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Receipt #</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Method</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reference</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Amount</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {ledger.payments && ledger.payments.length > 0 ? (
+                                ledger.payments.map((payment) => (
+                                    <tr key={payment.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-6 py-4 font-black text-slate-900 text-sm">{payment.receipt_number}</td>
+                                        <td className="px-6 py-4 text-slate-600 text-sm font-medium">
+                                            {new Date(payment.payment_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold uppercase">
+                                                {payment.payment_method}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-500 text-xs italic">{payment.transaction_id || 'N/A'}</td>
+                                        <td className="px-6 py-4 text-emerald-600 font-black text-right">Rs. {Number(payment.amount).toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <button className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4">
+                                                Print
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 italic text-sm">
+                                        No payment records found for this student.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </Card>
             </div>
 
             {/* Adjustment Modal */}

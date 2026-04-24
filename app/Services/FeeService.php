@@ -172,7 +172,7 @@ class FeeService
         // Get all unpaid or partially paid fees
         $allPendingFees = StudentFee::with('feeHead')
             ->where('student_id', $studentId)
-            ->whereIn('status', ['unpaid', 'partially_paid'])
+            ->whereIn('status', ['unpaid', 'partial'])
             ->orderBy('due_date', 'asc')
             ->get();
 
@@ -207,8 +207,8 @@ class FeeService
             $targetMonth = $latestMonth;
         }
 
-        if ($currentFees->isEmpty() && $month) {
-            throw new \Exception("No fees found for " . Carbon::createFromDate($year, $month, 1)->format('M Y'));
+        if ($currentFees->isEmpty() && $arrearsFees->isEmpty()) {
+            throw new \Exception("No pending fees found for this student as of " . $targetMonth->format('M Y'));
         }
 
         $feeMonth = $targetMonth->format('M Y');
@@ -225,16 +225,15 @@ class FeeService
         $relationLabel = (strtolower($student->gender) === 'female') ? 'D/O' : 'S/O';
 
         // Get or Generate persistent voucher number
-        $existingVoucher = $currentFees->whereNotNull('voucher_number')->first();
+        $existingVoucher = $allPendingFees->whereNotNull('voucher_number')->first();
         if ($existingVoucher) {
             $voucherNumber = $existingVoucher->voucher_number;
         } else {
-            // Start from 1001 or next available
-            $maxVoucher = StudentFee::whereRaw('voucher_number REGEXP "^[0-9]+$"')->max(DB::raw('CAST(voucher_number AS UNSIGNED)'));
-            $voucherNumber = $maxVoucher ? $maxVoucher + 1 : 1001;
+            $voucherNumber = $this->generateNextVoucherNumber();
             
-            // Persist to all fees in this group
-            foreach ($currentFees as $fee) {
+            // Persist to relevant fees
+            $feesToUpdate = $currentFees->isNotEmpty() ? $currentFees : $allPendingFees->take(1);
+            foreach ($feesToUpdate as $fee) {
                 $fee->update(['voucher_number' => $voucherNumber]);
             }
         }
@@ -282,5 +281,69 @@ class FeeService
                 'info' => 'Bank Islami Pakistan Limited-31000223490001-The Integrity Global Education System',
             ]
         ];
+    }
+    
+    /**
+     * Record a payment and distribute it among pending fees (FIFO).
+     */
+    public function recordPayment($studentId, $amount, $details = [])
+    {
+        $remainingAmount = $amount;
+        $student = Student::findOrFail($studentId);
+
+        DB::beginTransaction();
+        try {
+            // 1. Create the payment record
+            $receiptNumber = $details['receipt_number'] ?? 'REC-' . strtoupper(dechex(time())) . '-' . rand(100, 999);
+            
+            \App\Models\FeePayment::create([
+                'organization_id' => $student->organization_id,
+                'campus_id' => $student->campus_id,
+                'student_id' => $student->id,
+                'amount' => $amount,
+                'payment_method' => $details['payment_method'] ?? 'Cash',
+                'transaction_id' => $details['transaction_id'] ?? null,
+                'payment_date' => $details['payment_date'] ?? now(),
+                'receipt_number' => $receiptNumber,
+                'received_by' => auth()->id() ?? 1,
+            ]);
+
+            // 2. Distribute among pending fees
+            $query = StudentFee::where('student_id', $studentId)
+                ->whereIn('status', ['unpaid', 'partial']);
+
+            if (isset($details['voucher_number']) && $details['voucher_number']) {
+                $query->where('voucher_number', $details['voucher_number']);
+            }
+
+            $pendingFees = $query->orderBy('due_date', 'asc')->get();
+
+            foreach ($pendingFees as $fee) {
+                if ($remainingAmount <= 0) break;
+
+                $payable = $fee->balance_amount;
+                $paymentForThisFee = min($remainingAmount, $payable);
+
+                $fee->paid_amount += $paymentForThisFee;
+                $fee->save(); // Model boot method handles status and balance recalculation
+
+                $remainingAmount -= $paymentForThisFee;
+            }
+
+            DB::commit();
+            return $receiptNumber;
+        } catch (\Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+    }
+
+    /**
+     * Generate the next available numeric voucher number.
+     */
+    public function generateNextVoucherNumber()
+    {
+        $maxVoucher = StudentFee::whereRaw('voucher_number REGEXP "^[0-9]+$"')->max(DB::raw('CAST(voucher_number AS UNSIGNED)'));
+        return $maxVoucher ? $maxVoucher + 1 : 1001;
     }
 }

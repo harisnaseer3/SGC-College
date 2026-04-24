@@ -40,6 +40,10 @@ class StudentFeeController extends BaseController
                 $batchIds = is_array($request->academic_batch_id) ? $request->academic_batch_id : explode(',', $request->academic_batch_id);
                 $query->whereIn('academic_batch_id', $batchIds);
             }
+            if ($request->filled('month') && $request->filled('year')) {
+                $date = \Illuminate\Support\Carbon::createFromDate($request->year, $request->month, 1)->endOfMonth();
+                $query->where('admission_date', '<=', $date->toDateString());
+            }
 
             $students = $query->withSum('studentFees as total_amount', 'amount')
                 ->withSum('studentFees as total_paid', 'paid_amount')
@@ -185,8 +189,13 @@ class StudentFeeController extends BaseController
                 'total_balance' => $fees->sum('balance_amount'),
             ];
 
+            $payments = \App\Models\FeePayment::where('student_id', $studentId)
+                ->orderBy('payment_date', 'desc')
+                ->get();
+
             return $this->sendResponse([
                 'fees' => $fees,
+                'payments' => $payments,
                 'summary' => $summary
             ], 'Student ledger retrieved successfully.');
         } catch (\Exception $e) {
@@ -214,7 +223,7 @@ class StudentFeeController extends BaseController
 
             if ($request->apply_to_all) {
                 $fees = StudentFee::where('student_id', $studentFee->student_id)
-                    ->whereIn('status', ['unpaid', 'partially_paid'])
+                    ->whereIn('status', ['unpaid', 'partial'])
                     ->get();
                 
                 foreach ($fees as $fee) {
@@ -285,7 +294,7 @@ class StudentFeeController extends BaseController
             if (str_contains(strtolower($studentFee->feeHead->name), 'tuition')) {
                 \App\Models\StudentFee::where('student_id', $studentFee->student_id)
                     ->where('id', '!=', $studentFee->id)
-                    ->whereIn('status', ['unpaid', 'partially_paid'])
+                    ->whereIn('status', ['unpaid', 'partial'])
                     ->update(['due_date' => $firstDueDate]);
             }
 
@@ -302,6 +311,7 @@ class StudentFeeController extends BaseController
                     'balance_amount' => $inst['amount'],
                     'due_date' => $inst['due_date'],
                     'status' => 'unpaid',
+                    'voucher_number' => $this->feeService->generateNextVoucherNumber(),
                     'remarks' => $studentFee->feeHead->name . " (Installment " . ($index + 1) . "/$count)"
                 ]);
             }
@@ -315,6 +325,67 @@ class StudentFeeController extends BaseController
         } catch (\Exception $e) {
             DB::rollback();
             return $this->sendError('Failed to split fee.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Record a fee deposit for a student.
+     */
+    public function deposit(\Illuminate\Http\Request $request)
+    {
+        try {
+            $request->validate([
+                'student_id' => 'required|exists:students,id',
+                'amount' => 'required|numeric|min:0.01',
+                'payment_date' => 'required|date',
+                'payment_method' => 'required|string',
+                'reference_no' => 'nullable|string',
+                'remarks' => 'nullable|string',
+            ]);
+
+            $receiptNumber = $this->feeService->recordPayment(
+                $request->student_id, 
+                (float)$request->amount, 
+                [
+                    'payment_date' => $request->payment_date,
+                    'payment_method' => $request->payment_method,
+                    'transaction_id' => $request->reference_no,
+                    'remarks' => $request->remarks,
+                    'voucher_number' => $request->voucher_number
+                ]
+            );
+
+            return $this->sendResponse(['receipt_number' => $receiptNumber], 'Payment recorded successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to record payment.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Find student and fees by voucher number.
+     */
+    public function findByVoucher($voucherNumber)
+    {
+        try {
+            $fees = StudentFee::with(['student.program', 'student.campus'])
+                ->where('voucher_number', $voucherNumber)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->get();
+
+            if ($fees->isEmpty()) {
+                return $this->sendError('Active voucher not found or already paid.', [], 404);
+            }
+
+            $student = $fees->first()->student;
+            $totalBalance = $fees->sum('balance_amount');
+
+            return $this->sendResponse([
+                'student' => $student,
+                'fees' => $fees,
+                'total_balance' => $totalBalance
+            ], 'Voucher found.');
+        } catch (\Exception $e) {
+            return $this->sendError('Error finding voucher.', ['error' => $e->getMessage()], 500);
         }
     }
 }
