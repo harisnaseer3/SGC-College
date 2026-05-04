@@ -367,7 +367,7 @@ class StudentFeeController extends BaseController
     public function findByVoucher($voucherNumber)
     {
         try {
-            $fees = StudentFee::with(['student.program', 'student.campus'])
+            $fees = StudentFee::with(['student.program', 'student.campus', 'feeHead'])
                 ->where('voucher_number', $voucherNumber)
                 ->whereIn('status', ['unpaid', 'partial'])
                 ->get();
@@ -386,6 +386,42 @@ class StudentFeeController extends BaseController
             ], 'Voucher found.');
         } catch (\Exception $e) {
             return $this->sendError('Error finding voucher.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get all fee payments with filters.
+     */
+    public function allPayments(\Illuminate\Http\Request $request)
+    {
+        try {
+            $query = \App\Models\FeePayment::with(['student.program', 'student.campus', 'receiver']);
+
+            if ($request->filled('start_date')) {
+                $query->whereDate('payment_date', '>=', $request->start_date);
+            }
+            if ($request->filled('end_date')) {
+                $query->whereDate('payment_date', '<=', $request->end_date);
+            }
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->whereHas('student', function($sq) use ($search) {
+                        $sq->where('first_name', 'like', "%$search%")
+                          ->orWhere('last_name', 'like', "%$search%")
+                          ->orWhere('roll_number', 'like', "%$search%")
+                          ->orWhere('admission_number', 'like', "%$search%");
+                    })
+                    ->orWhere('receipt_number', 'like', "%$search%")
+                    ->orWhere('transaction_id', 'like', "%$search%");
+                });
+            }
+
+            $payments = $query->orderBy('payment_date', 'desc')->paginate($request->get('per_page', 20));
+
+            return $this->sendResponse($payments, 'Payments retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to retrieve payments.', ['error' => $e->getMessage()], 500);
         }
     }
 }
