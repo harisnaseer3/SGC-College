@@ -39,4 +39,9 @@ class FeeStructure extends Model
     {
         return $this->belongsTo(AcademicBatch::class);
     }
+
+    public function campus()
+    {
+        return $this->belongsTo(Campus::class);
+    }
 }
