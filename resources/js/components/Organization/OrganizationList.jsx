@@ -49,7 +49,7 @@ const OrganizationList = ({ organizations, loading, onAddNew, onEdit, onManageCa
                             <div className="flex justify-end gap-2">
                                 <button 
                                     onClick={() => onManageCampuses(org)}
-                                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all"
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                                     title="Manage Colleges"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
