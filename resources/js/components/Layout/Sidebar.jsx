@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import SidebarItem from './SidebarItem';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -7,6 +7,7 @@ const Sidebar = () => {
     const { logout, user } = useAuth();
     const location = useLocation();
     const [openSubmenu, setOpenSubmenu] = useState(null);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     
     const isSuperAdmin = user?.roles?.some(role => role.name === 'super_admin');
 
@@ -58,30 +59,47 @@ const Sidebar = () => {
     };
 
     return (
-        <aside className="w-72 bg-white h-screen flex flex-col border-r border-slate-200 overflow-y-auto shrink-0">
-            <div className="p-8 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                    <img 
-                        src="/assets/images/logo.png" 
-                        alt="Logo" 
-                        className="w-10 h-10 object-contain"
-                    />
-                    <span className="text-slate-900 font-bold text-xl tracking-tight">SGC Education</span>
-                </div>
-            </div>
+        <aside className={`bg-white h-screen flex flex-col border-r border-slate-200 shrink-0 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-72'}`}>
+            <Link to="/dashboard" className={`p-6 border-b border-slate-100 flex items-center hover:bg-slate-50 transition-colors cursor-pointer ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
+                <img 
+                    src="/assets/images/logo.png" 
+                    alt="Logo" 
+                    className="w-10 h-10 object-contain shrink-0"
+                />
+                {!isCollapsed && <span className="text-slate-900 font-bold text-xl tracking-tight whitespace-nowrap">SGC Education</span>}
+            </Link>
             
-            <nav className="flex-1 p-6 space-y-2">
+            <nav className={`flex-1 overflow-y-auto space-y-2 ${isCollapsed ? 'p-4' : 'p-6'}`}>
                 {menuItems.map((item) => (
                     <SidebarItem 
                         key={item.path} 
                         {...item} 
                         isOpen={openSubmenu === item.path}
-                        onToggle={() => handleToggleSubmenu(item.path)}
+                        isCollapsed={isCollapsed}
+                        onToggle={() => {
+                            if (isCollapsed) setIsCollapsed(false);
+                            handleToggleSubmenu(item.path);
+                        }}
                     />
                 ))}
             </nav>
             
-
+            <div className="p-4 border-t border-slate-100 mt-auto">
+                <button 
+                    onClick={() => setIsCollapsed(!isCollapsed)} 
+                    className={`flex items-center text-slate-500 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all ${isCollapsed ? 'w-12 h-12 justify-center mx-auto' : 'w-full p-3 justify-start gap-4'}`}
+                    title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                >
+                    <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {isCollapsed ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                        ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                        )}
+                    </svg>
+                    {!isCollapsed && <span className="font-medium whitespace-nowrap">Collapse</span>}
+                </button>
+            </div>
         </aside>
     );
 };
