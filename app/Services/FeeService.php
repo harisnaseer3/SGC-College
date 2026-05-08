@@ -117,6 +117,70 @@ class FeeService
     }
 
     /**
+     * Backfill missing monthly fee records for a student from admission date to today.
+     * Called when viewing a student's ledger to ensure all owed months are visible.
+     */
+    public function backfillMissingFees(Student $student): int
+    {
+        if (!in_array($student->status, ['Enrolled', 'Pending', 'Promoted'])) {
+            return 0;
+        }
+
+        if (!$student->admission_date) {
+            return 0;
+        }
+
+        $admissionMonth = Carbon::parse($student->admission_date)->startOfMonth();
+        $currentMonth   = Carbon::now()->startOfMonth();
+
+        // Fetch fee structures that apply to this student
+        $structures = FeeStructure::where('campus_id', $student->campus_id)
+            ->where(function ($query) use ($student) {
+                $query->whereNull('program_id')
+                      ->orWhere('program_id', $student->program_id);
+            })
+            ->with('items.feeHead')
+            ->get();
+
+        if ($structures->isEmpty()) {
+            return 0;
+        }
+
+        $generatedCount = 0;
+        $month = $admissionMonth->copy();
+
+        while ($month->lte($currentMonth)) {
+            foreach ($structures as $structure) {
+                foreach ($structure->items as $item) {
+                    $exists = StudentFee::where('student_id', $student->id)
+                        ->where('fee_head_id', $item->fee_head_id)
+                        ->whereMonth('due_date', $month->month)
+                        ->whereYear('due_date', $month->year)
+                        ->exists();
+
+                    if (!$exists) {
+                        $dueDate = $month->copy()->day(10); // Due on the 10th of each month
+                        StudentFee::create([
+                            'organization_id' => $student->organization_id,
+                            'campus_id'       => $student->campus_id,
+                            'student_id'      => $student->id,
+                            'fee_head_id'     => $item->fee_head_id,
+                            'amount'          => $item->amount,
+                            'balance_amount'  => $item->amount,
+                            'due_date'        => $dueDate,
+                            'status'          => 'unpaid',
+                        ]);
+                        $generatedCount++;
+                    }
+                }
+            }
+            $month->addMonth();
+        }
+
+        return $generatedCount;
+    }
+
+    /**
      * Apply fines to overdue student fees.
      */
     public function applyFines($campusId = null)

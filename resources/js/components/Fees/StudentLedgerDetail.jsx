@@ -251,10 +251,68 @@ const StudentLedgerDetail = () => {
                         <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
                             <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
-                        <h2 className="text-lg font-black text-slate-800 uppercase tracking-widest">Payment History (Receipts)</h2>
+                        <h2 className="text-lg font-black text-slate-800 uppercase tracking-widest">Payment History</h2>
                     </div>
                 </div>
 
+                {/* Paid monthly voucher groups */}
+                {ledger.paid_fees && ledger.paid_fees.length > 0 && (
+                    <div className="space-y-4">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Cleared Vouchers</div>
+                        {Object.values(ledger.paid_fees.reduce((acc, fee) => {
+                            const date = new Date(fee.due_date);
+                            const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
+                            if (!acc[key]) acc[key] = {
+                                label: date.toLocaleDateString('default', { month: 'long', year: 'numeric' }),
+                                month: date.getMonth() + 1,
+                                year: date.getFullYear(),
+                                fees: []
+                            };
+                            acc[key].fees.push(fee);
+                            return acc;
+                        }, {})).sort((a, b) => new Date(a.year, a.month - 1) - new Date(b.year, b.month - 1)).map((group) => (
+                            <Card key={group.label} className="overflow-hidden border-emerald-100 shadow-sm opacity-80">
+                                <div className="bg-emerald-50 px-6 py-3 border-b border-emerald-100 flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                                        <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider">{group.label}</h3>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100 px-2 py-1 rounded-full">Paid</span>
+                                </div>
+                                <table className="w-full text-left">
+                                    <thead className="bg-white border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase">Fee Head</th>
+                                            <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Amount</th>
+                                            <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Discount</th>
+                                            <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Paid</th>
+                                            <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {group.fees.map((fee) => (
+                                            <tr key={fee.id} className="bg-slate-50/30">
+                                                <td className="px-6 py-3 text-sm font-semibold text-slate-600">
+                                                    {fee.fee_head?.name}
+                                                    {fee.remarks && <div className="text-[10px] text-slate-400 font-normal">{fee.remarks}</div>}
+                                                </td>
+                                                <td className="px-6 py-3 text-sm font-bold text-slate-500 text-right">Rs. {Number(fee.amount).toLocaleString()}</td>
+                                                <td className="px-6 py-3 text-sm font-bold text-amber-500 text-right">Rs. {Number(fee.discount_amount || 0).toLocaleString()}</td>
+                                                <td className="px-6 py-3 text-sm font-bold text-emerald-600 text-right">Rs. {Number(fee.paid_amount || 0).toLocaleString()}</td>
+                                                <td className="px-6 py-3 text-center">
+                                                    <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">Paid</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+
+                {/* Payment receipts */}
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1 pt-2">Receipts</div>
                 <Card className="overflow-hidden border-slate-200 shadow-sm">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">

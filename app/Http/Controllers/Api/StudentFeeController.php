@@ -172,21 +172,31 @@ class StudentFeeController extends BaseController
 
     /**
      * Get all fee records for a specific student (Ledger).
+     * Auto-backfills any missing monthly fees from the student's admission date to today.
      */
     public function studentLedger($studentId)
     {
         try {
-            $fees = StudentFee::with('feeHead')
+            $student = \App\Models\Student::findOrFail($studentId);
+
+            // Backfill any months that were never generated (e.g. student admitted in Jan, fees only generated for May)
+            $this->feeService->backfillMissingFees($student);
+
+            $allFees = StudentFee::with('feeHead')
                 ->where('student_id', $studentId)
-                ->orderBy('due_date', 'desc')
+                ->orderBy('due_date', 'asc')
                 ->get();
-            
+
+            // Split: unpaid/partial go to billing details; paid go to payment history
+            $unpaidFees = $allFees->whereIn('status', ['unpaid', 'partial'])->values();
+            $paidFees   = $allFees->where('status', 'paid')->values();
+
             $summary = [
-                'total_payable' => $fees->sum('amount'),
-                'total_fines' => $fees->sum('fine_amount'),
-                'total_discounts' => $fees->sum('discount_amount'),
-                'total_paid' => $fees->sum('paid_amount'),
-                'total_balance' => $fees->sum('balance_amount'),
+                'total_payable'   => $allFees->sum('amount'),
+                'total_fines'     => $allFees->sum('fine_amount'),
+                'total_discounts' => $allFees->sum('discount_amount'),
+                'total_paid'      => $allFees->sum('paid_amount'),
+                'total_balance'   => $allFees->sum('balance_amount'),
             ];
 
             $payments = \App\Models\FeePayment::where('student_id', $studentId)
@@ -194,9 +204,11 @@ class StudentFeeController extends BaseController
                 ->get();
 
             return $this->sendResponse([
-                'fees' => $fees,
-                'payments' => $payments,
-                'summary' => $summary
+                'fees'      => $unpaidFees,
+                'paid_fees' => $paidFees,
+                'payments'  => $payments,
+                'summary'   => $summary,
+                'student'   => $student,
             ], 'Student ledger retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve ledger.', ['error' => $e->getMessage()], 500);
