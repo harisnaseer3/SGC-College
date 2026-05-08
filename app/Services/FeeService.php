@@ -150,6 +150,19 @@ class FeeService
         $month = $admissionMonth->copy();
 
         while ($month->lte($currentMonth)) {
+            $dueDate = $month->copy()->day(10); // Due on the 10th of each month
+
+            // Find any existing voucher number already assigned to this month's fees
+            $existingMonthVoucher = StudentFee::where('student_id', $student->id)
+                ->whereMonth('due_date', $month->month)
+                ->whereYear('due_date', $month->year)
+                ->whereNotNull('voucher_number')
+                ->value('voucher_number');
+
+            // Generate one new voucher number for the whole month only if none exists
+            $monthVoucherNumber = $existingMonthVoucher ?? $this->generateNextVoucherNumber();
+            $createdThisMonth   = [];
+
             foreach ($structures as $structure) {
                 foreach ($structure->items as $item) {
                     $exists = StudentFee::where('student_id', $student->id)
@@ -159,8 +172,7 @@ class FeeService
                         ->exists();
 
                     if (!$exists) {
-                        $dueDate = $month->copy()->day(10); // Due on the 10th of each month
-                        StudentFee::create([
+                        $fee = StudentFee::create([
                             'organization_id' => $student->organization_id,
                             'campus_id'       => $student->campus_id,
                             'student_id'      => $student->id,
@@ -169,11 +181,14 @@ class FeeService
                             'balance_amount'  => $item->amount,
                             'due_date'        => $dueDate,
                             'status'          => 'unpaid',
+                            'voucher_number'  => $monthVoucherNumber,
                         ]);
+                        $createdThisMonth[] = $fee;
                         $generatedCount++;
                     }
                 }
             }
+
             $month->addMonth();
         }
 
@@ -288,16 +303,15 @@ class FeeService
         // Relation label (S/O or D/O)
         $relationLabel = (strtolower($student->gender) === 'female') ? 'D/O' : 'S/O';
 
-        // Get or Generate persistent voucher number
-        $existingVoucher = $allPendingFees->whereNotNull('voucher_number')->first();
+        // Get or Generate persistent voucher number — scoped to the target month only
+        $existingVoucher = $currentFees->whereNotNull('voucher_number')->first();
         if ($existingVoucher) {
             $voucherNumber = $existingVoucher->voucher_number;
         } else {
             $voucherNumber = $this->generateNextVoucherNumber();
-            
-            // Persist to relevant fees
-            $feesToUpdate = $currentFees->isNotEmpty() ? $currentFees : $allPendingFees->take(1);
-            foreach ($feesToUpdate as $fee) {
+
+            // Persist the new voucher number to this month's fees only
+            foreach ($currentFees as $fee) {
                 $fee->update(['voucher_number' => $voucherNumber]);
             }
         }
