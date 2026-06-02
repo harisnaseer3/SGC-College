@@ -19,7 +19,7 @@ const TopBar = () => {
     }, []);
 
     return (
-        <header className="h-24 bg-indigo-100 border-b border-slate-200 px-8 flex items-center justify-end sticky top-0 z-40">
+        <header className="h-24 bg-indigo-100 border-b border-slate-200 px-8 flex items-center justify-end sticky top-0 z-40 print:hidden">
             <div className="flex items-center gap-6">
                 <CampusSwitcher />
                 

@@ -59,7 +59,7 @@ const Sidebar = () => {
     };
 
     return (
-        <aside className={`bg-white h-screen flex flex-col border-r border-slate-200 shrink-0 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-72'}`}>
+        <aside className={`bg-white h-screen flex flex-col border-r border-slate-200 shrink-0 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-72'} print:hidden`}>
             <Link to="/dashboard" className={`p-6 border-b border-slate-100 flex items-center hover:bg-slate-50 transition-colors cursor-pointer ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
                 <img 
                     src="/assets/images/logo.png" 

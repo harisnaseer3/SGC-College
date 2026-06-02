@@ -79,7 +79,7 @@ const AdmissionByDateReport = () => {
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs print:hidden">
                         {String(item?.first_name?.[0] || '')}{String(item?.last_name?.[0] || '') || '?'}
                     </div>
                     <span className="text-sm font-semibold text-slate-900">
@@ -179,25 +179,13 @@ const AdmissionByDateReport = () => {
                 renderRow={renderRow}
                 emptyMessage="No admissions found for the selected date range."
                 className="print:shadow-none print:border-none"
+                printAll={true}
             />
 
             {/* Print Footer */}
             <div className="hidden print:flex justify-between mt-12 pt-8 border-t border-slate-200 text-xs font-bold text-slate-400">
                 <p>System Generated Report - {new Date().toLocaleString()}</p>
-                <p>Page 1 of 1</p>
             </div>
-
-            <style>{`
-                @media print {
-                    .no-print { display: none !important; }
-                    body { background: white !important; padding: 0 !important; }
-                    .print\\:block { display: block !important; }
-                    .print\\:flex { display: flex !important; }
-                    .print\\:p-0 { padding: 0 !important; }
-                    .print\\:shadow-none { shadow: none !important; box-shadow: none !important; }
-                    .print\\:border-none { border: none !important; }
-                }
-            `}</style>
         </div>
     );
 };
