@@ -6,6 +6,7 @@ import Card from '../UI/Card';
 import Button from '../UI/Button';
 import StatusBadge from '../UI/StatusBadge';
 import StatusUpdateModal from './Status/StatusUpdateModal';
+import ImportModal from './ImportModal';
 
 const DetailRow = ({ label, value }) => value ? (
     <div className="flex flex-col gap-0.5">
@@ -25,6 +26,9 @@ const AdmissionList = () => {
         isOpen: false,
         student: null
     });
+
+    // Import Modal State
+    const [importModalOpen, setImportModalOpen] = useState(false);
 
     const [filters, setFilters] = useState({
         search: '',
@@ -218,6 +222,16 @@ const AdmissionList = () => {
                             </span>
                         )}
                     </button>
+                    <button
+                        onClick={() => setImportModalOpen(true)}
+                        title="Import students from CSV"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-violet-50 border border-violet-200 text-violet-700 font-semibold text-sm rounded-xl hover:bg-violet-100 hover:border-violet-300 transition-all shadow-sm"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Import CSV
+                    </button>
                     <Button onClick={() => navigate('/new-admission')}>New Admission</Button>
                 </div>
             </div>
@@ -375,6 +389,13 @@ const AdmissionList = () => {
                         </>
                     );
                 }}
+            />
+
+            {/* ── Import Modal ── */}
+            <ImportModal
+                isOpen={importModalOpen}
+                onClose={() => setImportModalOpen(false)}
+                onImported={fetchStudents}
             />
 
             {/* ── Status Update Modal ── */}

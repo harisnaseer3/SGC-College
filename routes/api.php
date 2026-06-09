@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\AcademicBatchController;
 use App\Http\Controllers\Api\Reports\AdmissionReportController;
 use App\Http\Controllers\Api\StudentFeeController;
+use App\Http\Controllers\Api\StudentImportController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -33,6 +34,9 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/password', [PasswordController::class, 'update']);
 
     Route::get('/admissions/form-data', [App\Http\Controllers\Api\AdmissionController::class, 'getFormData']);
+    Route::get('/admissions/import/template', [StudentImportController::class, 'template']);
+    Route::post('/admissions/import/preview', [StudentImportController::class, 'preview']);
+    Route::post('/admissions/import', [StudentImportController::class, 'import']);
     Route::apiResource('admissions', App\Http\Controllers\Api\AdmissionController::class);
     Route::post('/admissions/{student}/status', [App\Http\Controllers\Api\StudentStatusController::class, 'store']);
     Route::get('/admissions/{student}/status-history', [App\Http\Controllers\Api\StudentStatusController::class, 'index']);
