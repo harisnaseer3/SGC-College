@@ -120,6 +120,78 @@ const AdmissionList = () => {
         });
     };
 
+    const exportToCSV = () => {
+        const headers = [
+            'Admission #',
+            'Roll Number',
+            'First Name',
+            'Last Name',
+            'Email',
+            'Phone',
+            'Gender',
+            'Date of Birth',
+            'CNIC',
+            'Address',
+            'Program',
+            'Semester',
+            'Batch',
+            'Campus',
+            'Intake Session',
+            'Admission Date',
+            'Status',
+            'Guardian Name',
+            'Guardian Phone',
+            'Guardian CNIC',
+            'Transfer Student',
+            'Religion',
+        ];
+
+        const escape = (val) => {
+            if (val === null || val === undefined) return '';
+            const str = String(val);
+            return str.includes(',') || str.includes('"') || str.includes('\n')
+                ? `"${str.replace(/"/g, '""')}"`
+                : str;
+        };
+
+        const rows = filteredStudents.map(s => [
+            s.admission_number ?? '',
+            s.roll_number ?? '',
+            s.first_name ?? '',
+            s.last_name ?? '',
+            s.email ?? '',
+            s.phone ?? '',
+            s.gender ?? '',
+            s.date_of_birth ?? '',
+            s.student_cnic ?? '',
+            s.address ?? '',
+            s.program?.name ?? '',
+            s.program_semester ? `Semester ${s.program_semester.semester_number}` : '',
+            s.academic_batch?.name ?? '',
+            s.campus?.name ?? '',
+            s.intake_session ?? '',
+            s.admission_date ?? '',
+            s.status ?? '',
+            s.guardian_name ?? '',
+            s.guardian_phone ?? '',
+            s.guardian_cnic ?? '',
+            s.is_transfer ? 'Yes' : 'No',
+            s.religion ?? '',
+        ].map(escape).join(','));
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().slice(0, 10);
+        link.href = url;
+        link.download = `students_export_${timestamp}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     const filterInputCls = "w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all";
 
     return (
@@ -129,7 +201,25 @@ const AdmissionList = () => {
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Admission Register</h1>
                     <p className="text-slate-500 mt-1 font-medium italic">Advanced student lookup and registry management.</p>
                 </div>
-                <Button onClick={() => navigate('/new-admission')}>New Admission</Button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={exportToCSV}
+                        disabled={filteredStudents.length === 0 || loading}
+                        title={`Export ${filteredStudents.length} student(s) to CSV`}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold text-sm rounded-xl hover:bg-emerald-100 hover:border-emerald-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                        </svg>
+                        Export CSV
+                        {filteredStudents.length > 0 && (
+                            <span className="bg-emerald-200 text-emerald-800 text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                                {filteredStudents.length}
+                            </span>
+                        )}
+                    </button>
+                    <Button onClick={() => navigate('/new-admission')}>New Admission</Button>
+                </div>
             </div>
 
             {/* ── Filter Bar ── */}
