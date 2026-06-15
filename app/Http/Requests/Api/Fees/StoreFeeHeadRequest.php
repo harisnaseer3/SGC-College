@@ -20,11 +20,12 @@ class StoreFeeHeadRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
-            'frequency' => 'required|in:one_time,monthly,semester',
+            'name'           => 'required|string|max:255',
+            'frequency'      => 'required|in:one_time,monthly,semester',
             'frequency_name' => 'nullable|string|max:255',
-            'priority' => 'nullable|integer',
-            'description' => 'nullable|string',
+            'priority'       => 'nullable|integer',
+            'description'    => 'nullable|string',
+            'campus_id'      => 'nullable|exists:campuses,id',
         ];
     }
 }

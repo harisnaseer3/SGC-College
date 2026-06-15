@@ -26,25 +26,31 @@ class FeeStructureController extends BaseController
         try {
             DB::beginTransaction();
 
+            $campusId  = $request->campus_id  ?: null;
+            $programId = $request->program_id ?: null;
+            $batchId   = $request->academic_batch_id ?: null;
+
             $name = $request->name;
             if (!$name) {
-                $program = \App\Models\Program::find($request->program_id);
-                $batch = $request->academic_batch_id ? \App\Models\AcademicBatch::find($request->academic_batch_id) : null;
-                $name = $program->name . ($batch ? " - " . $batch->name : "") . " Fee Structure";
+                $program = $programId ? \App\Models\Program::find($programId) : null;
+                $batch   = $batchId   ? \App\Models\AcademicBatch::find($batchId) : null;
+                $name    = ($program ? $program->name : 'General')
+                         . ($batch ? " - " . $batch->name : '')
+                         . ' Fee Structure';
             }
 
             $structure = FeeStructure::create([
-                'name' => $name,
-                'campus_id' => $request->campus_id,
-                'program_id' => $request->program_id,
-                'academic_batch_id' => $request->academic_batch_id,
+                'name'               => $name,
+                'campus_id'          => $campusId,
+                'program_id'         => $programId,
+                'academic_batch_id'  => $batchId,
             ]);
 
             foreach ($request->items as $item) {
                 FeeStructureItem::create([
                     'fee_structure_id' => $structure->id,
-                    'fee_head_id' => $item['fee_head_id'],
-                    'amount' => $item['amount'],
+                    'fee_head_id'      => $item['fee_head_id'],
+                    'amount'           => $item['amount'],
                 ]);
             }
 
@@ -74,11 +80,15 @@ class FeeStructureController extends BaseController
         try {
             DB::beginTransaction();
 
+            $campusId  = $request->campus_id  ?: null;
+            $programId = $request->program_id ?: null;
+            $batchId   = $request->academic_batch_id ?: null;
+
             $feeStructure->update([
-                'name' => $request->name,
-                'campus_id' => $request->campus_id,
-                'program_id' => $request->program_id,
-                'academic_batch_id' => $request->academic_batch_id,
+                'name'               => $request->name,
+                'campus_id'          => $campusId,
+                'program_id'         => $programId,
+                'academic_batch_id'  => $batchId,
             ]);
 
             // Simple approach: delete and recreate items
@@ -87,8 +97,8 @@ class FeeStructureController extends BaseController
             foreach ($request->items as $item) {
                 FeeStructureItem::create([
                     'fee_structure_id' => $feeStructure->id,
-                    'fee_head_id' => $item['fee_head_id'],
-                    'amount' => $item['amount'],
+                    'fee_head_id'      => $item['fee_head_id'],
+                    'amount'           => $item['amount'],
                 ]);
             }
 
