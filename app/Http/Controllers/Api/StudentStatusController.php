@@ -6,6 +6,7 @@ use App\Models\Student;
 use App\Models\StudentStatusLog;
 use App\Http\Requests\Api\Admission\StoreStudentStatusRequest;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Services\FeeService;
@@ -99,6 +100,96 @@ class StudentStatusController extends BaseController
                 422
             );
         }
+    }
+
+    /**
+     * Bulk update status for multiple students.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function bulkStatus(Request $request): JsonResponse
+    {
+        $request->validate([
+            'student_ids'      => 'required|array|min:1',
+            'student_ids.*'    => 'integer|exists:students,id',
+            'status'           => 'required|string|in:Enrolled,Struck Off,Passed Out,Promoted,Transferred,Active,Pending',
+            'action_date'      => 'required|date',
+            'remarks'          => 'nullable|string|max:1000',
+            'target_campus_id' => 'nullable|integer|exists:campuses,id',
+        ]);
+
+        $results   = ['succeeded' => [], 'failed' => []];
+        $status    = $request->status;
+        $actionDate   = $request->action_date;
+        $remarks   = $request->remarks ?? '';
+        $targetCampusId = $request->target_campus_id;
+
+        foreach ($request->student_ids as $studentId) {
+            DB::beginTransaction();
+            try {
+                $student  = Student::with('programSemester')->findOrFail($studentId);
+                $metadata = [];
+
+                // Promotion: advance semester
+                if ($status === 'Promoted') {
+                    $currentSemester = $student->programSemester;
+                    if (!$currentSemester) {
+                        throw new \Exception('No semester assigned.');
+                    }
+                    $nextSemester = \App\Models\ProgramSemester::where('program_id', $student->program_id)
+                        ->where('semester_number', $currentSemester->semester_number + 1)
+                        ->first();
+                    if (!$nextSemester) {
+                        throw new \Exception("Already in final semester ({$currentSemester->semester_number}).");
+                    }
+                    $student->update(['program_semester_id' => $nextSemester->id]);
+                    $metadata['previous_semester_id'] = $currentSemester->id;
+                    $metadata['next_semester_id']     = $nextSemester->id;
+                }
+
+                // Transfer: move campus
+                if ($status === 'Transferred' && $targetCampusId) {
+                    $metadata['previous_campus_id'] = $student->campus_id;
+                    $student->update(['campus_id' => $targetCampusId]);
+                }
+
+                // Log history
+                StudentStatusLog::create([
+                    'student_id'  => $student->id,
+                    'status'      => $status,
+                    'action_date' => $actionDate,
+                    'remarks'     => $remarks,
+                    'metadata'    => $metadata,
+                    'created_by'  => Auth::id(),
+                ]);
+
+                // Update student status
+                $student->update(['status' => $status]);
+
+                if ($status === 'Enrolled') {
+                    $this->feeService->assignInitialFees($student);
+                }
+
+                DB::commit();
+                $results['succeeded'][] = $student->id;
+            } catch (\Exception $e) {
+                DB::rollBack();
+                $results['failed'][] = [
+                    'student_id' => $studentId,
+                    'reason'     => $e->getMessage(),
+                ];
+            }
+        }
+
+        $total     = count($request->student_ids);
+        $succeeded = count($results['succeeded']);
+        $failed    = count($results['failed']);
+
+        return $this->sendResponse(
+            $results,
+            "{$succeeded} of {$total} students updated successfully." . ($failed ? " {$failed} failed." : '')
+        );
     }
 
     /**

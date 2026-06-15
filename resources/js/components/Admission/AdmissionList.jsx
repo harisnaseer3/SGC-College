@@ -6,6 +6,7 @@ import Card from '../UI/Card';
 import Button from '../UI/Button';
 import StatusBadge from '../UI/StatusBadge';
 import StatusUpdateModal from './Status/StatusUpdateModal';
+import BulkStatusUpdateModal from './Status/BulkStatusUpdateModal';
 import ImportModal from './ImportModal';
 
 const DetailRow = ({ label, value }) => value ? (
@@ -21,11 +22,17 @@ const AdmissionList = () => {
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
     
+    // Multi-select state
+    const [selectedIds, setSelectedIds] = useState([]);
+
     // Status Modal State
     const [statusModal, setStatusModal] = useState({
         isOpen: false,
         student: null
     });
+
+    // Bulk Status Modal State
+    const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
     // Import Modal State
     const [importModalOpen, setImportModalOpen] = useState(false);
@@ -87,6 +94,26 @@ const AdmissionList = () => {
         if (selected?.id === updatedStudent.id) {
             setSelected(updatedStudent);
         }
+    };
+
+    const handleBulkDone = (result) => {
+        // Refresh students after bulk update so statuses are current
+        fetchStudents();
+        setSelectedIds([]);
+    };
+
+    const toggleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(filteredStudents.map(s => s.id));
+        } else {
+            setSelectedIds([]);
+        }
+    };
+
+    const toggleSelectOne = (id) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
     };
 
     const avatarSrc = (student) =>
@@ -232,6 +259,20 @@ const AdmissionList = () => {
                         </svg>
                         Import CSV
                     </button>
+                    {selectedIds.length > 0 && (
+                        <button
+                            onClick={() => setBulkModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 border border-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700 transition-all shadow-sm"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                            </svg>
+                            Update Status
+                            <span className="bg-white/25 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                                {selectedIds.length}
+                            </span>
+                        </button>
+                    )}
                     <Button onClick={() => navigate('/new-admission')}>New Admission</Button>
                 </div>
             </div>
@@ -300,14 +341,37 @@ const AdmissionList = () => {
             </Card>
 
             <DataTable
-                columns={['Student Name', 'Admission #', 'Program / Semester', 'Batch', 'Intake', 'Campus', 'Status', { name: 'Actions', align: 'left' }]}
+                columns={[
+                    {
+                        name: (
+                            <input
+                                type="checkbox"
+                                className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                checked={filteredStudents.length > 0 && selectedIds.length === filteredStudents.length}
+                                ref={el => { if (el) el.indeterminate = selectedIds.length > 0 && selectedIds.length < filteredStudents.length; }}
+                                onChange={toggleSelectAll}
+                            />
+                        ),
+                        width: '44px'
+                    },
+                    'Student Name', 'Admission #', 'Program / Semester', 'Batch', 'Intake', 'Campus', 'Status', { name: 'Actions', align: 'left' }
+                ]}
                 data={filteredStudents}
                 loading={loading}
                 emptyMessage="No student records found."
                 renderRow={(student) => {
                     const pic = avatarSrc(student);
+                    const isChecked = selectedIds.includes(student.id);
                     return (
                         <>
+                            <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+                                    checked={isChecked}
+                                    onChange={() => toggleSelectOne(student.id)}
+                                />
+                            </td>
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
                                     {pic ? (
@@ -398,7 +462,7 @@ const AdmissionList = () => {
                 onImported={fetchStudents}
             />
 
-            {/* ── Status Update Modal ── */}
+            {/* ── Status Update Modal (single) ── */}
             <StatusUpdateModal
                 isOpen={statusModal.isOpen}
                 student={statusModal.student}
@@ -406,6 +470,17 @@ const AdmissionList = () => {
                 onClose={() => setStatusModal({ isOpen: false, student: null })}
                 onStatusUpdated={handleStatusUpdated}
             />
+
+            {/* ── Bulk Status Update Modal ── */}
+            <BulkStatusUpdateModal
+                isOpen={bulkModalOpen}
+                studentIds={selectedIds}
+                campuses={formOptions.campuses}
+                onClose={() => setBulkModalOpen(false)}
+                onDone={handleBulkDone}
+            />
+
+
 
             {/* ── Detail Slide-over Panel ── */}
             {selected && (
