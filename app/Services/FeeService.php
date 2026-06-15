@@ -36,13 +36,14 @@ class FeeService
             $students = $studentQuery->get();
 
             foreach ($students as $student) {
+                // Determine which semester number this dueDate corresponds to for this student
+                $semNumber = $this->getStudentSemesterNumber($student, $dueDate);
+                [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
+
                 foreach ($structure->items as $item) {
-                    // Check if fee already exists for this student/head in the current month/period
-                    // For monthly, we check same month/year. For semester, we might need more logic or just generate once.
                     $exists = StudentFee::where('student_id', $student->id)
                         ->where('fee_head_id', $item->fee_head_id)
-                        ->whereMonth('due_date', $dueDate->month)
-                        ->whereYear('due_date', $dueDate->year)
+                        ->whereBetween('due_date', [$start, $end])
                         ->exists();
 
                     if (!$exists) {
@@ -88,13 +89,15 @@ class FeeService
 
         $generatedCount = 0;
 
+        // Determine student's semester number for the current date
+        $semNumber = $this->getStudentSemesterNumber($student, $dueDate);
+        [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
+
         foreach ($structures as $structure) {
             foreach ($structure->items as $item) {
-                // Check for duplicates in the current month
                 $exists = StudentFee::where('student_id', $student->id)
                     ->where('fee_head_id', $item->fee_head_id)
-                    ->whereMonth('due_date', $dueDate->month)
-                    ->whereYear('due_date', $dueDate->year)
+                    ->whereBetween('due_date', [$start, $end])
                     ->exists();
 
                 if (!$exists) {
@@ -130,8 +133,8 @@ class FeeService
             return 0;
         }
 
-        $admissionMonth = Carbon::parse($student->admission_date)->startOfMonth();
-        $currentMonth   = Carbon::now()->startOfMonth();
+        $admissionDate = Carbon::parse($student->admission_date);
+        $currentDate = Carbon::now();
 
         // Fetch fee structures that apply to this student
         $structures = FeeStructure::where('campus_id', $student->campus_id)
@@ -147,32 +150,32 @@ class FeeService
         }
 
         $generatedCount = 0;
-        $month = $admissionMonth->copy();
 
-        while ($month->lte($currentMonth)) {
-            $dueDate = $month->copy()->day(10); // Due on the 10th of each month
+        // Find current semester number for the student
+        $currentSem = $this->getStudentSemesterNumber($student, $currentDate);
 
-            // Find any existing voucher number already assigned to this month's fees
-            $existingMonthVoucher = StudentFee::where('student_id', $student->id)
-                ->whereMonth('due_date', $month->month)
-                ->whereYear('due_date', $month->year)
+        for ($s = 1; $s <= $currentSem; $s++) {
+            [$start, $end] = $this->getStudentSemesterRange($student, $s);
+            $dueDate = $start->copy()->day(10);
+
+            // Find any existing voucher number already assigned to this semester's fees
+            $existingSemVoucher = StudentFee::where('student_id', $student->id)
+                ->whereBetween('due_date', [$start, $end])
                 ->whereNotNull('voucher_number')
                 ->value('voucher_number');
 
-            // Generate one new voucher number for the whole month only if none exists
-            $monthVoucherNumber = $existingMonthVoucher ?? $this->generateNextVoucherNumber();
-            $createdThisMonth   = [];
+            // Generate one new voucher number for the semester only if none exists
+            $semVoucherNumber = $existingSemVoucher ?? $this->generateNextVoucherNumber();
 
             foreach ($structures as $structure) {
                 foreach ($structure->items as $item) {
                     $exists = StudentFee::where('student_id', $student->id)
                         ->where('fee_head_id', $item->fee_head_id)
-                        ->whereMonth('due_date', $month->month)
-                        ->whereYear('due_date', $month->year)
+                        ->whereBetween('due_date', [$start, $end])
                         ->exists();
 
                     if (!$exists) {
-                        $fee = StudentFee::create([
+                        StudentFee::create([
                             'organization_id' => $student->organization_id,
                             'campus_id'       => $student->campus_id,
                             'student_id'      => $student->id,
@@ -181,15 +184,12 @@ class FeeService
                             'balance_amount'  => $item->amount,
                             'due_date'        => $dueDate,
                             'status'          => 'unpaid',
-                            'voucher_number'  => $monthVoucherNumber,
+                            'voucher_number'  => $semVoucherNumber,
                         ]);
-                        $createdThisMonth[] = $fee;
                         $generatedCount++;
                     }
                 }
             }
-
-            $month->addMonth();
         }
 
         return $generatedCount;
@@ -265,32 +265,36 @@ class FeeService
             $targetMonth = Carbon::now()->startOfMonth();
         }
         
-        // Separate current month fees and arrears
-        $currentFees = $allPendingFees->filter(function ($fee) use ($targetMonth) {
-            return $fee->due_date->format('Y-m') === $targetMonth->format('Y-m');
+        $semNumber = $this->getStudentSemesterNumber($student, $targetMonth);
+        [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
+
+        // Separate current semester fees and arrears
+        $currentFees = $allPendingFees->filter(function ($fee) use ($start, $end) {
+            return $fee->due_date->between($start, $end);
         });
 
-        $arrearsFees = $allPendingFees->filter(function ($fee) use ($targetMonth) {
-            return $fee->due_date->format('Y-m') < $targetMonth->format('Y-m') && $fee->due_date->isPast();
+        $arrearsFees = $allPendingFees->filter(function ($fee) use ($start) {
+            return $fee->due_date->lt($start);
         });
 
-        // If no fees in target month, and it was default (now), take latest
+        // If no fees in target semester, and it was default (now), take latest
         if ($currentFees->isEmpty() && !$month && !$allPendingFees->isEmpty()) {
-            $latestMonth = $allPendingFees->max('due_date')->startOfMonth();
-            $currentFees = $allPendingFees->filter(function ($fee) use ($latestMonth) {
-                return $fee->due_date->format('Y-m') === $latestMonth->format('Y-m');
+            $latestDueDate = $allPendingFees->max('due_date');
+            $semNumber = $this->getStudentSemesterNumber($student, $latestDueDate);
+            [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
+            $currentFees = $allPendingFees->filter(function ($fee) use ($start, $end) {
+                return $fee->due_date->between($start, $end);
             });
-            $arrearsFees = $allPendingFees->filter(function ($fee) use ($latestMonth) {
-                return $fee->due_date->format('Y-m') < $latestMonth->format('Y-m');
+            $arrearsFees = $allPendingFees->filter(function ($fee) use ($start) {
+                return $fee->due_date->lt($start);
             });
-            $targetMonth = $latestMonth;
         }
 
         if ($currentFees->isEmpty() && $arrearsFees->isEmpty()) {
-            throw new \Exception("No pending fees found for this student as of " . $targetMonth->format('M Y'));
+            throw new \Exception("No pending fees found for this student as of " . $this->getStudentSemesterLabel($student, $semNumber));
         }
 
-        $feeMonth = $targetMonth->format('M Y');
+        $feeMonth = $this->getStudentSemesterLabel($student, $semNumber);
         $dueDate = $currentFees->isNotEmpty() ? $currentFees->first()->due_date : $targetMonth->copy()->day(10);
         $validDate = $dueDate->copy()->endOfMonth();
 
@@ -423,5 +427,62 @@ class FeeService
     {
         $maxVoucher = StudentFee::whereRaw('voucher_number REGEXP "^[0-9]+$"')->max(DB::raw('CAST(voucher_number AS UNSIGNED)'));
         return $maxVoucher ? $maxVoucher + 1 : 1001;
+    }
+
+    /**
+     * Get the semester number for a student based on a given date (like due_date).
+     */
+    public function getStudentSemesterNumber(Student $student, Carbon $date): int
+    {
+        if (!$student->admission_date) {
+            return 1;
+        }
+
+        $admissionDate = Carbon::parse($student->admission_date)->startOfMonth();
+        $targetDate = $date->copy()->startOfMonth();
+
+        if ($targetDate->lt($admissionDate)) {
+            return 1;
+        }
+
+        $diffInMonths = $admissionDate->diffInMonths($targetDate);
+        $semesterNumber = (int) floor($diffInMonths / 6) + 1;
+
+        // Capped at program's total semesters if available
+        if ($student->program && $student->program->total_semesters) {
+            $semesterNumber = min($semesterNumber, $student->program->total_semesters);
+        }
+
+        return $semesterNumber;
+    }
+
+    /**
+     * Get the semester date range for a given student and semester number.
+     */
+    public function getStudentSemesterRange(Student $student, int $semesterNumber): array
+    {
+        $admissionDate = $student->admission_date 
+            ? Carbon::parse($student->admission_date)->startOfMonth() 
+            : Carbon::now()->startOfMonth();
+
+        // Standardize the start month to the calendar semester (Jan or July) of the admission date
+        $startMonth = $admissionDate->month >= 7 ? 7 : 1;
+        $standardizedAdmission = $admissionDate->copy()->month($startMonth)->startOfMonth();
+
+        $semStart = $standardizedAdmission->copy()->addMonths(($semesterNumber - 1) * 6)->startOfMonth();
+        $semEnd = $semStart->copy()->addMonths(6)->subDay()->endOfMonth();
+
+        return [$semStart, $semEnd];
+    }
+
+    /**
+     * Get the descriptive semester label for a student and semester number.
+     * Incorporates Semester number, term (Fall/Spring) and year.
+     */
+    public function getStudentSemesterLabel(Student $student, int $semesterNumber): string
+    {
+        [$start, $end] = $this->getStudentSemesterRange($student, $semesterNumber);
+        $term = $start->month >= 7 ? 'Fall' : 'Spring';
+        return "Semester {$semesterNumber} ({$term} {$start->year})";
     }
 }

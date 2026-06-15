@@ -21,7 +21,7 @@ const StudentLedgerList = () => {
         status: ['Enrolled'],
     });
     const [selectedStudents, setSelectedStudents] = useState([]);
-    const [printMonth, setPrintMonth] = useState(new Date().getMonth() + 1);
+    const [printMonth, setPrintMonth] = useState(new Date().getMonth() + 1 >= 7 ? 7 : 1);
     const [printYear, setPrintYear] = useState(new Date().getFullYear());
     const { showSuccess, showError } = useNotifications();
 
@@ -220,9 +220,8 @@ const StudentLedgerList = () => {
                         value={printMonth}
                         onChange={(e) => setPrintMonth(e.target.value)}
                     >
-                        {Array.from({length: 12}, (_, i) => (
-                            <option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('default', {month: 'long'})}</option>
-                        ))}
+                        <option value="7">Fall Semester (July - Dec)</option>
+                        <option value="1">Spring Semester (Jan - June)</option>
                     </select>
                     <select 
                         className="p-1.5 border border-indigo-200 rounded bg-white text-xs font-bold"

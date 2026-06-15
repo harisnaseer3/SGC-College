@@ -5,6 +5,25 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
 
+const getSemesterNumber = (admissionDateStr, dueDateStr) => {
+    if (!admissionDateStr) return 1;
+    const admission = new Date(admissionDateStr);
+    const due = new Date(dueDateStr);
+    if (due < admission) return 1;
+    const months = (due.getFullYear() - admission.getFullYear()) * 12 + (due.getMonth() - admission.getMonth());
+    return Math.floor(months / 6) + 1;
+};
+
+const getSemesterLabel = (admissionDateStr, semNum) => {
+    if (!admissionDateStr) return `Semester ${semNum}`;
+    const admission = new Date(admissionDateStr);
+    const startMonth = admission.getMonth() >= 6 ? 6 : 0;
+    const semStartDate = new Date(admission.getFullYear(), startMonth, 1);
+    semStartDate.setMonth(semStartDate.getMonth() + (semNum - 1) * 6);
+    const term = semStartDate.getMonth() >= 6 ? 'Fall' : 'Spring';
+    return `Semester ${semNum} (${term} ${semStartDate.getFullYear()})`;
+};
+
 const StudentLedgerDetail = () => {
     const { studentId } = useParams();
     const navigate = useNavigate();
@@ -127,17 +146,24 @@ const StudentLedgerDetail = () => {
                     <h2 className="text-lg font-black text-slate-800 uppercase tracking-widest">Fee Billing Details</h2>
                 </div>
                 {Object.values(ledger.fees.reduce((acc, fee) => {
-                    const date = new Date(fee.due_date);
-                    const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
-                    if (!acc[key]) acc[key] = {
-                        label: date.toLocaleDateString('default', { month: 'long', year: 'numeric' }),
-                        month: date.getMonth() + 1,
-                        year: date.getFullYear(),
-                        fees: []
-                    };
+                    const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date);
+                    const key = `Semester-${semNum}`;
+                    if (!acc[key]) {
+                        const admission = new Date(ledger.student.admission_date);
+                        const startMonth = admission.getMonth() >= 6 ? 6 : 0;
+                        const semStartDate = new Date(admission.getFullYear(), startMonth, 1);
+                        semStartDate.setMonth(semStartDate.getMonth() + (semNum - 1) * 6);
+                        acc[key] = {
+                            label: getSemesterLabel(ledger.student.admission_date, semNum),
+                            month: semStartDate.getMonth() + 1,
+                            year: semStartDate.getFullYear(),
+                            semNum: semNum,
+                            fees: []
+                        };
+                    }
                     acc[key].fees.push(fee);
                     return acc;
-                }, {})).sort((a, b) => new Date(a.year, a.month - 1) - new Date(b.year, b.month - 1)).map((group) => (
+                }, {})).sort((a, b) => a.semNum - b.semNum).map((group) => (
                     <Card key={group.label} className={`overflow-hidden border-slate-200 shadow-sm transition-all duration-300 ${selectedPeriods.includes(`${group.month}-${group.year}`) ? 'ring-2 ring-indigo-500 bg-indigo-50/10' : ''}`}>
                         <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
                             <div className="flex items-center gap-3">
@@ -260,17 +286,24 @@ const StudentLedgerDetail = () => {
                     <div className="space-y-4">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Cleared Vouchers</div>
                         {Object.values(ledger.paid_fees.reduce((acc, fee) => {
-                            const date = new Date(fee.due_date);
-                            const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
-                            if (!acc[key]) acc[key] = {
-                                label: date.toLocaleDateString('default', { month: 'long', year: 'numeric' }),
-                                month: date.getMonth() + 1,
-                                year: date.getFullYear(),
-                                fees: []
-                            };
+                            const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date);
+                            const key = `Semester-${semNum}`;
+                            if (!acc[key]) {
+                                const admission = new Date(ledger.student.admission_date);
+                                const startMonth = admission.getMonth() >= 6 ? 6 : 0;
+                                const semStartDate = new Date(admission.getFullYear(), startMonth, 1);
+                                semStartDate.setMonth(semStartDate.getMonth() + (semNum - 1) * 6);
+                                acc[key] = {
+                                    label: getSemesterLabel(ledger.student.admission_date, semNum),
+                                    month: semStartDate.getMonth() + 1,
+                                    year: semStartDate.getFullYear(),
+                                    semNum: semNum,
+                                    fees: []
+                                };
+                            }
                             acc[key].fees.push(fee);
                             return acc;
-                        }, {})).sort((a, b) => new Date(a.year, a.month - 1) - new Date(b.year, b.month - 1)).map((group) => (
+                        }, {})).sort((a, b) => a.semNum - b.semNum).map((group) => (
                             <Card key={group.label} className="overflow-hidden border-emerald-100 shadow-sm opacity-80">
                                 <div className="bg-emerald-50 px-6 py-3 border-b border-emerald-100 flex justify-between items-center">
                                     <div className="flex items-center gap-2">

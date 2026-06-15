@@ -177,7 +177,7 @@ class StudentFeeController extends BaseController
     public function studentLedger($studentId)
     {
         try {
-            $student = \App\Models\Student::findOrFail($studentId);
+            $student = \App\Models\Student::with('program')->findOrFail($studentId);
 
             // Backfill any months that were never generated (e.g. student admitted in Jan, fees only generated for May)
             $this->feeService->backfillMissingFees($student);
