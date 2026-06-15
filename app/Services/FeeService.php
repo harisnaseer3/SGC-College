@@ -41,6 +41,19 @@ class FeeService
                 [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
 
                 foreach ($structure->items as $item) {
+                    $feeHead = $item->feeHead;
+                    $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
+                    $isSemester = ($feeHead->frequency === 'semester');
+
+                    if ($semNumber === 1) {
+                        if (!$isOneTime && !$isSemester) {
+                            continue;
+                        }
+                    } else {
+                        if (!$isSemester) {
+                            continue;
+                        }
+                    }
                     $exists = StudentFee::where('student_id', $student->id)
                         ->where('fee_head_id', $item->fee_head_id)
                         ->whereBetween('due_date', [$start, $end])
@@ -95,6 +108,19 @@ class FeeService
 
         foreach ($structures as $structure) {
             foreach ($structure->items as $item) {
+                $feeHead = $item->feeHead;
+                $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
+                $isSemester = ($feeHead->frequency === 'semester');
+
+                if ($semNumber === 1) {
+                    if (!$isOneTime && !$isSemester) {
+                        continue;
+                    }
+                } else {
+                    if (!$isSemester) {
+                        continue;
+                    }
+                }
                 $exists = StudentFee::where('student_id', $student->id)
                     ->where('fee_head_id', $item->fee_head_id)
                     ->whereBetween('due_date', [$start, $end])
@@ -169,6 +195,19 @@ class FeeService
 
             foreach ($structures as $structure) {
                 foreach ($structure->items as $item) {
+                    $feeHead = $item->feeHead;
+                    $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
+                    $isSemester = ($feeHead->frequency === 'semester');
+
+                    if ($s === 1) {
+                        if (!$isOneTime && !$isSemester) {
+                            continue;
+                        }
+                    } else {
+                        if (!$isSemester) {
+                            continue;
+                        }
+                    }
                     $exists = StudentFee::where('student_id', $student->id)
                         ->where('fee_head_id', $item->fee_head_id)
                         ->whereBetween('due_date', [$start, $end])

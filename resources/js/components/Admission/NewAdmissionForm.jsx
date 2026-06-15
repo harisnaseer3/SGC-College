@@ -134,7 +134,14 @@ const NewAdmissionForm = () => {
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+        setFormData(prev => {
+            const updated = { ...prev, [name]: type === 'checkbox' ? checked : value };
+            if (name === 'program_id') {
+                updated.program_semester_id = '';
+                updated.academic_batch_id = '';
+            }
+            return updated;
+        });
     };
 
     const handlePictureChange = (e) => {
@@ -234,22 +241,35 @@ const NewAdmissionForm = () => {
                                 {formOptions.programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
-                        <div className="space-y-2">
-                            <label className={labelCls}>Semester</label>
-                            <select name="program_semester_id" value={formData.program_semester_id} onChange={handleChange} className={inputCls} required disabled={!formData.program_id}>
-                                <option value="">Select Semester</option>
-                                {formOptions.programs.find(p => p.id == formData.program_id)?.semesters?.map(s => (
-                                    <option key={s.id} value={s.id}>Semester {s.semester_number}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className={labelCls}>Academic Batch</label>
-                            <select name="academic_batch_id" value={formData.academic_batch_id} onChange={handleChange} className={inputCls} required>
-                                <option value="">Select Batch</option>
-                                {formOptions.batches.map(b => <option key={b.id} value={b.id}>{b.name}{b.is_active ? ' (Active)' : ''}</option>)}
-                            </select>
-                        </div>
+                        {formData.program_id && (
+                            <>
+                                <div className="space-y-2">
+                                    <label className={labelCls}>Semester</label>
+                                    <select name="program_semester_id" value={formData.program_semester_id} onChange={handleChange} className={inputCls} required>
+                                        <option value="">Select Semester</option>
+                                        {(() => {
+                                            const prog = formOptions.programs.find(p => p.id == formData.program_id);
+                                            if (!prog) return null;
+                                            const totalSems = prog.total_semesters || 8;
+                                            return prog.semesters
+                                                ?.filter(s => s.semester_number <= totalSems)
+                                                .map(s => (
+                                                    <option key={s.id} value={s.id}>Semester {s.semester_number}</option>
+                                                ));
+                                        })()}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className={labelCls}>Academic Batch</label>
+                                    <select name="academic_batch_id" value={formData.academic_batch_id} onChange={handleChange} className={inputCls} required>
+                                        <option value="">Select Batch</option>
+                                        {formOptions.batches
+                                            .filter(b => b.campus_id == formOptions.programs.find(p => p.id == formData.program_id)?.campus_id)
+                                            .map(b => <option key={b.id} value={b.id}>{b.name}{b.is_active ? ' (Active)' : ''}</option>)}
+                                    </select>
+                                </div>
+                            </>
+                        )}
                         <div className="space-y-2">
                             <label className={labelCls}>Intake Session</label>
                             <select name="intake_session" value={formData.intake_session} onChange={handleChange} className={inputCls} required>
