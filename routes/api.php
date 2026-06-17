@@ -49,6 +49,8 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/organizations/{organization}', [OrganizationController::class, 'update']);
     Route::get('/organizations/{organization}/campuses', [CampusController::class, 'index']);
     Route::post('/organizations/{organization}/campuses', [CampusController::class, 'store']);
+    Route::put('/organizations/{organization}/campuses/{campus}', [CampusController::class, 'update']);
+    Route::delete('/organizations/{organization}/campuses/{campus}', [CampusController::class, 'destroy']);
 
     // User & Role Routes
     Route::apiResource('users', UserController::class);

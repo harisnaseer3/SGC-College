@@ -4,12 +4,22 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreCampusRequest;
+use App\Http\Requests\Api\UpdateCampusRequest;
 use App\Models\Organization;
 use App\Models\Campus;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class CampusController extends BaseController
 {
+    /**
+     * Check if the authenticated user is a super admin.
+     */
+    private function isSuperAdmin(): bool
+    {
+        return auth()->user()->hasRole('super_admin', 'web');
+    }
+
     /**
      * Display a listing of the campuses for a specific organization.
      */
@@ -17,8 +27,7 @@ class CampusController extends BaseController
     {
         try {
             $user = auth()->user();
-            
-            // Explicit check for non-superadmins
+
             if (!$user->hasRole('super_admin', 'web') && $user->organization_id !== $organization->id) {
                 return $this->sendError('Unauthorized access to this organization.', [], 403);
             }
@@ -36,11 +45,8 @@ class CampusController extends BaseController
     public function store(StoreCampusRequest $request, Organization $organization): JsonResponse
     {
         try {
-            $user = auth()->user();
-            
-            // Explicit check for non-superadmins
-            if (!$user->hasRole('super_admin', 'web') && $user->organization_id !== $organization->id) {
-                return $this->sendError('Unauthorized access to this organization.', [], 403);
+            if (!$this->isSuperAdmin()) {
+                return $this->sendError('Only super admins can create campuses.', [], 403);
             }
 
             $data = $request->validated();
@@ -50,17 +56,87 @@ class CampusController extends BaseController
                 $data['logo_url'] = '/storage/' . $path;
             }
 
-            // Remove 'logo' from data if it exists to avoid potential issues even if not in fillable
             unset($data['logo']);
 
             $campus = $organization->campuses()->create($data);
-            
+
             return $this->sendResponse($campus, 'Campus created successfully.', 201);
         } catch (\Exception $e) {
             return $this->sendError('Server Error', [
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update the specified campus.
+     */
+    public function update(UpdateCampusRequest $request, Organization $organization, Campus $campus): JsonResponse
+    {
+        try {
+            if (!$this->isSuperAdmin()) {
+                return $this->sendError('Only super admins can update campuses.', [], 403);
+            }
+
+            if ($campus->organization_id !== $organization->id) {
+                return $this->sendError('Campus does not belong to this organization.', [], 403);
+            }
+
+            $data = $request->validated();
+
+            if ($request->hasFile('logo')) {
+                // Delete old logo if stored locally
+                if ($campus->logo_url && str_starts_with($campus->logo_url, '/storage/')) {
+                    $oldPath = str_replace('/storage/', '', $campus->logo_url);
+                    Storage::disk('public')->delete($oldPath);
+                }
+
+                $path = $request->file('logo')->store('logos/campuses', 'public');
+                $data['logo_url'] = '/storage/' . $path;
+            }
+
+            unset($data['logo']);
+
+            $campus->update($data);
+
+            return $this->sendResponse($campus->fresh(), 'Campus updated successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Server Error', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine()
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove the specified campus.
+     */
+    public function destroy(Organization $organization, Campus $campus): JsonResponse
+    {
+        try {
+            if (!$this->isSuperAdmin()) {
+                return $this->sendError('Only super admins can delete campuses.', [], 403);
+            }
+
+            if ($campus->organization_id !== $organization->id) {
+                return $this->sendError('Campus does not belong to this organization.', [], 403);
+            }
+
+            // Delete logo file if stored locally
+            if ($campus->logo_url && str_starts_with($campus->logo_url, '/storage/')) {
+                $oldPath = str_replace('/storage/', '', $campus->logo_url);
+                Storage::disk('public')->delete($oldPath);
+            }
+
+            $campus->delete();
+
+            return $this->sendResponse([], 'Campus deleted successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Server Error', [
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
