@@ -132,4 +132,26 @@ class AdmissionController extends BaseController
             return $this->sendError('Failed to delete student.', ['error' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Soft-delete multiple students at once.
+     * Only IDs belonging to the current scope are deleted.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'student_ids'   => 'required|array|min:1',
+            'student_ids.*' => 'integer|exists:students,id',
+        ]);
+
+        try {
+            $deleted = Student::whereIn('id', $request->student_ids)->delete();
+            return $this->sendResponse(
+                ['deleted' => $deleted],
+                "{$deleted} student(s) deleted successfully (recoverable)."
+            );
+        } catch (\Exception $e) {
+            return $this->sendError('Bulk delete failed.', ['error' => $e->getMessage()], 500);
+        }
+    }
 }

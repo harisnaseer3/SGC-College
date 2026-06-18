@@ -46,7 +46,7 @@ const StepDivider = () => <div className="flex-1 h-px bg-slate-200 mx-2" />;
 // ── Row preview table ────────────────────────────────────────────────────────
 
 const PreviewTable = ({ rows }) => {
-    const PREVIEW_COLS = ['first_name', 'last_name', 'email', 'phone', 'gender', 'program_id', 'campus_id', 'status'];
+    const PREVIEW_COLS = ['first_name', 'last_name', 'phone', 'gender', 'campus', 'program', 'semester', 'status'];
     const label = k => k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     return (
@@ -369,12 +369,19 @@ const ImportModal = ({ isOpen, onClose, onImported }) => {
                             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Required Columns</p>
                                 <div className="flex flex-wrap gap-1.5">
-                                    {['first_name','last_name','phone','gender','date_of_birth','address','religion',
-                                      'guardian_phone','admission_date','intake_session',
-                                      'campus_id','program_id','program_semester_id','academic_batch_id'].map(c => (
+                                    {[
+                                        'first_name','last_name','phone','gender','date_of_birth',
+                                        'guardian_phone','admission_date','intake_session',
+                                        'campus','program','semester','batch','status',
+                                    ].map(c => (
                                         <span key={c} className="px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-600">{c}</span>
                                     ))}
                                 </div>
+                                <p className="text-xs text-slate-400 mt-2">
+                                    Use campus/program <strong>names</strong>, semester <strong>number</strong> (e.g. 3),
+                                    batch <strong>name</strong> (e.g. Fall 2024-2028 (Batch-01)).
+                                    Dates accept <code className="bg-slate-100 px-1 rounded">YYYY-MM-DD</code> or <code className="bg-slate-100 px-1 rounded">31-Dec-24</code>.
+                                </p>
                             </div>
 
                             {error && (

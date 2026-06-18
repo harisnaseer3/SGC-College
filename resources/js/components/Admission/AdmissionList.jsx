@@ -37,6 +37,10 @@ const AdmissionList = () => {
     // Import Modal State
     const [importModalOpen, setImportModalOpen] = useState(false);
 
+    // Bulk Delete Confirm State
+    const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
+
     const [filters, setFilters] = useState({
         search: '',
         program_id: '',
@@ -100,6 +104,23 @@ const AdmissionList = () => {
         // Refresh students after bulk update so statuses are current
         fetchStudents();
         setSelectedIds([]);
+    };
+
+    const handleBulkDelete = async () => {
+        setBulkDeleting(true);
+        try {
+            await axios.delete('/api/admissions/bulk-delete', {
+                data: { student_ids: selectedIds },
+            });
+            setStudents(prev => prev.filter(s => !selectedIds.includes(s.id)));
+            setSelectedIds([]);
+            setBulkDeleteConfirm(false);
+        } catch (error) {
+            console.error('Bulk delete failed:', error);
+            alert(error.response?.data?.message || 'Bulk delete failed. Please try again.');
+        } finally {
+            setBulkDeleting(false);
+        }
     };
 
     const toggleSelectAll = (e) => {
@@ -260,18 +281,32 @@ const AdmissionList = () => {
                         Import CSV
                     </button>
                     {selectedIds.length > 0 && (
-                        <button
-                            onClick={() => setBulkModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 border border-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700 transition-all shadow-sm"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                            </svg>
-                            Update Status
-                            <span className="bg-white/25 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
-                                {selectedIds.length}
-                            </span>
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setBulkModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 border border-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700 transition-all shadow-sm"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                </svg>
+                                Update Status
+                                <span className="bg-white/25 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                                    {selectedIds.length}
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => setBulkDeleteConfirm(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 border border-rose-600 text-white font-semibold text-sm rounded-xl hover:bg-rose-700 transition-all shadow-sm"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete Selected
+                                <span className="bg-white/25 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                                    {selectedIds.length}
+                                </span>
+                            </button>
+                        </>
                     )}
                     <Button onClick={() => navigate('/new-admission')}>New Admission</Button>
                 </div>
@@ -479,6 +514,45 @@ const AdmissionList = () => {
                 onClose={() => setBulkModalOpen(false)}
                 onDone={handleBulkDone}
             />
+
+            {/* ── Bulk Delete Confirmation Modal ── */}
+            {bulkDeleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => !bulkDeleting && setBulkDeleteConfirm(false)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full p-8 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-rose-50 mx-auto mb-5">
+                            <svg className="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 text-center mb-2">Delete {selectedIds.length} Student{selectedIds.length !== 1 ? 's' : ''}?</h3>
+                        <p className="text-slate-500 text-center font-medium mb-6">
+                            This will soft-delete the selected records. They can be recovered later by an administrator.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setBulkDeleteConfirm(false)}
+                                disabled={bulkDeleting}
+                                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkDelete}
+                                disabled={bulkDeleting}
+                                className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {bulkDeleting ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        Deleting...
+                                    </>
+                                ) : `Yes, Delete ${selectedIds.length}`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
 
 
