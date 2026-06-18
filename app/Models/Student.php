@@ -18,6 +18,7 @@ class Student extends Model
         'academic_class_id',
         'section_id',
         'admission_number',
+        'registration_no',
         'roll_number',
         'first_name',
         'last_name',
@@ -57,12 +58,42 @@ class Student extends Model
                 }
             }
 
-            // Auto-generate admission_number per organization starting from 1001
+            // Auto-generate admission_number with format: ORG-PROG-YEAR-SEQ
             if (empty($student->admission_number) && $orgId) {
-                $max = static::withoutGlobalScopes()
+                $org = Organization::find($orgId);
+                $orgCode = $org ? strtoupper($org->slug ?: substr($org->name, 0, 3)) : 'ORG';
+
+                $program = Program::find($student->program_id);
+                $programCode = 'PROG';
+                if ($program) {
+                    $programCode = strtoupper(str_replace(' ', '-', $program->name));
+                    $programCode = preg_replace('/[^A-Z0-9\-]/', '', $programCode);
+                }
+
+                $batch = AcademicBatch::find($student->academic_batch_id);
+                $batchYear = date('y');
+                if ($batch && preg_match('/(\d{4})/', $batch->name, $matches)) {
+                    $batchYear = substr($matches[1], -2);
+                }
+
+                $prefix = "{$orgCode}-{$programCode}-{$batchYear}-";
+
+                // Find the maximum existing sequence number for this prefix
+                $maxAdmissionNumber = static::withoutGlobalScopes()
                     ->where('organization_id', $orgId)
-                    ->max(\DB::raw('CAST(admission_number AS UNSIGNED)'));
-                $student->admission_number = $max ? $max + 1 : 1001;
+                    ->where('admission_number', 'LIKE', "{$prefix}%")
+                    ->max('admission_number');
+
+                $nextSequence = 1;
+                if ($maxAdmissionNumber) {
+                    $parts = explode('-', $maxAdmissionNumber);
+                    $lastPart = end($parts);
+                    if (is_numeric($lastPart)) {
+                        $nextSequence = (int)$lastPart + 1;
+                    }
+                }
+
+                $student->admission_number = $prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
             }
 
             // Auto-generate roll_number per campus starting from 100

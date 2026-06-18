@@ -31,6 +31,8 @@ class StoreStudentRequest extends FormRequest
             'academic_batch_id'   => 'required|exists:academic_batches,id',
             'intake_session'      => 'required|in:Fall,Spring',
             'admission_number'    => 'nullable|string|unique:students,admission_number,' . $studentId,
+            'registration_no'     => 'nullable|string|max:255',
+            'roll_number'         => 'nullable|integer',
             'first_name'          => 'required|string|max:255',
             'last_name'           => 'required|string|max:255',
             'email'               => 'nullable|email|unique:students,email,' . $studentId,

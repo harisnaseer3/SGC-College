@@ -29,6 +29,8 @@ const NewAdmissionForm = () => {
         academic_batch_id: '',
         intake_session: '',
         admission_number: '',
+        registration_no: '',
+        roll_number: '',
         first_name: '',
         last_name: '',
         student_cnic: '',
@@ -82,13 +84,7 @@ const NewAdmissionForm = () => {
             const data = response.data.data;
             setFormOptions(data);
             
-            // Auto-fill admission number for new admissions
-            if (!isEdit && data.next_admission_number) {
-                setFormData(prev => ({ 
-                    ...prev, 
-                    admission_number: data.next_admission_number.toString() 
-                }));
-            }
+            // No auto-fill needed for dynamic format, it will show "Auto-generated" placeholder.
         } catch (error) {
             console.error('Error fetching form data:', error);
             showError('Failed to load form options.');
@@ -106,6 +102,8 @@ const NewAdmissionForm = () => {
                 academic_batch_id:   s.academic_batch_id || '',
                 intake_session:      s.intake_session || '',
                 admission_number:    s.admission_number || '',
+                registration_no:     s.registration_no || '',
+                roll_number:         s.roll_number || '',
                 first_name:          s.first_name || '',
                 last_name:           s.last_name || '',
                 student_cnic:        s.student_cnic || '',
@@ -293,6 +291,28 @@ const NewAdmissionForm = () => {
                                 onChange={handleChange} 
                                 className={`${inputCls} bg-slate-100 text-slate-500 cursor-not-allowed`} 
                                 readOnly 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className={labelCls}>Registration No <span className="text-slate-400 text-xs normal-case">(optional)</span></label>
+                            <input 
+                                type="text" 
+                                name="registration_no" 
+                                placeholder="e.g. REG-12345" 
+                                value={formData.registration_no} 
+                                onChange={handleChange} 
+                                className={inputCls} 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className={labelCls}>Roll No <span className="text-slate-400 text-xs normal-case">(optional)</span></label>
+                            <input 
+                                type="number" 
+                                name="roll_number" 
+                                placeholder="e.g. 100" 
+                                value={formData.roll_number} 
+                                onChange={handleChange} 
+                                className={inputCls} 
                             />
                         </div>
                         <div className="space-y-2">

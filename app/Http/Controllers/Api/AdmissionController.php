@@ -55,7 +55,7 @@ class AdmissionController extends BaseController
                 'sections' => Section::all(),
                 'programs' => Program::with('semesters')->get(),
                 'batches' => AcademicBatch::all(),
-                'next_admission_number' => $nextAdmissionNumber,
+                'next_admission_number' => null,
             ], 'Form data retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve form data.', ['error' => $e->getMessage()], 500);

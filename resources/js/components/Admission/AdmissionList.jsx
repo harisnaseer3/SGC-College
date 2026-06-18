@@ -175,6 +175,7 @@ const AdmissionList = () => {
     const exportToCSV = () => {
         const headers = [
             'Admission #',
+            'Registration No',
             'Roll Number',
             'First Name',
             'Last Name',
@@ -208,6 +209,7 @@ const AdmissionList = () => {
 
         const rows = filteredStudents.map(s => [
             s.admission_number ?? '',
+            s.registration_no ?? '',
             s.roll_number ?? '',
             s.first_name ?? '',
             s.last_name ?? '',
@@ -604,6 +606,7 @@ const AdmissionList = () => {
                                 <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Academic</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <DetailRow label="Admission #" value={selected.admission_number} />
+                                    <DetailRow label="Registration No" value={selected.registration_no} />
                                     <DetailRow label="Roll Number" value={selected.roll_number} />
                                     <DetailRow label="Program" value={selected.program?.name} />
                                     <DetailRow label="Semester" value={selected.program_semester ? `Semester ${selected.program_semester.semester_number}` : null} />
