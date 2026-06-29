@@ -84,8 +84,17 @@ class FeeStructureController extends BaseController
             $programId = $request->program_id ?: null;
             $batchId   = $request->academic_batch_id ?: null;
 
+            $name = $request->name;
+            if (!$name) {
+                $program = $programId ? \App\Models\Program::find($programId) : null;
+                $batch   = $batchId   ? \App\Models\AcademicBatch::find($batchId) : null;
+                $name    = ($program ? $program->name : 'General')
+                         . ($batch ? " - " . $batch->name : '')
+                         . ' Fee Structure';
+            }
+
             $feeStructure->update([
-                'name'               => $request->name,
+                'name'               => $name,
                 'campus_id'          => $campusId,
                 'program_id'         => $programId,
                 'academic_batch_id'  => $batchId,
@@ -106,6 +115,7 @@ class FeeStructureController extends BaseController
 
             return $this->sendResponse($feeStructure->load(['campus', 'items.feeHead']), 'Fee structure updated successfully.');
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('FeeStructure Update Error: ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
             DB::rollback();
             return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
         }

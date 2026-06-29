@@ -82,4 +82,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('student-fees/deposit', [StudentFeeController::class, 'deposit']);
     Route::get('student-fees/payments', [StudentFeeController::class, 'allPayments']);
     Route::get('student-fees/voucher-lookup/{voucherNumber}', [StudentFeeController::class, 'findByVoucher']);
+    
+    // Extra Income Module Routes
+    Route::apiResource('income-categories', App\Http\Controllers\Api\IncomeCategoryController::class);
+    Route::apiResource('extra-incomes', App\Http\Controllers\Api\ExtraIncomeController::class);
 });
