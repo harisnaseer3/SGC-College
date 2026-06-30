@@ -48,7 +48,8 @@ const AddIncomeCategoryModal = ({ isOpen, onClose, onSuccess, category = null })
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {
-                showError('Failed to save category');
+                const apiMessage = error.response?.data?.message;
+                showError(apiMessage || 'Failed to save category');
             }
         } finally {
             setIsSubmitting(false);

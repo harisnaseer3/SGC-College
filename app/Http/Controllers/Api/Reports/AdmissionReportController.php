@@ -2,13 +2,24 @@
 
 namespace App\Http\Controllers\Api\Reports;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Http\Controllers\Api\BaseController;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
-class AdmissionReportController extends BaseController
+class AdmissionReportController extends \App\Http\Controllers\Api\BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_admission_reports', only: ['byDate']),
+        ];
+    }
+
     /**
      * Get admission list filtered by date range.
      */

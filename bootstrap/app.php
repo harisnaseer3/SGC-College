@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\OrganizationScope::class,
         ]);
+        
+        $middleware->alias([
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
@@ -36,6 +42,15 @@ return Application::configure(basePath: dirname(__DIR__))
                         'message' => 'The given data was invalid.',
                         'errors' => $e->errors(),
                     ], 422);
+                }
+
+                // Explicit handling for permission/authorization exceptions
+                if ($e instanceof \Spatie\Permission\Exceptions\UnauthorizedException || 
+                    $e instanceof \Illuminate\Auth\Access\AuthorizationException) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Access Denied: You do not have permission to perform this action.',
+                    ], 403);
                 }
 
                 return response()->json([

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\CampusController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\ProgramController;
 use App\Http\Controllers\Api\CourseController;
 use App\Http\Controllers\Api\AcademicBatchController;
@@ -55,7 +56,9 @@ Route::middleware('auth:api')->group(function () {
 
     // User & Role Routes
     Route::apiResource('users', UserController::class);
-    Route::get('roles', [RoleController::class, 'index']);
+    Route::apiResource('roles', RoleController::class);
+    Route::post('roles/{role}/permissions', [RoleController::class, 'assignPermissions']);
+    Route::get('permissions', [PermissionController::class, 'index']);
 
     // Academic Module Routes
     Route::apiResource('programs', ProgramController::class);

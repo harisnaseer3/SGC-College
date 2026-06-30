@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreOrganizationRequest;
 use App\Http\Requests\Api\UpdateOrganizationRequest;
@@ -9,8 +12,19 @@ use App\Models\Organization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 
-class OrganizationController extends BaseController
+class OrganizationController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_organizations', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:create_organizations', only: ['store', 'generate', 'manualAssign']),
+            new Middleware('permission:edit_organizations', only: ['update', 'assignCourses']),
+            new Middleware('permission:delete_organizations', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     /**
      * Display a listing of the organizations.
      */

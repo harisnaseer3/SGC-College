@@ -2,10 +2,24 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Models\FeeFinePolicy;
 
-class FeeFinePolicyController extends BaseController
+class FeeFinePolicyController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_fee_fine_policies', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:create_fee_fine_policies', only: ['store', 'generate', 'manualAssign']),
+            new Middleware('permission:edit_fee_fine_policies', only: ['update', 'assignCourses']),
+            new Middleware('permission:delete_fee_fine_policies', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */

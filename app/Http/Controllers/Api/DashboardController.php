@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Models\Student;
 use App\Models\User;
 use App\Models\Campus;
@@ -9,8 +12,16 @@ use App\Models\Program;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class DashboardController extends BaseController
+class DashboardController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_stats', only: ['stats']),
+        ];
+    }
+
     public function stats()
     {
         try {

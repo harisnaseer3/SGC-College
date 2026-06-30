@@ -2,12 +2,26 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Models\FeeStructure;
 use App\Models\FeeStructureItem;
 use Illuminate\Support\Facades\DB;
 
-class FeeStructureController extends BaseController
+class FeeStructureController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_fee_structures', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:create_fee_structures', only: ['store', 'generate', 'manualAssign']),
+            new Middleware('permission:edit_fee_structures', only: ['update', 'assignCourses']),
+            new Middleware('permission:delete_fee_structures', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */

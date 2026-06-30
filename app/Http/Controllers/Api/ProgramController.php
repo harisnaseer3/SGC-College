@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -11,8 +14,19 @@ use App\Models\ProgramSemester;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
-class ProgramController extends BaseController
+class ProgramController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_programs', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:create_programs', only: ['store', 'generate', 'manualAssign']),
+            new Middleware('permission:edit_programs', only: ['update', 'assignCourses']),
+            new Middleware('permission:delete_programs', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     public function index(): JsonResponse
     {
         try {

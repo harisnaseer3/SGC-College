@@ -2,12 +2,28 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Models\StudentFee;
 use App\Services\FeeService;
 use Illuminate\Support\Facades\DB;
 
-class StudentFeeController extends BaseController
+class StudentFeeController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_student_fees', only: ['index', 'studentLedger', 'voucher', 'bulkVouchers', 'allPayments', 'findByVoucher']),
+            new Middleware('permission:create_student_fees', only: ['generate', 'manualAssign']),
+            new Middleware('permission:edit_student_fees', only: ['update']),
+            new Middleware('permission:pay_student_fees', only: ['deposit']),
+            new Middleware('permission:split_student_fees', only: ['split']),
+            new Middleware('permission:apply_fines', only: ['applyFines']),
+        ];
+    }
+
     protected $feeService;
 
     public function __construct(FeeService $feeService)

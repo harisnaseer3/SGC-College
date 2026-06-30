@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
@@ -9,8 +12,19 @@ use App\Http\Requests\Api\Academic\StoreBatchRequest;
 use App\Models\AcademicBatch;
 use Illuminate\Http\JsonResponse;
 
-class AcademicBatchController extends BaseController
+class AcademicBatchController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_academic_batches', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:create_academic_batches', only: ['store', 'generate', 'manualAssign']),
+            new Middleware('permission:edit_academic_batches', only: ['update', 'assignCourses']),
+            new Middleware('permission:delete_academic_batches', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     public function index(): JsonResponse
     {
         try {

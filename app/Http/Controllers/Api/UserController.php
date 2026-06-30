@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Requests\Api\StoreUserRequest;
@@ -9,8 +12,19 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
-class UserController extends BaseController
+class UserController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_users', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:create_users', only: ['store', 'generate', 'manualAssign']),
+            new Middleware('permission:edit_users', only: ['update', 'assignCourses']),
+            new Middleware('permission:delete_users', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */

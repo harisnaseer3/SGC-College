@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Models\Student;
 use App\Models\StudentStatusLog;
 use App\Http\Requests\Api\Admission\StoreStudentStatusRequest;
@@ -11,8 +14,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Services\FeeService;
 
-class StudentStatusController extends BaseController
+class StudentStatusController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:change_admission_status|edit_admissions', only: ['store', 'bulkStatus']),
+            new Middleware('permission:view_admissions', only: ['index']),
+        ];
+    }
+
     protected $feeService;
 
     public function __construct(FeeService $feeService)

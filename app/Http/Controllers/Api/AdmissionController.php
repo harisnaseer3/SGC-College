@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Models\AcademicClass;
 use App\Models\Campus;
 use App\Models\Section;
@@ -13,8 +16,19 @@ use Illuminate\Http\Request;
 use App\Http\Requests\Api\Admission\StoreStudentRequest;
 use App\Services\FeeService;
 
-class AdmissionController extends BaseController
+class AdmissionController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_admissions', only: ['index', 'show', 'getFormData']),
+            new Middleware('permission:create_admissions', only: ['store']),
+            new Middleware('permission:edit_admissions', only: ['update']),
+            new Middleware('permission:delete_admissions', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     protected $feeService;
 
     public function __construct(FeeService $feeService)

@@ -69,7 +69,8 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null }) => {
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
             } else {
-                showError('Failed to save income record');
+                const apiMessage = error.response?.data?.message;
+                showError(apiMessage || 'Failed to save extra income');
             }
         } finally {
             setIsSubmitting(false);

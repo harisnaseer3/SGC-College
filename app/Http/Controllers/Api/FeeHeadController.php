@@ -2,10 +2,24 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Models\FeeHead;
 
-class FeeHeadController extends BaseController
+class FeeHeadController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_fee_heads', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:create_fee_heads', only: ['store', 'generate', 'manualAssign']),
+            new Middleware('permission:edit_fee_heads', only: ['update', 'assignCourses']),
+            new Middleware('permission:delete_fee_heads', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */

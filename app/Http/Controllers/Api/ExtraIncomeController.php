@@ -2,12 +2,26 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Models\ExtraIncome;
 use App\Http\Requests\Api\ExtraIncome\StoreExtraIncomeRequest;
 use Illuminate\Http\Request;
 
-class ExtraIncomeController extends BaseController
+class ExtraIncomeController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_extra_incomes', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:create_extra_incomes', only: ['store', 'generate', 'manualAssign']),
+            new Middleware('permission:edit_extra_incomes', only: ['update', 'assignCourses']),
+            new Middleware('permission:delete_extra_incomes', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     public function index(Request $request)
     {
         $query = ExtraIncome::with(['incomeCategory', 'collectedBy'])->latest();

@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreCampusRequest;
 use App\Http\Requests\Api\UpdateCampusRequest;
@@ -10,8 +13,19 @@ use App\Models\Campus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 
-class CampusController extends BaseController
+class CampusController extends BaseController implements HasMiddleware
 {
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_campuses', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:create_campuses', only: ['store', 'generate', 'manualAssign']),
+            new Middleware('permission:edit_campuses', only: ['update', 'assignCourses']),
+            new Middleware('permission:delete_campuses', only: ['destroy', 'bulkDelete']),
+        ];
+    }
+
     /**
      * Check if the authenticated user is a super admin.
      */
