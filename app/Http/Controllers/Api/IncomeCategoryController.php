@@ -15,10 +15,10 @@ class IncomeCategoryController extends BaseController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:view_income_categories', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
-            new Middleware('permission:create_income_categories', only: ['store', 'generate', 'manualAssign']),
-            new Middleware('permission:edit_income_categories', only: ['update', 'assignCourses']),
-            new Middleware('permission:delete_income_categories', only: ['destroy', 'bulkDelete']),
+            new Middleware('permission:view_income_categories', only: ['index', 'show']),
+            new Middleware('permission:create_income_categories', only: ['store']),
+            new Middleware('permission:edit_income_categories', only: ['update']),
+            new Middleware('permission:delete_income_categories', only: ['destroy']),
         ];
     }
 

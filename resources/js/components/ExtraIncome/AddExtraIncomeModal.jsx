@@ -58,13 +58,14 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null }) => {
 
         try {
             if (income) {
-                await axios.put(`/api/extra-incomes/${income.id}`, formData);
+                const response = await axios.put(`/api/extra-incomes/${income.id}`, formData);
                 showSuccess('Income record updated successfully');
+                onSuccess(response.data.data.id);
             } else {
-                await axios.post('/api/extra-incomes', formData);
+                const response = await axios.post('/api/extra-incomes', formData);
                 showSuccess('Income record created successfully');
+                onSuccess(response.data.data.id);
             }
-            onSuccess();
         } catch (error) {
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);

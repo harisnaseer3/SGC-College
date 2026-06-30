@@ -95,10 +95,20 @@ const ExtraIncomeList = () => {
                                             {Number(income.amount).toLocaleString()}
                                         </td>
                                         <td className="py-3 px-4 text-slate-600">{income.payment_method}</td>
-                                        <td className="py-3 px-4 text-slate-600">{income.receipt_number || '-'}</td>
+                                        <td className="py-3 px-4 text-slate-600 font-medium">{income.receipt_number || `REC-${income.id}`}</td>
                                         <td className="py-3 px-4 text-slate-600">{income.collected_by?.name}</td>
                                         <td className="py-3 px-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => window.open(`/extra-income/receipt/${income.id}`, '_blank')}
+                                                    title="Print Receipt"
+                                                    className="p-2 text-slate-400 hover:text-indigo-600 transition-all rounded-xl hover:bg-indigo-50 border border-transparent hover:border-indigo-100"
+                                                >
+                                                    <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                    </svg>
+                                                </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -136,9 +146,12 @@ const ExtraIncomeList = () => {
                 <AddExtraIncomeModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
-                    onSuccess={() => {
+                    onSuccess={(newId) => {
                         setIsModalOpen(false);
                         fetchIncomes();
+                        if (newId && !editingIncome) {
+                            window.open(`/extra-income/receipt/${newId}`, '_blank');
+                        }
                     }}
                     income={editingIncome}
                 />

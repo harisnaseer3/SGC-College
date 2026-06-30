@@ -15,6 +15,7 @@ import AdmissionByDateReport from './Reports/AdmissionByDateReport';
 import FeeManagement from './Fees/FeeManagement';
 import FeeVoucher from './Fees/FeeVoucher';
 import ExtraIncomeManagement from './ExtraIncome/ExtraIncomeManagement';
+import ExtraIncomeReceipt from './ExtraIncome/ExtraIncomeReceipt';
 import AuthView from './Auth/AuthView';
 import InstituteSelection from './Auth/InstituteSelection';
 import ToastContainer from './UI/ToastContainer';
@@ -44,6 +45,7 @@ const AppContent = () => {
     return (
         <Routes>
             <Route path="/fees/voucher/:studentId" element={<FeeVoucher />} />
+            <Route path="/extra-income/receipt/:id" element={<ExtraIncomeReceipt />} />
             <Route
                 path="*"
                 element={

@@ -36,4 +36,9 @@ class ExtraIncome extends Model
     {
         return $this->belongsTo(User::class, 'collected_by');
     }
+
+    public function campus()
+    {
+        return $this->belongsTo(Campus::class);
+    }
 }
