@@ -51,7 +51,11 @@ class PermissionsSeeder extends Seeder
                 'view_extra_incomes', 'create_extra_incomes', 'edit_extra_incomes', 'delete_extra_incomes',
             ],
             
-            'reports' => ['view_admission_reports', 'view_fee_reports']
+            'reports' => ['view_admission_reports', 'view_fee_reports'],
+            
+            'system' => [
+                'view_backups', 'create_backups', 'download_backups', 'restore_backups', 'delete_backups'
+            ]
         ];
 
         // Create Permissions

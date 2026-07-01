@@ -91,4 +91,12 @@ Route::middleware('auth:api')->group(function () {
     // Extra Income Module Routes
     Route::apiResource('income-categories', App\Http\Controllers\Api\IncomeCategoryController::class);
     Route::apiResource('extra-incomes', App\Http\Controllers\Api\ExtraIncomeController::class);
+
+    // System Backups
+    Route::get('backups', [App\Http\Controllers\Api\BackupController::class, 'index']);
+    Route::post('backups', [App\Http\Controllers\Api\BackupController::class, 'store']);
+    Route::post('backups/upload', [App\Http\Controllers\Api\BackupController::class, 'upload']);
+    Route::get('backups/{backup}/download', [App\Http\Controllers\Api\BackupController::class, 'download']);
+    Route::post('backups/{backup}/restore', [App\Http\Controllers\Api\BackupController::class, 'restore']);
+    Route::delete('backups/{backup}', [App\Http\Controllers\Api\BackupController::class, 'destroy']);
 });

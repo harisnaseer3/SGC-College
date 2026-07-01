@@ -17,6 +17,7 @@ import FeeVoucher from './Fees/FeeVoucher';
 import FeePaymentReceipt from './Fees/FeePaymentReceipt';
 import ExtraIncomeManagement from './ExtraIncome/ExtraIncomeManagement';
 import ExtraIncomeReceipt from './ExtraIncome/ExtraIncomeReceipt';
+import BackupManagement from './System/BackupManagement';
 import AuthView from './Auth/AuthView';
 import InstituteSelection from './Auth/InstituteSelection';
 import ToastContainer from './UI/ToastContainer';
@@ -58,6 +59,7 @@ const AppContent = () => {
                             <Route path="/users/*" element={<UserManagement />} />
                             <Route path="/roles/*" element={<RoleManagement />} />
                             <Route path="/academic/*" element={<AcademicManagement />} />
+                            <Route path="/system/backups" element={<BackupManagement />} />
                             <Route path="/fees/*" element={<FeeManagement />} />
                             <Route path="/admissions" element={<AdmissionList />} />
                             <Route path="/new-admission" element={<NewAdmissionForm />} />
