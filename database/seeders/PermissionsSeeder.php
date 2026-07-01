@@ -43,6 +43,7 @@ class PermissionsSeeder extends Seeder
                 'view_fee_fine_policies', 'create_fee_fine_policies', 'edit_fee_fine_policies', 'delete_fee_fine_policies',
                 'view_student_fees', 'create_student_fees', 'edit_student_fees', 'delete_student_fees',
                 'pay_student_fees', 'split_student_fees', 'apply_fines',
+                'view_fee_receipts', 'create_fee_receipts', 'print_fee_receipts', 'delete_fee_receipts', 'manage_fee_receipts',
             ],
 
             'extra_income' => [
