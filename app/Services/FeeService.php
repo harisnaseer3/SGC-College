@@ -363,8 +363,8 @@ class FeeService
             'voucher_number' => $voucherNumber,
             'copy_names' => ["Parent's Copy", "School's Copy", "Bank's Copy"],
             'institution' => [
-                'name' => 'TIGES - River Bliss Campus', // In image
-                'location' => 'Muzaffarabad',
+                'name' => $student->campus->name ?? 'Campus Name',
+                'location' => $student->campus->location ?? 'Campus Location',
                 'logo_url' => $student->campus->logo_url,
             ],
             'academic' => [

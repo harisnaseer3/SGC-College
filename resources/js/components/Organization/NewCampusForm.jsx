@@ -191,7 +191,7 @@ const NewCampusForm = ({ organization, onSuccess, campus = null }) => {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Location / Address</label>
+                        <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Location / Address / City</label>
                         <input
                             type="text"
                             name="location"
