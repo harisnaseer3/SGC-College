@@ -13,7 +13,7 @@ const FeeReceiptList = () => {
         end_date: '',
         search: ''
     });
-    const { showError } = useNotifications();
+    const { showSuccess, showError } = useNotifications();
 
     useEffect(() => {
         fetchPayments();
@@ -38,6 +38,25 @@ const FeeReceiptList = () => {
             showError('Failed to fetch payments');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFilter = (e) => {
+        e.preventDefault();
+        fetchPayments();
+    };
+
+    const handleDeleteReceipt = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this receipt? This will reverse the payment transaction and restore the student\'s unpaid fee balances.')) {
+            return;
+        }
+
+        try {
+            await axios.delete(`/api/student-fees/payments/${id}`);
+            showSuccess('Receipt deleted and payment reversed successfully');
+            fetchPayments();
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to delete receipt');
         }
     };
 
@@ -102,6 +121,7 @@ const FeeReceiptList = () => {
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Method</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reference</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Deposited By</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Amount</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Actions</th>
                             </tr>
@@ -109,7 +129,7 @@ const FeeReceiptList = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-20 text-center">
+                                    <td colSpan="8" className="px-6 py-20 text-center">
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Receipts...</span>
@@ -133,14 +153,25 @@ const FeeReceiptList = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-slate-500 text-xs italic">{payment.transaction_id || 'N/A'}</td>
+                                        <td className="px-6 py-4 font-medium text-slate-700 text-sm">{payment.receiver?.name || '-'}</td>
                                         <td className="px-6 py-4 text-emerald-600 font-black text-right">Rs. {Number(payment.amount).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-center">
-                                            <button 
-                                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 
-                                                title="Print Receipt"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button 
+                                                    onClick={() => window.open(`/fees/receipt/${payment.id}`, '_blank')}
+                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 
+                                                    title="Print Receipt"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDeleteReceipt(payment.id)}
+                                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" 
+                                                    title="Delete Receipt & Reverse Transaction"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

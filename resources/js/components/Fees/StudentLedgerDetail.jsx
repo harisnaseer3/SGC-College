@@ -7,18 +7,23 @@ import Card from '../UI/Card';
 
 const getSemesterNumber = (admissionDateStr, dueDateStr) => {
     if (!admissionDateStr) return 1;
-    const admission = new Date(admissionDateStr);
+    const rawAdmission = new Date(admissionDateStr);
+    const startMonth = rawAdmission.getMonth() >= 6 ? 6 : 0;
+    const admission = new Date(rawAdmission.getFullYear(), startMonth, 1);
+    
     const due = new Date(dueDateStr);
-    if (due < admission) return 1;
-    const months = (due.getFullYear() - admission.getFullYear()) * 12 + (due.getMonth() - admission.getMonth());
+    const target = new Date(due.getFullYear(), due.getMonth(), 1);
+    
+    if (target < admission) return 1;
+    const months = (target.getFullYear() - admission.getFullYear()) * 12 + (target.getMonth() - admission.getMonth());
     return Math.floor(months / 6) + 1;
 };
 
 const getSemesterLabel = (admissionDateStr, semNum) => {
     if (!admissionDateStr) return `Semester ${semNum}`;
-    const admission = new Date(admissionDateStr);
-    const startMonth = admission.getMonth() >= 6 ? 6 : 0;
-    const semStartDate = new Date(admission.getFullYear(), startMonth, 1);
+    const rawAdmission = new Date(admissionDateStr);
+    const startMonth = rawAdmission.getMonth() >= 6 ? 6 : 0;
+    const semStartDate = new Date(rawAdmission.getFullYear(), startMonth, 1);
     semStartDate.setMonth(semStartDate.getMonth() + (semNum - 1) * 6);
     const term = semStartDate.getMonth() >= 6 ? 'Fall' : 'Spring';
     return `Semester ${semNum} (${term} ${semStartDate.getFullYear()})`;
@@ -94,7 +99,7 @@ const StudentLedgerDetail = () => {
                     </button>
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">Student Fee Ledger</h1>
-                        <p className="text-slate-500 text-sm">Detailed financial history for student ID: {studentId}</p>
+                        <p className="text-slate-500 text-sm">Detailed financial history for {ledger.student?.first_name} {ledger.student?.last_name} (ID: {studentId})</p>
                     </div>
                 </div>
                 <Button 
@@ -374,7 +379,10 @@ const StudentLedgerDetail = () => {
                                         <td className="px-6 py-4 text-slate-500 text-xs italic">{payment.transaction_id || 'N/A'}</td>
                                         <td className="px-6 py-4 text-emerald-600 font-black text-right">Rs. {Number(payment.amount).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-center">
-                                            <button className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4">
+                                            <button 
+                                                onClick={() => window.open(`/fees/receipt/${payment.id}`, '_blank')}
+                                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
+                                            >
                                                 Print
                                             </button>
                                         </td>

@@ -84,6 +84,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('student-fees/voucher/{student}', [StudentFeeController::class, 'voucher']);
     Route::post('student-fees/deposit', [StudentFeeController::class, 'deposit']);
     Route::get('student-fees/payments', [StudentFeeController::class, 'allPayments']);
+    Route::get('student-fees/payments/{payment}', [StudentFeeController::class, 'showPayment']);
+    Route::delete('student-fees/payments/{payment}', [StudentFeeController::class, 'destroyPayment']);
     Route::get('student-fees/voucher-lookup/{voucherNumber}', [StudentFeeController::class, 'findByVoucher']);
     
     // Extra Income Module Routes

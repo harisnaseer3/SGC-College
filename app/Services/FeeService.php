@@ -19,59 +19,72 @@ class FeeService
         $dueDate = $dueDate ? Carbon::parse($dueDate) : Carbon::now()->addDays(10);
         
         // 1. Fetch relevant structures
-        $query = FeeStructure::where('campus_id', $campusId);
-        if ($programId) $query->where('program_id', $programId);
-        if ($batchId) $query->where('academic_batch_id', $batchId);
-        
-        $structures = $query->with('items.feeHead')->get();
+        $structureQuery = FeeStructure::where('campus_id', $campusId);
+        if ($programId) $structureQuery->where('program_id', $programId);
+        if ($batchId) $structureQuery->where('academic_batch_id', $batchId);
+        $structures = $structureQuery->with('items.feeHead')->get();
 
         $generatedCount = 0;
 
-        foreach ($structures as $structure) {
-            // 2. Fetch students for this structure
-            $studentQuery = Student::where('campus_id', $campusId);
-            if ($structure->program_id) $studentQuery->where('program_id', $structure->program_id);
-            if ($structure->academic_batch_id) $studentQuery->where('academic_batch_id', $structure->academic_batch_id);
-            
-            $students = $studentQuery->get();
+        // 2. Fetch relevant students
+        $studentQuery = Student::where('campus_id', $campusId);
+        if ($programId) $studentQuery->where('program_id', $programId);
+        if ($batchId) $studentQuery->where('academic_batch_id', $batchId);
+        $students = $studentQuery->get();
 
-            foreach ($students as $student) {
-                // Determine which semester number this dueDate corresponds to for this student
-                $semNumber = $this->getStudentSemesterNumber($student, $dueDate);
-                [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
+        foreach ($students as $student) {
+            $semNumber = $this->getStudentSemesterNumber($student, $dueDate);
+            [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
+
+            // Deduplicate fee items across all applicable structures for this student
+            $itemsToApply = [];
+            foreach ($structures as $structure) {
+                // Check if structure applies to this student
+                if ($structure->program_id && $structure->program_id !== $student->program_id) continue;
+                if ($structure->academic_batch_id && $structure->academic_batch_id !== $student->academic_batch_id) continue;
 
                 foreach ($structure->items as $item) {
-                    $feeHead = $item->feeHead;
-                    $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
-                    $isSemester = ($feeHead->frequency === 'semester');
-
-                    if ($semNumber === 1) {
-                        if (!$isOneTime && !$isSemester) {
-                            continue;
-                        }
-                    } else {
-                        if (!$isSemester) {
-                            continue;
-                        }
+                    $name = $item->feeHead->name ?? $item->fee_head_id;
+                    if (!isset($itemsToApply[$name]) || $itemsToApply[$name]->amount < $item->amount) {
+                        $itemsToApply[$name] = $item;
                     }
-                    $exists = StudentFee::where('student_id', $student->id)
-                        ->where('fee_head_id', $item->fee_head_id)
-                        ->whereBetween('due_date', [$start, $end])
-                        ->exists();
+                }
+            }
 
-                    if (!$exists) {
-                        StudentFee::create([
-                            'organization_id' => $student->organization_id,
-                            'campus_id' => $student->campus_id,
-                            'student_id' => $student->id,
-                            'fee_head_id' => $item->fee_head_id,
-                            'amount' => $item->amount,
-                            'balance_amount' => $item->amount,
-                            'due_date' => $dueDate,
-                            'status' => 'unpaid'
-                        ]);
-                        $generatedCount++;
+            foreach ($itemsToApply as $item) {
+                $feeHead = $item->feeHead;
+                $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
+                $isSemester = ($feeHead->frequency === 'semester');
+
+                if ($semNumber === 1) {
+                    if (!$isOneTime && !$isSemester) {
+                        continue;
                     }
+                } else {
+                    if (!$isSemester) {
+                        continue;
+                    }
+                }
+                
+                $exists = StudentFee::where('student_id', $student->id)
+                    ->whereHas('feeHead', function($q) use ($feeHead) {
+                        $q->where('name', $feeHead->name);
+                    })
+                    ->whereBetween('due_date', [$start, $end])
+                    ->exists();
+
+                if (!$exists) {
+                    StudentFee::create([
+                        'organization_id' => $student->organization_id,
+                        'campus_id' => $student->campus_id,
+                        'student_id' => $student->id,
+                        'fee_head_id' => $item->fee_head_id,
+                        'amount' => $item->amount,
+                        'balance_amount' => $item->amount,
+                        'due_date' => $dueDate,
+                        'status' => 'unpaid'
+                    ]);
+                    $generatedCount++;
                 }
             }
         }
@@ -106,39 +119,49 @@ class FeeService
         $semNumber = $this->getStudentSemesterNumber($student, $dueDate);
         [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
 
+        $itemsToApply = [];
         foreach ($structures as $structure) {
             foreach ($structure->items as $item) {
-                $feeHead = $item->feeHead;
-                $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
-                $isSemester = ($feeHead->frequency === 'semester');
-
-                if ($semNumber === 1) {
-                    if (!$isOneTime && !$isSemester) {
-                        continue;
-                    }
-                } else {
-                    if (!$isSemester) {
-                        continue;
-                    }
+                $name = $item->feeHead->name ?? $item->fee_head_id;
+                if (!isset($itemsToApply[$name]) || $itemsToApply[$name]->amount < $item->amount) {
+                    $itemsToApply[$name] = $item;
                 }
-                $exists = StudentFee::where('student_id', $student->id)
-                    ->where('fee_head_id', $item->fee_head_id)
-                    ->whereBetween('due_date', [$start, $end])
-                    ->exists();
+            }
+        }
 
-                if (!$exists) {
-                    StudentFee::create([
-                        'organization_id' => $student->organization_id,
-                        'campus_id' => $student->campus_id,
-                        'student_id' => $student->id,
-                        'fee_head_id' => $item->fee_head_id,
-                        'amount' => $item->amount,
-                        'balance_amount' => $item->amount,
-                        'due_date' => $dueDate,
-                        'status' => 'unpaid'
-                    ]);
-                    $generatedCount++;
+        foreach ($itemsToApply as $item) {
+            $feeHead = $item->feeHead;
+            $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
+            $isSemester = ($feeHead->frequency === 'semester');
+
+            if ($semNumber === 1) {
+                if (!$isOneTime && !$isSemester) {
+                    continue;
                 }
+            } else {
+                if (!$isSemester) {
+                    continue;
+                }
+            }
+            $exists = StudentFee::where('student_id', $student->id)
+                ->whereHas('feeHead', function($q) use ($feeHead) {
+                    $q->where('name', $feeHead->name);
+                })
+                ->whereBetween('due_date', [$start, $end])
+                ->exists();
+
+            if (!$exists) {
+                StudentFee::create([
+                    'organization_id' => $student->organization_id,
+                    'campus_id' => $student->campus_id,
+                    'student_id' => $student->id,
+                    'fee_head_id' => $item->fee_head_id,
+                    'amount' => $item->amount,
+                    'balance_amount' => $item->amount,
+                    'due_date' => $dueDate,
+                    'status' => 'unpaid'
+                ]);
+                $generatedCount++;
             }
         }
 
@@ -193,40 +216,50 @@ class FeeService
             // Generate one new voucher number for the semester only if none exists
             $semVoucherNumber = $existingSemVoucher ?? $this->generateNextVoucherNumber();
 
+            $itemsToApply = [];
             foreach ($structures as $structure) {
                 foreach ($structure->items as $item) {
-                    $feeHead = $item->feeHead;
-                    $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
-                    $isSemester = ($feeHead->frequency === 'semester');
-
-                    if ($s === 1) {
-                        if (!$isOneTime && !$isSemester) {
-                            continue;
-                        }
-                    } else {
-                        if (!$isSemester) {
-                            continue;
-                        }
+                    $name = $item->feeHead->name ?? $item->fee_head_id;
+                    if (!isset($itemsToApply[$name]) || $itemsToApply[$name]->amount < $item->amount) {
+                        $itemsToApply[$name] = $item;
                     }
-                    $exists = StudentFee::where('student_id', $student->id)
-                        ->where('fee_head_id', $item->fee_head_id)
-                        ->whereBetween('due_date', [$start, $end])
-                        ->exists();
+                }
+            }
 
-                    if (!$exists) {
-                        StudentFee::create([
-                            'organization_id' => $student->organization_id,
-                            'campus_id'       => $student->campus_id,
-                            'student_id'      => $student->id,
-                            'fee_head_id'     => $item->fee_head_id,
-                            'amount'          => $item->amount,
-                            'balance_amount'  => $item->amount,
-                            'due_date'        => $dueDate,
-                            'status'          => 'unpaid',
-                            'voucher_number'  => $semVoucherNumber,
-                        ]);
-                        $generatedCount++;
+            foreach ($itemsToApply as $item) {
+                $feeHead = $item->feeHead;
+                $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
+                $isSemester = ($feeHead->frequency === 'semester');
+
+                if ($s === 1) {
+                    if (!$isOneTime && !$isSemester) {
+                        continue;
                     }
+                } else {
+                    if (!$isSemester) {
+                        continue;
+                    }
+                }
+                $exists = StudentFee::where('student_id', $student->id)
+                    ->whereHas('feeHead', function($q) use ($feeHead) {
+                        $q->where('name', $feeHead->name);
+                    })
+                    ->whereBetween('due_date', [$start, $end])
+                    ->exists();
+
+                if (!$exists) {
+                    StudentFee::create([
+                        'organization_id' => $student->organization_id,
+                        'campus_id'       => $student->campus_id,
+                        'student_id'      => $student->id,
+                        'fee_head_id'     => $item->fee_head_id,
+                        'amount'          => $item->amount,
+                        'balance_amount'  => $item->amount,
+                        'due_date'        => $dueDate,
+                        'status'          => 'unpaid',
+                        'voucher_number'  => $semVoucherNumber,
+                    ]);
+                    $generatedCount++;
                 }
             }
         }
@@ -426,7 +459,7 @@ class FeeService
                 'transaction_id' => $details['transaction_id'] ?? null,
                 'payment_date' => $details['payment_date'] ?? now(),
                 'receipt_number' => $receiptNumber,
-                'received_by' => auth()->id() ?? 1,
+                'received_by' => auth('api')->check() ? auth('api')->id() : (auth()->check() ? auth()->id() : 1),
             ]);
 
             // 2. Distribute among pending fees
@@ -478,13 +511,17 @@ class FeeService
         }
 
         $admissionDate = Carbon::parse($student->admission_date)->startOfMonth();
+        // Standardize the start month to the calendar semester (Jan or July) of the admission date
+        $startMonth = $admissionDate->month >= 7 ? 7 : 1;
+        $standardizedAdmission = $admissionDate->copy()->month($startMonth)->startOfMonth();
+
         $targetDate = $date->copy()->startOfMonth();
 
-        if ($targetDate->lt($admissionDate)) {
+        if ($targetDate->lt($standardizedAdmission)) {
             return 1;
         }
 
-        $diffInMonths = $admissionDate->diffInMonths($targetDate);
+        $diffInMonths = $standardizedAdmission->diffInMonths($targetDate);
         $semesterNumber = (int) floor($diffInMonths / 6) + 1;
 
         // Capped at program's total semesters if available

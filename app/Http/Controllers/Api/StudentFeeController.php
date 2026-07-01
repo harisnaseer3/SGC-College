@@ -385,6 +385,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
 
             return $this->sendResponse(['receipt_number' => $receiptNumber], 'Payment recorded successfully.');
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('deposit failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return $this->sendError('Failed to record payment.', ['error' => $e->getMessage()], 500);
         }
     }
@@ -450,6 +451,59 @@ class StudentFeeController extends BaseController implements HasMiddleware
             return $this->sendResponse($payments, 'Payments retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve payments.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get a specific fee payment.
+     */
+    public function showPayment($id)
+    {
+        try {
+            $payment = \App\Models\FeePayment::with(['student.program', 'student.campus', 'receiver', 'campus'])->findOrFail($id);
+            $payment->organization = \App\Models\Organization::find($payment->organization_id);
+            return $this->sendResponse($payment, 'Payment retrieved successfully.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('showPayment failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return $this->sendError('Failed to retrieve payment.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Delete a specific fee payment and reverse its distribution.
+     */
+    public function destroyPayment($id)
+    {
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $payment = \App\Models\FeePayment::findOrFail($id);
+            $amountToReverse = $payment->amount;
+
+            // Reverse the payment distribution (LIFO based on updated_at)
+            $fees = \App\Models\StudentFee::where('student_id', $payment->student_id)
+                ->where('paid_amount', '>', 0)
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            foreach ($fees as $fee) {
+                if ($amountToReverse <= 0) break;
+
+                $amountToDeduct = min($amountToReverse, $fee->paid_amount);
+                $fee->paid_amount -= $amountToDeduct;
+                $fee->save(); // Status recalculation handled by boot method
+
+                $amountToReverse -= $amountToDeduct;
+            }
+
+            // Delete the payment record
+            $payment->delete();
+
+            \Illuminate\Support\Facades\DB::commit();
+            return $this->sendResponse([], 'Payment receipt deleted successfully and transaction reversed.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollback();
+            \Illuminate\Support\Facades\Log::error('destroyPayment failed: ' . $e->getMessage());
+            return $this->sendError('Failed to delete payment.', ['error' => $e->getMessage()], 500);
         }
     }
 }

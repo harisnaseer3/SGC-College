@@ -33,6 +33,11 @@ class FeePayment extends Model
 
     public function receiver()
     {
-        return $this->belongsTo(User::class, 'received_by');
+        return $this->belongsTo(User::class, 'received_by')->withoutGlobalScopes();
+    }
+
+    public function campus()
+    {
+        return $this->belongsTo(Campus::class);
     }
 }

@@ -7,6 +7,7 @@ const FeeHeadManagement = () => {
     const [heads, setHeads] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         frequency: 'monthly',
@@ -31,16 +32,45 @@ const FeeHeadManagement = () => {
         }
     };
 
+    const handleEdit = (head) => {
+        setFormData({
+            name: head.name,
+            frequency: head.frequency,
+            frequency_name: head.frequency_name || '',
+            priority: head.priority || 0,
+            description: head.description || ''
+        });
+        setEditingId(head.id);
+        setShowForm(true);
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this fee head?')) return;
+        try {
+            await axios.delete(`/api/fee-heads/${id}`);
+            showSuccess('Fee head deleted successfully');
+            fetchHeads();
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to delete fee head');
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('/api/fee-heads', formData);
-            showSuccess('Fee head created successfully');
+            if (editingId) {
+                await axios.put(`/api/fee-heads/${editingId}`, formData);
+                showSuccess('Fee head updated successfully');
+            } else {
+                await axios.post('/api/fee-heads', formData);
+                showSuccess('Fee head created successfully');
+            }
             setShowForm(false);
+            setEditingId(null);
             fetchHeads();
             setFormData({ name: '', frequency: 'monthly', frequency_name: '', priority: 0, description: '' });
         } catch (error) {
-            showError(error.response?.data?.message || 'Failed to create fee head');
+            showError(error.response?.data?.message || 'Failed to save fee head');
         }
     };
 
@@ -57,7 +87,15 @@ const FeeHeadManagement = () => {
                     <h2 className="text-xl font-bold text-slate-800">Fee Heads</h2>
                     <p className="text-slate-500 text-sm">Define types of fees and their billing frequency.</p>
                 </div>
-                <Button onClick={() => setShowForm(!showForm)}>
+                <Button onClick={() => {
+                    if (showForm) {
+                        setShowForm(false);
+                        setEditingId(null);
+                        setFormData({ name: '', frequency: 'monthly', frequency_name: '', priority: 0, description: '' });
+                    } else {
+                        setShowForm(true);
+                    }
+                }}>
                     {showForm ? 'Cancel' : 'New Fee Head'}
                 </Button>
             </div>
@@ -124,7 +162,7 @@ const FeeHeadManagement = () => {
                             ></textarea>
                         </div>
                         <div className="md:col-span-2">
-                            <Button type="submit">Create Fee Head</Button>
+                            <Button type="submit">{editingId ? 'Update Fee Head' : 'Create Fee Head'}</Button>
                         </div>
                     </form>
                 </div>
@@ -138,12 +176,13 @@ const FeeHeadManagement = () => {
                             <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Name</th>
                             <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Frequency</th>
                             <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider">Frequency Name</th>
+                            <th className="px-6 py-4 text-sm font-bold text-slate-600 uppercase tracking-wider text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {heads.length === 0 ? (
                             <tr>
-                                <td colSpan="3" className="px-6 py-8 text-center text-slate-400 italic">No fee heads defined yet.</td>
+                                <td colSpan="5" className="px-6 py-8 text-center text-slate-400 italic">No fee heads defined yet.</td>
                             </tr>
                         ) : (
                             heads.map((head) => (
@@ -160,6 +199,28 @@ const FeeHeadManagement = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-slate-500">{head.frequency_name || '-'}</td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <button 
+                                                onClick={() => handleEdit(head)} 
+                                                title="Edit"
+                                                className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl border border-transparent hover:border-amber-100 transition-all"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1-10l-1.5 1.5M19 4a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDelete(head.id)} 
+                                                title="Delete"
+                                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-transparent hover:border-rose-100 transition-all"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))
                         )}
