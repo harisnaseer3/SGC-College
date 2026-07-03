@@ -110,6 +110,10 @@ class FeeService
                 $query->whereNull('program_id')
                       ->orWhere('program_id', $student->program_id);
             })
+            ->where(function ($query) use ($student) {
+                $query->whereNull('academic_batch_id')
+                      ->orWhere('academic_batch_id', $student->academic_batch_id);
+            })
             ->with('items.feeHead')
             ->get();
 
@@ -190,6 +194,10 @@ class FeeService
             ->where(function ($query) use ($student) {
                 $query->whereNull('program_id')
                       ->orWhere('program_id', $student->program_id);
+            })
+            ->where(function ($query) use ($student) {
+                $query->whereNull('academic_batch_id')
+                      ->orWhere('academic_batch_id', $student->academic_batch_id);
             })
             ->with('items.feeHead')
             ->get();
@@ -560,5 +568,42 @@ class FeeService
         [$start, $end] = $this->getStudentSemesterRange($student, $semesterNumber);
         $term = $start->month >= 7 ? 'Fall' : 'Spring';
         return "Semester {$semesterNumber} ({$term} {$start->year})";
+    }
+
+    /**
+     * Clean up any duplicate fees for the same semester to resolve live data issues.
+     */
+    public function removeDuplicateFees(Student $student)
+    {
+        $fees = StudentFee::where('student_id', $student->id)->get();
+        
+        $grouped = [];
+        foreach ($fees as $fee) {
+            $semNumber = $this->getStudentSemesterNumber($student, $fee->due_date);
+            // Key by fee_head, semester, amount, and remarks to safely distinguish splits
+            $key = $fee->fee_head_id . '_' . $semNumber . '_' . $fee->amount . '_' . ($fee->remarks ?? '');
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [];
+            }
+            $grouped[$key][] = $fee;
+        }
+
+        foreach ($grouped as $key => $duplicates) {
+            if (count($duplicates) > 1) {
+                // Sort so we keep the one that has the most paid amount
+                usort($duplicates, function($a, $b) {
+                    return $b->paid_amount <=> $a->paid_amount;
+                });
+                
+                // Keep the first, delete the rest
+                array_shift($duplicates);
+                foreach ($duplicates as $dup) {
+                    // Only delete if it has no payments
+                    if ($dup->paid_amount <= 0) {
+                        $dup->delete();
+                    }
+                }
+            }
+        }
     }
 }

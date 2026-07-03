@@ -210,6 +210,9 @@ class StudentFeeController extends BaseController implements HasMiddleware
 
             // Backfill any months that were never generated (e.g. student admitted in Jan, fees only generated for May)
             $this->feeService->backfillMissingFees($student);
+            
+            // Clean up any duplicates that might have been caused by previous bugs or race conditions
+            $this->feeService->removeDuplicateFees($student);
 
             $allFees = StudentFee::with('feeHead')
                 ->where('student_id', $studentId)
