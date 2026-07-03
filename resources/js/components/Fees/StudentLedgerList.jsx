@@ -19,15 +19,24 @@ const StudentLedgerList = () => {
         program_id: [],
         academic_batch_id: [],
         status: ['Enrolled'],
+        search: '',
     });
     const [selectedStudents, setSelectedStudents] = useState([]);
     const [printMonth, setPrintMonth] = useState(new Date().getMonth() + 1 >= 7 ? 7 : 1);
     const [printYear, setPrintYear] = useState(new Date().getFullYear());
+    const [searchTerm, setSearchTerm] = useState('');
     const { showSuccess, showError } = useNotifications();
 
     useEffect(() => {
         fetchInitialData();
     }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setFilterData(prev => ({ ...prev, search: searchTerm }));
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const fetchInitialData = async () => {
         try {
@@ -77,11 +86,21 @@ const StudentLedgerList = () => {
 
     useEffect(() => {
         fetchFees();
-    }, [filterData.campus_id, filterData.program_id, filterData.academic_batch_id, filterData.status, printMonth, printYear]);
+    }, [filterData.campus_id, filterData.program_id, filterData.academic_batch_id, filterData.status, filterData.search, printMonth, printYear]);
 
     return (
         <div className="space-y-6">
-            <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Search</label>
+                    <input
+                        type="text"
+                        placeholder="Name, Roll No, etc."
+                        className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Campus</label>
                     <select

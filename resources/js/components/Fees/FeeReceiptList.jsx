@@ -7,6 +7,7 @@ import Button from '../UI/Button';
 const FeeReceiptList = () => {
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [totalReceived, setTotalReceived] = useState(0);
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1 });
     const [filters, setFilters] = useState({
         start_date: '',
@@ -29,11 +30,13 @@ const FeeReceiptList = () => {
                 search: filters.search
             };
             const response = await axios.get('/api/student-fees/payments', { params });
-            setPayments(response.data.data.data);
+            const data = response.data.data;
+            setPayments(data.paginator.data);
             setPagination({
-                current_page: response.data.data.current_page,
-                last_page: response.data.data.last_page
+                current_page: data.paginator.current_page,
+                last_page: data.paginator.last_page
             });
+            setTotalReceived(data.total_amount);
         } catch (error) {
             showError('Failed to fetch payments');
         } finally {
@@ -112,6 +115,10 @@ const FeeReceiptList = () => {
 
             {/* List Section */}
             <Card className="overflow-hidden border-slate-200 shadow-sm">
+                <div className="p-4 bg-emerald-50 border-b border-emerald-100 flex justify-between items-center">
+                    <div className="text-sm font-bold text-emerald-900 uppercase tracking-widest">Total Received (Filtered)</div>
+                    <div className="text-xl font-black text-emerald-700">Rs. {Number(totalReceived).toLocaleString()}</div>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">

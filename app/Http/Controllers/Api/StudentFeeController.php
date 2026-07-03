@@ -64,6 +64,16 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 $query->where('admission_date', '<=', $date->toDateString());
             }
 
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('first_name', 'like', "%$search%")
+                      ->orWhere('last_name', 'like', "%$search%")
+                      ->orWhere('roll_number', 'like', "%$search%")
+                      ->orWhere('admission_number', 'like', "%$search%");
+                });
+            }
+
             $students = $query->withSum('studentFees as total_amount', 'amount')
                 ->withSum('studentFees as total_paid', 'paid_amount')
                 ->withSum('studentFees as total_balance', 'balance_amount')
@@ -449,9 +459,13 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 });
             }
 
+            $totalAmount = (clone $query)->sum('amount');
             $payments = $query->orderBy('payment_date', 'desc')->paginate($request->get('per_page', 20));
 
-            return $this->sendResponse($payments, 'Payments retrieved successfully.');
+            return $this->sendResponse([
+                'paginator' => $payments,
+                'total_amount' => $totalAmount
+            ], 'Payments retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve payments.', ['error' => $e->getMessage()], 500);
         }
