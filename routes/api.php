@@ -68,6 +68,7 @@ Route::middleware('auth:api')->group(function () {
 
     // Reports
     Route::get('/reports/admissions/by-date', [AdmissionReportController::class, 'byDate']);
+    Route::get('/reports/extra-income/by-date', [\App\Http\Controllers\Api\Reports\ExtraIncomeReportController::class, 'byDate']);
 
     // Fee Module Routes
     Route::apiResource('fee-heads', App\Http\Controllers\Api\FeeHeadController::class);

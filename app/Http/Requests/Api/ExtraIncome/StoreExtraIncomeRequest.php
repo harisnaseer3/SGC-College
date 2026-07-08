@@ -15,10 +15,10 @@ class StoreExtraIncomeRequest extends FormRequest
     {
         return [
             'income_category_id' => 'required|exists:income_categories,id',
+            'program_id' => 'required|exists:programs,id',
             'amount' => 'required|numeric|min:0',
             'date' => 'required|date',
             'payment_method' => 'required|string|max:50',
-            'receipt_number' => 'nullable|string|max:100',
             'remarks' => 'nullable|string',
         ];
     }

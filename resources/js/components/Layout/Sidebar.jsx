@@ -42,7 +42,15 @@ const Sidebar = () => {
         },
         { path: '/extra-income', name: 'Extra Income', icon: 'M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3z M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z M12 20c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z' },
         { path: '/admissions', name: 'Students', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
-        { path: '/reports/admissions-by-date', name: 'Reports', icon: 'M9 17v-2m3 2v-4m3 2v-6m-8 2.5L12 10.5l4.5 4.5m1.5-1.5V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3.5M9 5h6' },
+        { 
+            path: '/reports', 
+            name: 'Reports', 
+            icon: 'M9 17v-2m3 2v-4m3 2v-6m-8 2.5L12 10.5l4.5 4.5m1.5-1.5V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3.5M9 5h6',
+            subItems: [
+                { name: 'Admissions By Date', path: '/reports/admissions-by-date' },
+                { name: 'Extra Income By Date', path: '/reports/extra-income-by-date' }
+            ]
+        },
         { 
             path: '/system', 
             name: 'System', 

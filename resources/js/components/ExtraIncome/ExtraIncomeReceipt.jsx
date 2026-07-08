@@ -77,8 +77,8 @@ const ExtraIncomeReceipt = () => {
 
                 <div className="grid grid-cols-2 gap-8 mb-8">
                     <div>
-                        <p className="text-sm text-slate-500 mb-1">Receipt Number</p>
-                        <p className="font-bold text-slate-900">{data.receipt_number || `REC-${data.id}`}</p>
+                        <p className="text-sm text-slate-500 mb-1">Form Number</p>
+                        <p className="font-bold text-slate-900">{data.form_number}</p>
                     </div>
                     <div className="text-right">
                         <p className="text-sm text-slate-500 mb-1">Date</p>

@@ -40,6 +40,29 @@ class ExtraIncomeController extends BaseController implements HasMiddleware
         $data = $request->validated();
         $data['collected_by'] = auth()->id();
         
+        $year = date('y');
+        $program = \App\Models\Program::find($data['program_id']);
+        $programStr = $program ? $program->name : 'PROG';
+        $programStr = strtoupper(str_replace(' ', '', $programStr));
+        
+        // Find max number for this year and program
+        $latest = ExtraIncome::where('program_id', $data['program_id'])
+            ->whereYear('created_at', date('Y'))
+            ->orderBy('id', 'desc')
+            ->first();
+            
+        $nextNumber = 1;
+        if ($latest && $latest->form_number) {
+            $parts = explode('-', $latest->form_number);
+            if (count($parts) >= 2 && is_numeric($parts[1])) {
+                $nextNumber = intval($parts[1]) + 1;
+            } else {
+                $nextNumber = ExtraIncome::where('program_id', $data['program_id'])->whereYear('created_at', date('Y'))->count() + 1;
+            }
+        }
+        
+        $data['form_number'] = $year . '-' . str_pad($nextNumber, 2, '0', STR_PAD_LEFT) . '-' . $programStr;
+        
         $extraIncome = ExtraIncome::create($data);
         $extraIncome->load(['incomeCategory', 'collectedBy']);
         

@@ -12,6 +12,7 @@ import UserManagement from './User/UserManagement';
 import RoleManagement from './User/RoleManagement';
 import AcademicManagement from './Academic/AcademicManagement';
 import AdmissionByDateReport from './Reports/AdmissionByDateReport';
+import ExtraIncomeByDateReport from './Reports/ExtraIncomeByDateReport';
 import FeeManagement from './Fees/FeeManagement';
 import FeeVoucher from './Fees/FeeVoucher';
 import FeePaymentReceipt from './Fees/FeePaymentReceipt';
@@ -65,6 +66,7 @@ const AppContent = () => {
                             <Route path="/new-admission" element={<NewAdmissionForm />} />
                             <Route path="/edit-admission/:id" element={<NewAdmissionForm />} />
                             <Route path="/reports/admissions-by-date" element={<AdmissionByDateReport />} />
+                            <Route path="/reports/extra-income-by-date" element={<ExtraIncomeByDateReport />} />
                             <Route path="/extra-income/*" element={<ExtraIncomeManagement />} />
                             <Route path="/profile" element={<ProfileView />} />
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />

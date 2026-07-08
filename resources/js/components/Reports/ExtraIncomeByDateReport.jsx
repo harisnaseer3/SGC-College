@@ -6,16 +6,16 @@ import Button from '../UI/Button';
 import Card from '../UI/Card';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import StatusBadge from '../UI/StatusBadge';
 
-const AdmissionByDateReport = () => {
+const ExtraIncomeByDateReport = () => {
     const { selectedCampus, selectedOrganization } = useAuth();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
+    const [total, setTotal] = useState(0);
     const [campusDetails, setCampusDetails] = useState(null);
     const [filters, setFilters] = useState({
-        start_date: '2025-01-01', // Wide default starting range
-        end_date: new Date().toLocaleDateString('sv-SE')  // YYYY-MM-DD local
+        start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('sv-SE'),
+        end_date: new Date().toLocaleDateString('sv-SE')
     });
 
     const fetchReport = async () => {
@@ -25,9 +25,10 @@ const AdmissionByDateReport = () => {
                 ...filters,
                 campus_id: selectedCampus 
             };
-            const response = await axios.get('/api/reports/admissions/by-date', { params });
+            const response = await axios.get('/api/reports/extra-income/by-date', { params });
             if (response.data.success) {
-                setData(response.data.data.students || []);
+                setData(response.data.data.incomes || []);
+                setTotal(response.data.data.total || 0);
             }
         } catch (err) {
             console.error('Failed to fetch report:', err);
@@ -65,44 +66,39 @@ const AdmissionByDateReport = () => {
     };
 
     const columns = [
-        "Admission #",
-        "Student Name",
+        "Date",
+        "Form No",
+        "Category",
         "Program",
-        "Campus",
-        "Batch",
-        "Adm. Date",
-        "Status"
+        "Payment Method",
+        "Collected By",
+        "Amount"
     ];
 
     const renderRow = (item, index) => (
         <React.Fragment key={item?.id || index}>
-            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700">
-                {String(item?.admission_number || '—')}
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">
+                {new Date(item?.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs print:hidden">
-                        {String(item?.first_name?.[0] || '')}{String(item?.last_name?.[0] || '') || '?'}
-                    </div>
-                    <span className="text-sm font-semibold text-slate-900">
-                        {String(item?.first_name || '')} {String(item?.last_name || '')}
-                    </span>
-                </div>
+            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
+                {String(item?.form_number || '—')}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                    {String(item?.income_category?.name || '—')}
+                </span>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                 {String(item?.program?.name || '—')}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-medium">
-                {String(item?.campus?.name || '—')}
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                {String(item?.payment_method || '—')}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-medium">
-                {String(item?.academic_batch?.name || '—')}
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                {String(item?.collected_by?.name || '—')}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-medium">
-                {String(item?.admission_date || '—')}
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap">
-                <StatusBadge status={String(item?.status || '')} />
+            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">
+                {Number(item?.amount || 0).toLocaleString()}
             </td>
         </React.Fragment>
     );
@@ -118,13 +114,13 @@ const AdmissionByDateReport = () => {
         const worksheet = workbook.addWorksheet('Report');
 
         worksheet.columns = [
-            { width: 15 }, // Admission #
-            { width: 25 }, // Student Name
+            { width: 15 }, // Date
+            { width: 20 }, // Form No
+            { width: 25 }, // Category
             { width: 25 }, // Program
-            { width: 25 }, // Campus
-            { width: 20 }, // Batch
-            { width: 15 }, // Adm. Date
-            { width: 15 }  // Status
+            { width: 20 }, // Payment Method
+            { width: 25 }, // Collected By
+            { width: 15 }  // Amount
         ];
 
         const addMergedHeader = (text, size = 12, isBold = true) => {
@@ -138,12 +134,12 @@ const AdmissionByDateReport = () => {
 
         addMergedHeader("SGC Education", 16);
         addMergedHeader(campusDetails?.name || selectedOrganization?.name || 'CAMPUS REPORT', 14);
-        addMergedHeader("Admission by Date Report", 12);
+        addMergedHeader("Extra Income Report", 12);
         addMergedHeader(`Period: ${filters.start_date} to ${filters.end_date}`, 11, false);
         addMergedHeader(`Generated: ${new Date().toLocaleDateString()}`, 10, false);
         worksheet.addRow([]); // Empty row
 
-        const headerRow = worksheet.addRow(["Admission #", "Student Name", "Program", "Campus", "Batch", "Adm. Date", "Status"]);
+        const headerRow = worksheet.addRow(["Date", "Form No", "Category", "Program", "Payment Method", "Collected By", "Amount"]);
         headerRow.font = { bold: true };
         headerRow.eachCell(cell => {
             cell.alignment = { horizontal: 'center' };
@@ -152,23 +148,32 @@ const AdmissionByDateReport = () => {
 
         data.forEach(item => {
             const row = worksheet.addRow([
-                item.admission_number || '',
-                `${item.first_name || ''} ${item.last_name || ''}`.trim(),
+                new Date(item.date).toLocaleDateString('en-GB'),
+                item.form_number || '',
+                item.income_category?.name || '',
                 item.program?.name || '',
-                item.campus?.name || '',
-                item.academic_batch?.name || '',
-                item.admission_date || '',
-                item.status || ''
+                item.payment_method || '',
+                item.collected_by?.name || '',
+                Number(item.amount || 0)
             ]);
-            row.eachCell((cell, colNumber) => {
-                if (colNumber === 1 || colNumber === 6 || colNumber === 7) {
-                    cell.alignment = { horizontal: 'center' };
-                }
-            });
+            row.getCell(7).alignment = { horizontal: 'right' };
         });
 
+        // Add empty row before total
+        worksheet.addRow([]);
+        
+        const totalRow = worksheet.addRow(['Total Income', '', '', '', '', '', Number(total)]);
+        worksheet.mergeCells(`A${totalRow.number}:F${totalRow.number}`);
+        const totalLabelCell = totalRow.getCell(1);
+        totalLabelCell.font = { bold: true };
+        totalLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
+        
+        const totalAmountCell = totalRow.getCell(7);
+        totalAmountCell.font = { bold: true, color: { argb: 'FF4338CA' } };
+        totalAmountCell.alignment = { horizontal: 'right', vertical: 'middle' };
+
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `Admissions_Report_${filters.start_date}_to_${filters.end_date}.xlsx`);
+        saveAs(new Blob([buffer]), `Extra_Income_Report_${filters.start_date}_to_${filters.end_date}.xlsx`);
     };
 
     return (
@@ -176,8 +181,8 @@ const AdmissionByDateReport = () => {
             {/* Report Header - Screen Only */}
             <div className="flex items-center justify-between no-print">
                 <div>
-                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Admission by Date Report</h1>
-                    <p className="text-slate-500 text-sm mt-1 font-medium">View and filter admissions across a specific period.</p>
+                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Extra Income Report</h1>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">View and filter extra incomes across a specific period.</p>
                 </div>
                 <div className="flex gap-3">
                     <Button variant="secondary" onClick={handleExportExcel} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-800">
@@ -229,7 +234,7 @@ const AdmissionByDateReport = () => {
                 />
                 <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tighter">SGC Education</h1>
                 <h2 className="text-2xl font-bold text-slate-800 uppercase tracking-tight mt-1">{campusDetails?.name || selectedOrganization?.name || 'CAMPUS REPORT'}</h2>
-                <p className="text-lg font-bold text-slate-700 mt-4 uppercase tracking-widest bg-slate-100 px-4 py-1 rounded-full">Admission by Date Report</p>
+                <p className="text-lg font-bold text-slate-700 mt-4 uppercase tracking-widest bg-slate-100 px-4 py-1 rounded-full">Extra Income Report</p>
                 <div className="flex justify-center gap-6 mt-4 text-sm font-bold text-slate-500">
                     <span>PERIOD: {filters.start_date} TO {filters.end_date}</span>
                     <span>GENERATED: {new Date().toLocaleDateString()}</span>
@@ -237,15 +242,52 @@ const AdmissionByDateReport = () => {
             </div>
 
             {/* Report Data */}
-            <DataTable
-                columns={columns}
-                data={data}
-                loading={loading}
-                renderRow={renderRow}
-                emptyMessage="No admissions found for the selected date range."
-                className="print:shadow-none print:border-none"
-                printAll={true}
-            />
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-none">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200 print:bg-transparent">
+                                {columns.map((col, idx) => (
+                                    <th key={idx} className={`py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider ${col === 'Amount' ? 'text-right' : ''}`}>
+                                        {col}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={columns.length} className="py-8 text-center">
+                                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                    </td>
+                                </tr>
+                            ) : data.length === 0 ? (
+                                <tr>
+                                    <td colSpan={columns.length} className="py-8 text-center text-slate-500">
+                                        No extra income records found for the selected date range.
+                                    </td>
+                                </tr>
+                            ) : (
+                                <>
+                                    {data.map((item, index) => (
+                                        <tr key={item.id || index} className="hover:bg-slate-50/50 transition-colors">
+                                            {renderRow(item, index)}
+                                        </tr>
+                                    ))}
+                                    <tr className="bg-slate-50 print:bg-transparent border-t-2 border-slate-300">
+                                        <td colSpan={columns.length - 1} className="py-4 px-6 text-right font-bold text-slate-900 text-sm uppercase">
+                                            Total Income
+                                        </td>
+                                        <td className="py-4 px-6 text-right font-black text-indigo-700 text-lg">
+                                            Rs. {Number(total).toLocaleString()}
+                                        </td>
+                                    </tr>
+                                </>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             {/* Print Footer */}
             <div className="hidden print:flex justify-end mt-12 pt-8 border-t border-slate-200 text-xs font-bold text-slate-400">
@@ -255,4 +297,4 @@ const AdmissionByDateReport = () => {
     );
 };
 
-export default AdmissionByDateReport;
+export default ExtraIncomeByDateReport;

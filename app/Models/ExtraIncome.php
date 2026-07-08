@@ -13,11 +13,12 @@ class ExtraIncome extends Model
     protected $fillable = [
         'organization_id',
         'campus_id',
+        'program_id',
         'income_category_id',
         'amount',
         'date',
         'payment_method',
-        'receipt_number',
+        'form_number',
         'collected_by',
         'remarks',
     ];
@@ -40,5 +41,10 @@ class ExtraIncome extends Model
     public function campus()
     {
         return $this->belongsTo(Campus::class);
+    }
+
+    public function program()
+    {
+        return $this->belongsTo(Program::class);
     }
 }

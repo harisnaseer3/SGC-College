@@ -60,6 +60,10 @@
 }
 
 @media print {
+    @page {
+        margin: 0; /* Remove default browser headers and footers */
+    }
+
     /* Hide layout elements during print */
     aside,
     header,
@@ -73,7 +77,7 @@
         overflow: visible !important;
         background: white !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 0.5cm 0.5cm !important; /* Minimal padding */
     }
 
     /* Override flex layout of MainLayout */
