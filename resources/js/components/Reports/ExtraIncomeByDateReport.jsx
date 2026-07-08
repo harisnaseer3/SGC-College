@@ -13,6 +13,7 @@ const ExtraIncomeByDateReport = () => {
     const [data, setData] = useState([]);
     const [total, setTotal] = useState(0);
     const [campusDetails, setCampusDetails] = useState(null);
+    const [orgDetails, setOrgDetails] = useState(null);
     const [filters, setFilters] = useState({
         start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('sv-SE'),
         end_date: new Date().toLocaleDateString('sv-SE')
@@ -37,28 +38,35 @@ const ExtraIncomeByDateReport = () => {
         }
     };
 
-    const fetchCampusDetails = async () => {
-        if (!selectedCampus) {
-            setCampusDetails(null);
-            return;
-        }
+    const fetchDetails = async () => {
         try {
             const orgId = localStorage.getItem('selected_org_id');
-            if (orgId) {
+            if (!orgId) return;
+
+            // Fetch Organization Details
+            const orgRes = await axios.get(`/api/organizations/${orgId}`);
+            if (orgRes.data.success) {
+                setOrgDetails(orgRes.data.data);
+            }
+
+            // Fetch Campus Details if selected
+            if (selectedCampus) {
                 const response = await axios.get(`/api/organizations/${orgId}/campuses`);
                 const campuses = response.data.data?.data || response.data.data || [];
                 const active = campuses.find(c => String(c.id) === String(selectedCampus));
                 setCampusDetails(active || null);
+            } else {
+                setCampusDetails(null);
             }
         } catch (err) {
-            console.error('Failed to fetch campus details:', err);
+            console.error('Failed to fetch details:', err);
         }
     };
 
     useEffect(() => {
         fetchReport();
-        fetchCampusDetails();
-    }, [selectedCampus]);
+        fetchDetails();
+    }, [selectedCampus, selectedOrganization]);
 
     const handleApplyFilters = (e) => {
         if (e) e.preventDefault();
@@ -133,7 +141,7 @@ const ExtraIncomeByDateReport = () => {
         };
 
         addMergedHeader("SGC Education", 16);
-        addMergedHeader(campusDetails?.name || selectedOrganization?.name || 'CAMPUS REPORT', 14);
+        addMergedHeader(campusDetails?.name || orgDetails?.name || 'CAMPUS REPORT', 14);
         addMergedHeader("Extra Income Report", 12);
         addMergedHeader(`Period: ${filters.start_date} to ${filters.end_date}`, 11, false);
         addMergedHeader(`Generated: ${new Date().toLocaleDateString()}`, 10, false);
@@ -228,12 +236,12 @@ const ExtraIncomeByDateReport = () => {
             {/* Print Header - Visible only when printing */}
             <div className="hidden print:flex flex-col items-center mb-8 border-b-2 border-slate-900 pb-6 relative">
                 <img 
-                    src={campusDetails?.logo_url || selectedOrganization?.logo_url || '/assets/images/logo.png'} 
-                    alt="Campus Logo" 
+                    src={`${campusDetails?.logo_url || orgDetails?.logo_url || '/assets/images/logo.png'}?v=${new Date().getTime()}`} 
+                    alt="Logo" 
                     className="h-24 absolute left-0 top-0 object-contain"
                 />
                 <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tighter">SGC Education</h1>
-                <h2 className="text-2xl font-bold text-slate-800 uppercase tracking-tight mt-1">{campusDetails?.name || selectedOrganization?.name || 'CAMPUS REPORT'}</h2>
+                <h2 className="text-2xl font-bold text-slate-800 uppercase tracking-tight mt-1">{campusDetails?.name || orgDetails?.name || 'CAMPUS REPORT'}</h2>
                 <p className="text-lg font-bold text-slate-700 mt-4 uppercase tracking-widest bg-slate-100 px-4 py-1 rounded-full">Extra Income Report</p>
                 <div className="flex justify-center gap-6 mt-4 text-sm font-bold text-slate-500">
                     <span>PERIOD: {filters.start_date} TO {filters.end_date}</span>
