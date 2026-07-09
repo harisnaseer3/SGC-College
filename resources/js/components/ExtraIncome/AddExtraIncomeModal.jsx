@@ -22,8 +22,8 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
         const fetchData = async () => {
             try {
                 const [categoryRes, programRes] = await Promise.all([
-                    axios.get('/api/income-categories'),
-                    axios.get('/api/programs')
+                    axios.get('/api/income-categories?all=1'),
+                    axios.get('/api/programs?all=1')
                 ]);
                 setCategories(categoryRes.data.data);
                 setPrograms(programRes.data.data);

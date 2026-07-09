@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import DataTable from '../UI/DataTable';
 import Button from '../UI/Button';
+import Pagination from '../UI/Pagination';
 
 // Inline delete confirmation modal
 const DeleteConfirmModal = ({ campus, onConfirm, onCancel, loading }) => (
@@ -50,7 +51,7 @@ const DeleteConfirmModal = ({ campus, onConfirm, onCancel, loading }) => (
     </div>
 );
 
-const CampusList = ({ organization, campuses, loading, onAddNew, onBack, onEdit, onDelete, isSuperAdmin }) => {
+const CampusList = ({ organization, campuses, loading, onAddNew, onBack, onEdit, onDelete, isSuperAdmin, pagination, setPagination }) => {
     const [confirmCampus, setConfirmCampus] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -172,6 +173,15 @@ const CampusList = ({ organization, campuses, loading, onAddNew, onBack, onEdit,
                         </>
                     )}
                 />
+
+                {pagination?.total > 0 && (
+                    <Pagination 
+                        currentPage={pagination.current_page}
+                        totalItems={pagination.total}
+                        itemsPerPage={pagination.per_page}
+                        onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                    />
+                )}
             </div>
         </>
     );

@@ -46,7 +46,7 @@ class CampusController extends BaseController implements HasMiddleware
                 return $this->sendError('Unauthorized access to this organization.', [], 403);
             }
 
-            $campuses = $organization->campuses()->with('bankAccounts')->get();
+            $campuses = $organization->campuses()->with('bankAccounts')->paginate(10);
             return $this->sendResponse($campuses, 'Campuses retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve campuses.', ['error' => $e->getMessage()], 500);

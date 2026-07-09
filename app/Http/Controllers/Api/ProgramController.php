@@ -27,10 +27,14 @@ class ProgramController extends BaseController implements HasMiddleware
         ];
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         try {
-            $programs = Program::with('campus')->latest()->get();
+            if ($request->query('all')) {
+                $programs = Program::with('campus')->latest()->get();
+                return $this->sendResponse($programs, 'Programs retrieved successfully.');
+            }
+            $programs = Program::with('campus')->latest()->paginate(10);
             return $this->sendResponse($programs, 'Programs retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve programs.', ['error' => $e->getMessage()], 500);

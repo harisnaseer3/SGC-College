@@ -78,31 +78,32 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 ->withSum('studentFees as total_paid', 'paid_amount')
                 ->withSum('studentFees as total_balance', 'balance_amount')
                 ->orderBy('id', 'desc')
-                ->get()
-                ->map(function ($student) {
-                    $totalAmount = $student->total_amount ?? 0;
-                    $totalPaid = $student->total_paid ?? 0;
-                    $totalBalance = $student->total_balance ?? 0;
+                ->paginate(10);
 
-                    // Determine aggregated status
-                    $status = 'unpaid';
-                    if ($totalAmount == 0) {
-                        $status = 'no fees';
-                    } elseif ($totalBalance <= 0) {
-                        $status = 'paid';
-                    } elseif ($totalPaid > 0) {
-                        $status = 'partial';
-                    }
+            $students->getCollection()->transform(function ($student) {
+                $totalAmount = $student->total_amount ?? 0;
+                $totalPaid = $student->total_paid ?? 0;
+                $totalBalance = $student->total_balance ?? 0;
 
-                    return [
-                        'student_id' => $student->id,
-                        'student' => $student,
-                        'total_amount' => $totalAmount,
-                        'total_paid' => $totalPaid,
-                        'total_balance' => $totalBalance,
-                        'aggregated_status' => $status
-                    ];
-                });
+                // Determine aggregated status
+                $status = 'unpaid';
+                if ($totalAmount == 0) {
+                    $status = 'no fees';
+                } elseif ($totalBalance <= 0) {
+                    $status = 'paid';
+                } elseif ($totalPaid > 0) {
+                    $status = 'partial';
+                }
+
+                return [
+                    'student_id' => $student->id,
+                    'student' => $student,
+                    'total_amount' => $totalAmount,
+                    'total_paid' => $totalPaid,
+                    'total_balance' => $totalBalance,
+                    'aggregated_status' => $status
+                ];
+            });
 
             return $this->sendResponse($students, 'Student fee summaries retrieved successfully.');
         } catch (\Exception $e) {

@@ -45,18 +45,25 @@ const CampusManagement = ({ onBack }) => {
     const [organization, setOrganization] = useState(null);
     const [loading, setLoading] = useState(false);
     const [campuses, setCampuses] = useState([]);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
 
     const isSuperAdmin = user?.roles?.some(role => role.name === 'super_admin');
 
-    const fetchOrgAndCampuses = async () => {
+    const fetchOrgAndCampuses = async (page = 1) => {
         setLoading(true);
         try {
             const [orgRes, campusRes] = await Promise.all([
                 axios.get(`/api/organizations/${orgId}`),
-                axios.get(`/api/organizations/${orgId}/campuses`),
+                axios.get(`/api/organizations/${orgId}/campuses`, { params: { page } }),
             ]);
             setOrganization(orgRes.data.data);
-            setCampuses(campusRes.data.data);
+            setCampuses(campusRes.data.data.data);
+            setPagination({
+                current_page: campusRes.data.data.current_page,
+                last_page: campusRes.data.data.last_page,
+                total: campusRes.data.data.total,
+                per_page: campusRes.data.data.per_page
+            });
         } catch (error) {
             console.error('Failed to fetch campuses:', error);
         } finally {
@@ -65,11 +72,11 @@ const CampusManagement = ({ onBack }) => {
     };
 
     useEffect(() => {
-        fetchOrgAndCampuses();
-    }, [orgId]);
+        fetchOrgAndCampuses(pagination.current_page);
+    }, [orgId, pagination.current_page]);
 
     const handleCreateSuccess = () => {
-        fetchOrgAndCampuses();
+        fetchOrgAndCampuses(pagination.current_page);
         navigate(`/colleges/${orgId}/campuses`);
     };
 
@@ -107,6 +114,8 @@ const CampusManagement = ({ onBack }) => {
                         onEdit={(campus) => navigate(`${campus.id}/edit`)}
                         onDelete={handleDelete}
                         onBack={onBack}
+                        pagination={pagination}
+                        setPagination={setPagination}
                     />
                 } />
                 <Route path="new" element={

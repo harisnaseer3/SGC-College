@@ -39,7 +39,7 @@ class AdmissionController extends BaseController implements HasMiddleware
     public function index()
     {
         try {
-            $students = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch'])->latest()->get();
+            $students = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch'])->latest()->paginate(10);
             return $this->sendResponse($students, 'Students retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve students.', ['error' => $e->getMessage()], 500);

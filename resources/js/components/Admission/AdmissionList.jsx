@@ -8,6 +8,7 @@ import StatusBadge from '../UI/StatusBadge';
 import StatusUpdateModal from './Status/StatusUpdateModal';
 import BulkStatusUpdateModal from './Status/BulkStatusUpdateModal';
 import ImportModal from './ImportModal';
+import Pagination from '../UI/Pagination';
 
 const DetailRow = ({ label, value }) => value ? (
     <div className="flex flex-col gap-0.5">
@@ -21,6 +22,7 @@ const AdmissionList = () => {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     
     // Multi-select state
     const [selectedIds, setSelectedIds] = useState([]);
@@ -57,9 +59,12 @@ const AdmissionList = () => {
     });
 
     useEffect(() => {
-        fetchStudents();
         fetchOptions();
     }, []);
+
+    useEffect(() => {
+        fetchStudents(pagination.current_page);
+    }, [pagination.current_page]);
 
     const fetchOptions = async () => {
         try {
@@ -70,10 +75,16 @@ const AdmissionList = () => {
         }
     };
 
-    const fetchStudents = async () => {
+    const fetchStudents = async (page = 1) => {
         try {
-            const response = await axios.get('/api/admissions');
-            setStudents(response.data.data);
+            const response = await axios.get('/api/admissions', { params: { page } });
+            setStudents(response.data.data.data);
+            setPagination({
+                current_page: response.data.data.current_page,
+                last_page: response.data.data.last_page,
+                total: response.data.data.total,
+                per_page: response.data.data.per_page
+            });
         } catch (error) {
             console.error('Error fetching students:', error);
         } finally {
@@ -102,7 +113,7 @@ const AdmissionList = () => {
 
     const handleBulkDone = (result) => {
         // Refresh students after bulk update so statuses are current
-        fetchStudents();
+        fetchStudents(pagination.current_page);
         setSelectedIds([]);
     };
 
@@ -492,11 +503,20 @@ const AdmissionList = () => {
                 }}
             />
 
+            {pagination.total > 0 && (
+                <Pagination 
+                    currentPage={pagination.current_page}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.per_page}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                />
+            )}
+
             {/* ── Import Modal ── */}
             <ImportModal
                 isOpen={importModalOpen}
                 onClose={() => setImportModalOpen(false)}
-                onImported={fetchStudents}
+                onImported={() => fetchStudents(pagination.current_page)}
             />
 
             {/* ── Status Update Modal (single) ── */}

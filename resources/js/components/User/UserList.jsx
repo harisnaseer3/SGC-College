@@ -1,6 +1,7 @@
 import React from 'react';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
+import Pagination from '../UI/Pagination';
 
 const ucwords = (str) => {
     return str.toLowerCase().replace(/\b[a-z]/g, function(letter) {
@@ -8,7 +9,7 @@ const ucwords = (str) => {
     });
 };
 
-const UserList = ({ users, loading, onAddNew, onEdit, onDelete }) => {
+const UserList = ({ users, loading, onAddNew, onEdit, onDelete, pagination, setPagination }) => {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -98,6 +99,15 @@ const UserList = ({ users, loading, onAddNew, onEdit, onDelete }) => {
                         </tbody>
                     </table>
                 </div>
+                
+                {pagination?.total > 0 && (
+                    <Pagination 
+                        currentPage={pagination.current_page}
+                        totalItems={pagination.total}
+                        itemsPerPage={pagination.per_page}
+                        onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                    />
+                )}
             </Card>
         </div>
     );

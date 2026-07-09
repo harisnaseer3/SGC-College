@@ -22,9 +22,13 @@ class IncomeCategoryController extends BaseController implements HasMiddleware
         ];
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $categories = IncomeCategory::latest()->get();
+        if ($request->query('all')) {
+            $categories = IncomeCategory::latest()->get();
+            return $this->sendResponse($categories, 'Income Categories retrieved successfully.');
+        }
+        $categories = IncomeCategory::latest()->paginate(10);
         return $this->sendResponse($categories, 'Income Categories retrieved successfully.');
     }
 

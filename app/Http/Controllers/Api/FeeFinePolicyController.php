@@ -20,13 +20,14 @@ class FeeFinePolicyController extends BaseController implements HasMiddleware
         ];
     }
 
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $policies = FeeFinePolicy::with('feeHead')->get();
-        return $this->sendResponse($policies, 'Fee fine policies retrieved successfully.');
+        $policies = FeeFinePolicy::with('feeHead')->paginate(10);
+        return $this->sendResponse($policies, 'Fine policies retrieved successfully.');
     }
 
     /**

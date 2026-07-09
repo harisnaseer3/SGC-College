@@ -1,7 +1,8 @@
 import React from 'react';
 import Card from '../UI/Card';
+import Pagination from '../UI/Pagination';
 
-const RoleList = ({ roles, loading, onCreate, onEdit, onDelete, onManagePermissions }) => {
+const RoleList = ({ roles, loading, onCreate, onEdit, onDelete, onManagePermissions, pagination, setPagination }) => {
     return (
         <Card noPadding>
             <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -90,6 +91,15 @@ const RoleList = ({ roles, loading, onCreate, onEdit, onDelete, onManagePermissi
                     </tbody>
                 </table>
             </div>
+            
+            {pagination?.total > 0 && (
+                <Pagination 
+                    currentPage={pagination.current_page}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.per_page}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                />
+            )}
         </Card>
     );
 };

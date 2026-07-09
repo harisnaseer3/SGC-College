@@ -30,9 +30,16 @@ class ExtraIncomeController extends BaseController implements HasMiddleware
             $query->where('income_category_id', $request->category_id);
         }
         
-        $incomes = $query->get();
+        $total = (clone $query)->sum('amount');
+        $incomes = $query->paginate(10);
         
-        return $this->sendResponse($incomes, 'Extra Incomes retrieved successfully.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Extra Incomes retrieved successfully.',
+            'data' => $incomes,
+            'total_amount' => $total
+        ]);
+
     }
 
     public function store(StoreExtraIncomeRequest $request)

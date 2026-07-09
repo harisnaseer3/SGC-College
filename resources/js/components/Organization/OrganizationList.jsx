@@ -1,8 +1,9 @@
 import React from 'react';
 import DataTable from '../UI/DataTable';
 import Button from '../UI/Button';
+import Pagination from '../UI/Pagination';
 
-const OrganizationList = ({ organizations, loading, onAddNew, onEdit, onManageCampuses }) => {
+const OrganizationList = ({ organizations, loading, onAddNew, onEdit, onManageCampuses, pagination, setPagination }) => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -70,6 +71,15 @@ const OrganizationList = ({ organizations, loading, onAddNew, onEdit, onManageCa
                     </>
                 )}
             />
+
+            {pagination?.total > 0 && (
+                <Pagination 
+                    currentPage={pagination.current_page}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.per_page}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                />
+            )}
         </div>
     );
 };

@@ -50,6 +50,11 @@ class PermissionsSeeder extends Seeder
                 'view_income_categories', 'create_income_categories', 'edit_income_categories', 'delete_income_categories',
                 'view_extra_incomes', 'create_extra_incomes', 'edit_extra_incomes', 'delete_extra_incomes',
             ],
+
+            'extra_expense' => [
+                'view_expense_categories', 'create_expense_categories', 'edit_expense_categories', 'delete_expense_categories',
+                'view_expenses', 'create_expenses', 'edit_expenses', 'delete_expenses', 'change_expense_status',
+            ],
             
             'reports' => ['view_admission_reports', 'view_fee_reports'],
             

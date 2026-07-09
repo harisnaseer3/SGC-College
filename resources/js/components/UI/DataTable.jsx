@@ -10,20 +10,25 @@ const DataTable = ({
     renderRow,
     itemsPerPage = 10,
     className = "",
-    printAll = false
+    printAll = false,
+    pagination = null,
+    onPageChange = null
 }) => {
     const [currentPage, setCurrentPage] = useState(1);
 
     // Reset to page 1 when data changes (e.g. after a search/filter)
     useEffect(() => {
-        setCurrentPage(1);
-    }, [data.length]);
+        if (!pagination) setCurrentPage(1);
+    }, [data.length, pagination]);
 
-    const totalPages = Math.ceil(data.length / itemsPerPage);
-    const paginatedData = data.slice(
+    const isServerPaginated = pagination !== null;
+    const currentList = isServerPaginated ? data : data.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
+    const totalItems = isServerPaginated ? pagination.total : data.length;
+    const activePage = isServerPaginated ? pagination.current_page : currentPage;
+    const perPage = isServerPaginated ? pagination.per_page : itemsPerPage;
 
     return (
         <Card className={`overflow-hidden ${className}`}>
@@ -65,7 +70,7 @@ const DataTable = ({
                                     </td>
                                 </tr>
                             ) : (
-                                paginatedData.map((item, index) => (
+                                currentList.map((item, index) => (
                                     <tr key={item.id || index} className="hover:bg-slate-50/50 transition-colors group">
                                         {renderRow(item, index)}
                                     </tr>
@@ -75,12 +80,12 @@ const DataTable = ({
                     </table>
                 </div>
 
-                {!loading && data.length > 0 && (
+                {!loading && totalItems > 0 && (
                     <Pagination
-                        currentPage={currentPage}
-                        totalItems={data.length}
-                        itemsPerPage={itemsPerPage}
-                        onPageChange={setCurrentPage}
+                        currentPage={activePage}
+                        totalItems={totalItems}
+                        itemsPerPage={perPage}
+                        onPageChange={isServerPaginated ? onPageChange : setCurrentPage}
                     />
                 )}
             </div>

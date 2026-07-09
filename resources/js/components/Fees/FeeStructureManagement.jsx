@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
+import Pagination from '../UI/Pagination';
 
 const FeeStructureManagement = () => {
     const [structures, setStructures] = useState([]);
@@ -10,6 +11,7 @@ const FeeStructureManagement = () => {
     const [batches, setBatches] = useState([]);
     const [campuses, setCampuses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({
         campus_id: '',
@@ -22,20 +24,26 @@ const FeeStructureManagement = () => {
     const { showError, showSuccess } = useNotifications();
 
     useEffect(() => {
-        fetchInitialData();
-    }, []);
+        fetchInitialData(pagination.current_page);
+    }, [pagination.current_page]);
 
-    const fetchInitialData = async () => {
+    const fetchInitialData = async (page = 1) => {
         try {
             const [structRes, headRes, progRes, batchRes, campusRes] = await Promise.all([
-                axios.get('/api/fee-structures'),
+                axios.get('/api/fee-structures', { params: { page } }),
                 axios.get('/api/fee-heads'),
                 axios.get('/api/programs'),
                 axios.get('/api/academic-batches'),
                 axios.get('/api/admissions/form-data')
             ]);
-            setStructures(structRes.data.data);
-            setHeads(headRes.data.data);
+            setStructures(structRes.data.data.data);
+            setPagination({
+                current_page: structRes.data.data.current_page,
+                last_page: structRes.data.data.last_page,
+                total: structRes.data.data.total,
+                per_page: structRes.data.data.per_page
+            });
+            setHeads(headRes.data.data.data || headRes.data.data);
             setPrograms(progRes.data.data);
             setBatches(batchRes.data.data);
             setCampuses(campusRes.data.data.campuses);
@@ -77,7 +85,7 @@ const FeeStructureManagement = () => {
             }
             setShowForm(false);
             setEditingId(null);
-            fetchInitialData();
+            fetchInitialData(pagination.current_page);
             setFormData({ campus_id: '', program_id: '', academic_batch_id: '', items: [] });
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to save fee structure');
@@ -100,7 +108,7 @@ const FeeStructureManagement = () => {
         try {
             await axios.delete(`/api/fee-structures/${id}`);
             showSuccess('Fee structure deleted successfully');
-            fetchInitialData();
+            fetchInitialData(pagination.current_page);
         } catch (error) {
             showError('Failed to delete fee structure');
         }
@@ -302,6 +310,16 @@ const FeeStructureManagement = () => {
                     </tbody>
                 </table>
             </div>
+
+            {pagination.total > 0 && (
+                <Pagination 
+                    currentPage={pagination.current_page}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.per_page}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                />
+            )}
+            
             {/* View Details Modal */}
             {viewingStruct && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">

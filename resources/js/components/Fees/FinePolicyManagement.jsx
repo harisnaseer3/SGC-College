@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
+import Pagination from '../UI/Pagination';
 
 const FinePolicyManagement = () => {
     const [policies, setPolicies] = useState([]);
     const [heads, setHeads] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({
         fee_head_id: '',
@@ -17,17 +19,23 @@ const FinePolicyManagement = () => {
     const { showError, showSuccess } = useNotifications();
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        fetchData(pagination.current_page);
+    }, [pagination.current_page]);
 
-    const fetchData = async () => {
+    const fetchData = async (page = 1) => {
         try {
             const [policyRes, headRes] = await Promise.all([
-                axios.get('/api/fee-fine-policies'),
-                axios.get('/api/fee-heads')
+                axios.get('/api/fee-fine-policies', { params: { page } }),
+                axios.get('/api/fee-heads') // Heads don't need pagination for select dropdowns
             ]);
-            setPolicies(policyRes.data.data);
-            setHeads(headRes.data.data);
+            setPolicies(policyRes.data.data.data);
+            setPagination({
+                current_page: policyRes.data.data.current_page,
+                last_page: policyRes.data.data.last_page,
+                total: policyRes.data.data.total,
+                per_page: policyRes.data.data.per_page
+            });
+            setHeads(headRes.data.data.data || headRes.data.data);
         } catch (error) {
             showError('Failed to fetch data');
         } finally {
@@ -41,7 +49,7 @@ const FinePolicyManagement = () => {
             await axios.post('/api/fee-fine-policies', formData);
             showSuccess('Fine policy created successfully');
             setShowForm(false);
-            fetchData();
+            fetchData(pagination.current_page);
             setFormData({ fee_head_id: '', grace_days: 0, fine_amount: '', fine_type: 'fixed' });
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to create fine policy');
@@ -165,6 +173,15 @@ const FinePolicyManagement = () => {
                     </tbody>
                 </table>
             </div>
+
+            {pagination.total > 0 && (
+                <Pagination 
+                    currentPage={pagination.current_page}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.per_page}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                />
+            )}
         </div>
     );
 };

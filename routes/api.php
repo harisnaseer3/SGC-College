@@ -69,6 +69,7 @@ Route::middleware('auth:api')->group(function () {
     // Reports
     Route::get('/reports/admissions/by-date', [AdmissionReportController::class, 'byDate']);
     Route::get('/reports/extra-income/by-date', [\App\Http\Controllers\Api\Reports\ExtraIncomeReportController::class, 'byDate']);
+    Route::get('/reports/extra-expense/by-date', [\App\Http\Controllers\Api\Reports\ExtraExpenseReportController::class, 'byDate']);
 
     // Fee Module Routes
     Route::apiResource('fee-heads', App\Http\Controllers\Api\FeeHeadController::class);
@@ -92,6 +93,11 @@ Route::middleware('auth:api')->group(function () {
     // Extra Income Module Routes
     Route::apiResource('income-categories', App\Http\Controllers\Api\IncomeCategoryController::class);
     Route::apiResource('extra-incomes', App\Http\Controllers\Api\ExtraIncomeController::class);
+
+    // Extra Expense Management
+    Route::apiResource('expense-categories', App\Http\Controllers\Api\ExpenseCategoryController::class);
+    Route::apiResource('expenses', App\Http\Controllers\Api\ExpenseController::class);
+    Route::patch('expenses/{expense}/status', [App\Http\Controllers\Api\ExpenseController::class, 'updateStatus']);
 
     // System Backups
     Route::get('backups', [App\Http\Controllers\Api\BackupController::class, 'index']);

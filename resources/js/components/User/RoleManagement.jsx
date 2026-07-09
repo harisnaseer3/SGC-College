@@ -12,12 +12,19 @@ const RoleManagement = () => {
     const [isPermissionModalOpen, setPermissionModalOpen] = useState(false);
     const [isFormModalOpen, setFormModalOpen] = useState(false);
     const [selectedRole, setSelectedRole] = useState(null);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
 
-    const fetchRoles = async () => {
+    const fetchRoles = async (page = 1) => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/roles');
-            setRoles(response.data.data || []);
+            const response = await axios.get('/api/roles', { params: { page } });
+            setRoles(response.data.data.data || []);
+            setPagination({
+                current_page: response.data.data.current_page,
+                last_page: response.data.data.last_page,
+                total: response.data.data.total,
+                per_page: response.data.data.per_page
+            });
         } catch (error) {
             console.error('Error fetching roles:', error);
             showError('Failed to load roles.');
@@ -27,15 +34,15 @@ const RoleManagement = () => {
     };
 
     useEffect(() => {
-        fetchRoles();
-    }, []);
+        fetchRoles(pagination.current_page);
+    }, [pagination.current_page]);
 
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this role?')) return;
         try {
             await axios.delete(`/api/roles/${id}`);
             showSuccess('Role deleted successfully!');
-            fetchRoles();
+            fetchRoles(pagination.current_page);
         } catch (error) {
             const message = error.response?.data?.message || 'Error deleting role';
             showError(message);
@@ -66,13 +73,15 @@ const RoleManagement = () => {
                 onEdit={handleEditRole}
                 onDelete={handleDelete}
                 onManagePermissions={handleManagePermissions}
+                pagination={pagination}
+                setPagination={setPagination}
             />
 
             {isPermissionModalOpen && selectedRole && (
                 <RolePermissionsModal 
                     role={selectedRole}
                     onClose={() => setPermissionModalOpen(false)}
-                    onSaved={() => { setPermissionModalOpen(false); fetchRoles(); }}
+                    onSaved={() => { setPermissionModalOpen(false); fetchRoles(pagination.current_page); }}
                 />
             )}
 
@@ -80,7 +89,7 @@ const RoleManagement = () => {
                 <RoleFormModal
                     role={selectedRole}
                     onClose={() => setFormModalOpen(false)}
-                    onSaved={() => { setFormModalOpen(false); fetchRoles(); }}
+                    onSaved={() => { setFormModalOpen(false); fetchRoles(pagination.current_page); }}
                 />
             )}
         </div>

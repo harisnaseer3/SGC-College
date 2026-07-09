@@ -13,11 +13,13 @@ import RoleManagement from './User/RoleManagement';
 import AcademicManagement from './Academic/AcademicManagement';
 import AdmissionByDateReport from './Reports/AdmissionByDateReport';
 import ExtraIncomeByDateReport from './Reports/ExtraIncomeByDateReport';
+import ExtraExpenseByDateReport from './Reports/ExtraExpenseByDateReport';
 import FeeManagement from './Fees/FeeManagement';
 import FeeVoucher from './Fees/FeeVoucher';
 import FeePaymentReceipt from './Fees/FeePaymentReceipt';
 import ExtraIncomeManagement from './ExtraIncome/ExtraIncomeManagement';
 import ExtraIncomeReceipt from './ExtraIncome/ExtraIncomeReceipt';
+import ExtraExpenseManagement from './ExtraExpense/ExtraExpenseManagement';
 import BackupManagement from './System/BackupManagement';
 import AuthView from './Auth/AuthView';
 import InstituteSelection from './Auth/InstituteSelection';
@@ -67,7 +69,9 @@ const AppContent = () => {
                             <Route path="/edit-admission/:id" element={<NewAdmissionForm />} />
                             <Route path="/reports/admissions-by-date" element={<AdmissionByDateReport />} />
                             <Route path="/reports/extra-income-by-date" element={<ExtraIncomeByDateReport />} />
+                            <Route path="/reports/extra-expense-by-date" element={<ExtraExpenseByDateReport />} />
                             <Route path="/extra-income/*" element={<ExtraIncomeManagement />} />
+                            <Route path="/extra-expense/*" element={<ExtraExpenseManagement />} />
                             <Route path="/profile" element={<ProfileView />} />
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
                             <Route path="*" element={<Navigate to="/dashboard" replace />} />

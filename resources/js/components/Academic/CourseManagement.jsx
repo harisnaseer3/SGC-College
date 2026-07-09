@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
+import Pagination from '../UI/Pagination';
 
 const EMPTY = { name: '', credit_hours: 3, code: '', description: '' };
 
@@ -10,18 +11,25 @@ const inputCls = 'w-full p-2 border border-slate-300 rounded-lg focus:ring-2 foc
 const CourseManagement = () => {
     const [courses, setCourses]      = useState([]);
     const [loading, setLoading]      = useState(true);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [showForm, setShowForm]    = useState(false);
     const [editing, setEditing]      = useState(null);
     const [formData, setFormData]    = useState(EMPTY);
     const [saving, setSaving]        = useState(false);
     const { showError, showSuccess } = useNotifications();
 
-    useEffect(() => { fetchCourses(); }, []);
+    useEffect(() => { fetchCourses(pagination.current_page); }, [pagination.current_page]);
 
-    const fetchCourses = async () => {
+    const fetchCourses = async (page = 1) => {
         try {
-            const res = await axios.get('/api/courses');
-            setCourses(res.data.data);
+            const res = await axios.get('/api/courses', { params: { page } });
+            setCourses(res.data.data.data);
+            setPagination({
+                current_page: res.data.data.current_page,
+                last_page: res.data.data.last_page,
+                total: res.data.data.total,
+                per_page: res.data.data.per_page
+            });
         } catch { showError('Failed to fetch courses'); }
         finally { setLoading(false); }
     };
@@ -46,7 +54,7 @@ const CourseManagement = () => {
                 showSuccess('Course created successfully');
             }
             closeForm();
-            fetchCourses();
+            fetchCourses(pagination.current_page);
         } catch (err) {
             showError(err.response?.data?.message || 'Failed to save course');
         } finally { setSaving(false); }
@@ -153,6 +161,15 @@ const CourseManagement = () => {
                     </tbody>
                 </table>
             </div>
+
+            {pagination.total > 0 && (
+                <Pagination 
+                    currentPage={pagination.current_page}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.per_page}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                />
+            )}
         </div>
     );
 };

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
+import Pagination from '../UI/Pagination';
 
 const FeeHeadManagement = () => {
     const [heads, setHeads] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({
@@ -18,13 +20,19 @@ const FeeHeadManagement = () => {
     const { showError, showSuccess } = useNotifications();
 
     useEffect(() => {
-        fetchHeads();
-    }, []);
+        fetchHeads(pagination.current_page);
+    }, [pagination.current_page]);
 
-    const fetchHeads = async () => {
+    const fetchHeads = async (page = 1) => {
         try {
-            const response = await axios.get('/api/fee-heads');
-            setHeads(response.data.data);
+            const response = await axios.get('/api/fee-heads', { params: { page } });
+            setHeads(response.data.data.data);
+            setPagination({
+                current_page: response.data.data.current_page,
+                last_page: response.data.data.last_page,
+                total: response.data.data.total,
+                per_page: response.data.data.per_page
+            });
         } catch (error) {
             showError('Failed to fetch fee heads');
         } finally {
@@ -49,7 +57,7 @@ const FeeHeadManagement = () => {
         try {
             await axios.delete(`/api/fee-heads/${id}`);
             showSuccess('Fee head deleted successfully');
-            fetchHeads();
+            fetchHeads(pagination.current_page);
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to delete fee head');
         }
@@ -67,7 +75,7 @@ const FeeHeadManagement = () => {
             }
             setShowForm(false);
             setEditingId(null);
-            fetchHeads();
+            fetchHeads(pagination.current_page);
             setFormData({ name: '', frequency: 'monthly', frequency_name: '', priority: 0, description: '' });
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to save fee head');
@@ -227,6 +235,15 @@ const FeeHeadManagement = () => {
                     </tbody>
                 </table>
             </div>
+
+            {pagination.total > 0 && (
+                <Pagination 
+                    currentPage={pagination.current_page}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.per_page}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                />
+            )}
         </div>
     );
 };

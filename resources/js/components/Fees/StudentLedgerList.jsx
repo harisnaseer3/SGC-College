@@ -11,6 +11,7 @@ const StudentLedgerList = () => {
     const [programs, setPrograms] = useState([]);
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
     const [showProgramDropdown, setShowProgramDropdown] = useState(false);
     const [showBatchDropdown, setShowBatchDropdown] = useState(false);
@@ -63,10 +64,18 @@ const StudentLedgerList = () => {
                 program_id: filterData.program_id.join(','),
                 academic_batch_id: filterData.academic_batch_id.join(','),
                 month: printMonth,
-                year: printYear
+                year: printYear,
+                page: pagination.current_page
             };
             const response = await axios.get('/api/student-fees', { params });
-            setFees(response.data.data || []);
+            const data = response.data.data;
+            setFees(data.data || []);
+            setPagination({
+                current_page: data.current_page,
+                last_page: data.last_page,
+                total: data.total,
+                per_page: data.per_page
+            });
         } catch (error) {
             showError('Failed to fetch fee records');
         } finally {
@@ -86,7 +95,7 @@ const StudentLedgerList = () => {
 
     useEffect(() => {
         fetchFees();
-    }, [filterData.campus_id, filterData.program_id, filterData.academic_batch_id, filterData.status, filterData.search, printMonth, printYear]);
+    }, [filterData.campus_id, filterData.program_id, filterData.academic_batch_id, filterData.status, filterData.search, printMonth, printYear, pagination.current_page]);
 
     return (
         <div className="space-y-6">
@@ -283,6 +292,8 @@ const StudentLedgerList = () => {
                 data={fees}
                 loading={loading}
                 emptyMessage="No students found."
+                pagination={pagination.total > 0 ? pagination : null}
+                onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
                 renderRow={(fee) => (
                     <>
                         <td className="px-6 py-4">

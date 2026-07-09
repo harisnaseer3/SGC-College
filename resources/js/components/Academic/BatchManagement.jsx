@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
+import Pagination from '../UI/Pagination';
 
 const EMPTY = { name: '', is_active: true, campus_id: '' };
 
@@ -10,6 +11,7 @@ const inputCls = 'w-full p-2 border border-slate-300 rounded-lg focus:ring-2 foc
 const BatchManagement = () => {
     const [batches, setBatches]       = useState([]);
     const [loading, setLoading]       = useState(true);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [showForm, setShowForm]     = useState(false);
     const [editing, setEditing]       = useState(null);
     const [campuses, setCampuses]     = useState([]);
@@ -17,12 +19,19 @@ const BatchManagement = () => {
     const [saving, setSaving]         = useState(false);
     const { showSuccess, showError }  = useNotifications();
 
-    useEffect(() => { fetchBatches(); fetchCampuses(); }, []);
+    useEffect(() => { fetchBatches(pagination.current_page); }, [pagination.current_page]);
+    useEffect(() => { fetchCampuses(); }, []);
 
-    const fetchBatches = async () => {
+    const fetchBatches = async (page = 1) => {
         try {
-            const res = await axios.get('/api/academic-batches');
-            setBatches(res.data.data);
+            const res = await axios.get('/api/academic-batches', { params: { page } });
+            setBatches(res.data.data.data);
+            setPagination({
+                current_page: res.data.data.current_page,
+                last_page: res.data.data.last_page,
+                total: res.data.data.total,
+                per_page: res.data.data.per_page
+            });
         } catch { showError('Failed to fetch batches'); }
         finally { setLoading(false); }
     };
@@ -54,7 +63,7 @@ const BatchManagement = () => {
                 showSuccess('Batch created successfully');
             }
             closeForm();
-            fetchBatches();
+            fetchBatches(pagination.current_page);
         } catch (err) {
             showError(err.response?.data?.message || 'Failed to save batch');
         } finally { setSaving(false); }
@@ -166,6 +175,15 @@ const BatchManagement = () => {
                     </tbody>
                 </table>
             </div>
+
+            {pagination.total > 0 && (
+                <Pagination 
+                    currentPage={pagination.current_page}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.per_page}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                />
+            )}
         </div>
     );
 };

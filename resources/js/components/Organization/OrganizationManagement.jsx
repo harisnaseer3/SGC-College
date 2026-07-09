@@ -37,12 +37,19 @@ const OrganizationManagement = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [organizations, setOrganizations] = useState([]);
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
 
-    const fetchOrganizations = async () => {
+    const fetchOrganizations = async (page = 1) => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/organizations');
-            setOrganizations(response.data.data);
+            const response = await axios.get('/api/organizations', { params: { page } });
+            setOrganizations(response.data.data.data);
+            setPagination({
+                current_page: response.data.data.current_page,
+                last_page: response.data.data.last_page,
+                total: response.data.data.total,
+                per_page: response.data.data.per_page
+            });
         } catch (error) {
             console.error('Failed to fetch organizations:', error);
         } finally {
@@ -51,11 +58,11 @@ const OrganizationManagement = () => {
     };
 
     useEffect(() => {
-        fetchOrganizations();
-    }, []);
+        fetchOrganizations(pagination.current_page);
+    }, [pagination.current_page]);
 
     const handleCreateSuccess = () => {
-        fetchOrganizations();
+        fetchOrganizations(pagination.current_page);
         navigate('/organizations');
     };
 
@@ -69,6 +76,8 @@ const OrganizationManagement = () => {
                         onAddNew={() => navigate('new')}
                         onEdit={(org) => navigate(`${org.id}/edit`)}
                         onManageCampuses={(org) => navigate(`${org.id}/campuses`)}
+                        pagination={pagination}
+                        setPagination={setPagination}
                     />
                 } />
                 <Route path="new" element={

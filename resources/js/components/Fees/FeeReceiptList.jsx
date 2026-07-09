@@ -3,12 +3,13 @@ import axios from 'axios';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Card from '../UI/Card';
 import Button from '../UI/Button';
+import Pagination from '../UI/Pagination';
 
 const FeeReceiptList = () => {
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [totalReceived, setTotalReceived] = useState(0);
-    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1 });
+    const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [filters, setFilters] = useState({
         start_date: '',
         end_date: '',
@@ -34,7 +35,9 @@ const FeeReceiptList = () => {
             setPayments(data.paginator.data);
             setPagination({
                 current_page: data.paginator.current_page,
-                last_page: data.paginator.last_page
+                last_page: data.paginator.last_page,
+                total: data.paginator.total,
+                per_page: data.paginator.per_page
             });
             setTotalReceived(data.total_amount);
         } catch (error) {
@@ -194,30 +197,13 @@ const FeeReceiptList = () => {
                 </div>
 
                 {/* Pagination */}
-                {pagination.last_page > 1 && (
-                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-                        <div className="text-xs font-bold text-slate-500 uppercase">
-                            Page {pagination.current_page} of {pagination.last_page}
-                        </div>
-                        <div className="flex gap-2">
-                            <Button 
-                                variant="secondary" 
-                                size="sm" 
-                                disabled={pagination.current_page === 1}
-                                onClick={() => setPagination({ ...pagination, current_page: pagination.current_page - 1 })}
-                            >
-                                Previous
-                            </Button>
-                            <Button 
-                                variant="secondary" 
-                                size="sm" 
-                                disabled={pagination.current_page === pagination.last_page}
-                                onClick={() => setPagination({ ...pagination, current_page: pagination.current_page + 1 })}
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
+                {pagination.total > 0 && (
+                    <Pagination 
+                        currentPage={pagination.current_page}
+                        totalItems={pagination.total}
+                        itemsPerPage={pagination.per_page}
+                        onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                    />
                 )}
             </Card>
         </div>
