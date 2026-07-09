@@ -239,6 +239,7 @@ const StudentLedgerDetail = () => {
                                                         setAdjustment({ 
                                                             discount_amount: fee.discount_amount || 0, 
                                                             fine_amount: fee.fine_amount || 0, 
+                                                            due_date: fee.due_date ? fee.due_date.substring(0, 10) : '',
                                                             discount_type: 'fixed',
                                                             apply_to_all: false 
                                                         });
@@ -438,6 +439,15 @@ const StudentLedgerDetail = () => {
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
                                     value={adjustment.fine_amount}
                                     onChange={(e) => setAdjustment({ ...adjustment, fine_amount: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Due Date</label>
+                                <input 
+                                    type="date" 
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    value={adjustment.due_date || ''}
+                                    onChange={(e) => setAdjustment({ ...adjustment, due_date: e.target.value })}
                                 />
                             </div>
                             <div className="flex items-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100">

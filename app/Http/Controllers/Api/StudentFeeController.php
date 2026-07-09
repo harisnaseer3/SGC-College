@@ -271,12 +271,23 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     ->get();
                 
                 foreach ($fees as $fee) {
-                    $actualDiscount = ($discountType === 'percentage') 
-                        ? ($fee->amount * $discountVal) / 100 
-                        : $discountVal;
+                    $updates = [];
+                    if ($request->filled('due_date')) {
+                        $updates['due_date'] = $request->due_date;
+                    }
+                    if ($request->filled('fine_amount')) {
+                        $updates['fine_amount'] = $request->fine_amount;
+                    }
+                    if ($request->has('discount_amount') || $request->has('discount_type')) {
+                        $actualDiscount = ($discountType === 'percentage') 
+                            ? ($fee->amount * $discountVal) / 100 
+                            : $discountVal;
+                        $updates['discount_amount'] = $actualDiscount;
+                    }
 
-                    $fee->discount_amount = $actualDiscount;
-                    $fee->save();
+                    if (!empty($updates)) {
+                        $fee->update($updates);
+                    }
                 }
             } else {
                 if ($discountType === 'percentage') {
