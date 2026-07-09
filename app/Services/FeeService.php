@@ -567,7 +567,7 @@ class FeeService
     {
         [$start, $end] = $this->getStudentSemesterRange($student, $semesterNumber);
         $term = $start->month >= 7 ? 'Fall' : 'Spring';
-        return "Semester {$semesterNumber} ({$term} {$start->year})";
+        return "{$term} {$start->year}";
     }
 
     /**

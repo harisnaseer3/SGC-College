@@ -26,7 +26,7 @@ const getSemesterLabel = (admissionDateStr, semNum) => {
     const semStartDate = new Date(rawAdmission.getFullYear(), startMonth, 1);
     semStartDate.setMonth(semStartDate.getMonth() + (semNum - 1) * 6);
     const term = semStartDate.getMonth() >= 6 ? 'Fall' : 'Spring';
-    return `Semester ${semNum} (${term} ${semStartDate.getFullYear()})`;
+    return `${term} ${semStartDate.getFullYear()}`;
 };
 
 const StudentLedgerDetail = () => {

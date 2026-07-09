@@ -78,13 +78,13 @@ class StudentImportController extends BaseController
                 'not specified',   // guardian_cnic  ("not specified" → null)
                 '2024-CINR-0017',  // admission_no   (keep as-is, stored in admission_number)
                 '24867910015',     // roll_no         (11-digit format e.g. 24867910015)
-                '31-Dec-24',       // admission_date (DD-Mon-YY supported)
-                'Fall',            // intake_session
+                '01-jan-25',       // admission_date (DD-Mon-YY supported)
+                'Spring',            // intake_session
                 'no',              // is_transfer    (yes/no/true/false/1/0)
                 'CICON 6th Road Campus', // campus   (exact campus name)
                 'GBSN',            // program        (exact program name or code)
-                '3',               // semester       (number; "3rd", "3" all work)
-                'Fall 2024-2028 (Batch-01)', // batch      (exact batch name)
+                '1',               // semester       (number; "3rd", "3" all work)
+                'Spring 2025-2029 (Batch-01)', // batch      (exact batch name)
                 'Enrolled',        // status
             ]);
             fclose($handle);
@@ -310,6 +310,23 @@ class StudentImportController extends BaseController
         foreach (['guardian_name', 'guardian_phone', 'guardian_cnic', 'address', 'religion', 'student_cnic', 'email', 'admission_no', 'roll_no'] as $col) {
             if (isset($out[$col])) {
                 $out[$col] = $this->nullIfPlaceholder($out[$col]);
+            }
+        }
+
+        // ── Normalise intake session ─────────────────────────────────────────
+        $intakeRaw = trim($data['intake_session'] ?? '');
+        $intakeLower = strtolower($intakeRaw);
+        if (str_contains($intakeLower, 'spring') || str_contains($intakeLower, 'jan') || str_contains($intakeLower, 'feb') || str_contains($intakeLower, 'mar') || str_contains($intakeLower, 'apr') || str_contains($intakeLower, 'may') || str_contains($intakeLower, 'jun')) {
+            $out['intake_session'] = 'Spring';
+        } elseif (str_contains($intakeLower, 'fall') || str_contains($intakeLower, 'jul') || str_contains($intakeLower, 'aug') || str_contains($intakeLower, 'sep') || str_contains($intakeLower, 'oct') || str_contains($intakeLower, 'nov') || str_contains($intakeLower, 'dec')) {
+            $out['intake_session'] = 'Fall';
+        } else {
+            // Auto-detect based on admission date if text doesn't match
+            if (!empty($out['admission_date'])) {
+                $month = (int) date('m', strtotime($out['admission_date']));
+                $out['intake_session'] = $month >= 7 ? 'Fall' : 'Spring';
+            } else {
+                $out['intake_session'] = ucfirst($intakeLower);
             }
         }
 
