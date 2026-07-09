@@ -432,11 +432,12 @@ class FeeService
 
         return [
             'voucher_number' => $voucherNumber,
-            'copy_names' => ["Parent's Copy", "School's Copy", "Bank's Copy"],
+            'copy_names' => ["Finance's Copy", "Student's Copy", "Bank's Copy"],
             'institution' => [
                 'name' => $student->campus->name ?? 'Campus Name',
                 'location' => $student->campus->location ?? 'Campus Location',
                 'logo_url' => $student->campus->logo_url,
+                'payment_terms' => $student->campus->payment_terms ?? "Note:\nPayment Terms\nA fine of Rs. 200 will be charged if the fee is not paid by the due date.\nA fine of Rs. 500 will be applicable if the payment remains unpaid in the following month",
             ],
             'academic' => [
                 'voucher_number' => $voucherNumber,

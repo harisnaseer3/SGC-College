@@ -19,6 +19,7 @@ class Campus extends Model
         'account_title',
         'account_number',
         'branch_code',
+        'payment_terms',
     ];
 
     public function organization()

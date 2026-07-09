@@ -17,6 +17,7 @@ const NewCampusForm = ({ organization, onSuccess, campus = null }) => {
         location:       campus?.location       || '',
         code:           campus?.code           || '',
         status:         campus?.status         || 'active',
+        payment_terms:  campus?.payment_terms  || '',
         bank_accounts:  campus?.bank_accounts?.length > 0 ? campus.bank_accounts : [{ bank_name: '', account_title: '', account_number: '', branch_code: '' }],
     });
     const [loading, setLoading] = useState(false);
@@ -228,6 +229,22 @@ const NewCampusForm = ({ organization, onSuccess, campus = null }) => {
                             className={`w-full px-4 py-3 rounded-xl border ${errors.location ? 'border-red-500 animate-shake' : 'border-slate-200'} focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none bg-slate-50 font-medium`}
                         />
                         {errors.location && <p className="text-red-500 text-xs font-bold mt-1 uppercase tracking-tight">{errors.location[0]}</p>}
+                    </div>
+
+                    <div className="space-y-4 p-6 bg-slate-100/50 rounded-2xl border border-slate-200/50">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Fee Voucher Payment Terms</h3>
+                        <p className="text-xs text-slate-500 mb-4 font-medium">These terms will be dynamically printed on the bottom of the fee vouchers. Leave blank to use the default terms.</p>
+                        
+                        <div className="space-y-2">
+                            <textarea
+                                name="payment_terms"
+                                value={formData.payment_terms}
+                                onChange={handleChange}
+                                placeholder="e.g. A fine of Rs. 200 will be charged if the fee is not paid by the due date."
+                                className={`w-full px-4 py-3 rounded-xl border ${errors.payment_terms ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-medium min-h-[100px] resize-y`}
+                            />
+                            {errors.payment_terms && <p className="text-red-500 text-xs font-bold mt-1 uppercase">{errors.payment_terms[0]}</p>}
+                        </div>
                     </div>
 
                     <div className="space-y-4 p-6 bg-slate-100/50 rounded-2xl border border-slate-200/50">

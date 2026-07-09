@@ -31,6 +31,7 @@ class UpdateCampusRequest extends FormRequest
             'bank_accounts.*.account_title' => 'required_with:bank_accounts|string|max:255',
             'bank_accounts.*.account_number' => 'required_with:bank_accounts|string|max:255',
             'bank_accounts.*.branch_code' => 'nullable|string|max:100',
+            'payment_terms' => 'nullable|string',
         ];
     }
 }

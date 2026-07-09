@@ -317,11 +317,10 @@ const VoucherCopy = ({ copyName, data }) => {
                 <span className="v-value">{data.summary.payable_after_due_date}</span>
             </div>
 
-            <div className="v-note">
+            <div className="v-note" style={{ whiteSpace: 'pre-wrap' }}>
                 <strong>Note:</strong><br/>
                 Payment Terms<br/>
-                A fine of Rs. 200 will be charged if the fee is not paid by the due date.<br/>
-                A fine of Rs. 500 will be applicable if the payment remains unpaid in the following month.
+                {data.institution.payment_terms}
             </div>
 
             <div className="v-bank-info">
