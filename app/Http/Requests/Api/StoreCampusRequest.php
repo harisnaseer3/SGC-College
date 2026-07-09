@@ -26,6 +26,11 @@ class StoreCampusRequest extends FormRequest
             'location' => 'nullable|string|max:255',
             'code' => 'nullable|string|max:50',
             'status' => 'nullable|in:active,inactive',
+            'bank_accounts' => 'nullable|array',
+            'bank_accounts.*.bank_name' => 'required_with:bank_accounts|string|max:255',
+            'bank_accounts.*.account_title' => 'required_with:bank_accounts|string|max:255',
+            'bank_accounts.*.account_number' => 'required_with:bank_accounts|string|max:255',
+            'bank_accounts.*.branch_code' => 'nullable|string|max:100',
         ];
     }
 }

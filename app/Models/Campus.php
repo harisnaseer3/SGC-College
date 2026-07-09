@@ -25,4 +25,9 @@ class Campus extends Model
     {
         return $this->belongsTo(Organization::class);
     }
+
+    public function bankAccounts()
+    {
+        return $this->hasMany(CampusBankAccount::class);
+    }
 }

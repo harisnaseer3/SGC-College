@@ -20,7 +20,8 @@ const FeeDeposit = () => {
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: 'Cash',
         reference_no: '',
-        remarks: ''
+        remarks: '',
+        selected_bank_account_id: ''
     });
 
     // Fetch students based on search
@@ -64,7 +65,11 @@ const FeeDeposit = () => {
                 student: data.student,
                 total_balance: data.total_balance
             });
-            setFormData(prev => ({ ...prev, amount: data.total_balance }));
+            setFormData(prev => ({ 
+                ...prev, 
+                amount: data.total_balance,
+                selected_bank_account_id: data.student?.campus?.bank_accounts?.[0]?.id || ''
+            }));
         } catch (error) {
             showError(error.response?.data?.message || 'Voucher not found');
         } finally {
@@ -77,11 +82,24 @@ const FeeDeposit = () => {
         if (!selectedStudent) return;
 
         setSubmitting(true);
+        
+        // Append bank details to remarks if it's a bank transfer
+        let finalRemarks = formData.remarks;
+        if (formData.payment_method !== 'Cash' && formData.selected_bank_account_id) {
+            const bankAccounts = selectedStudent.student?.campus?.bank_accounts || [];
+            const selectedAcc = bankAccounts.find(acc => acc.id.toString() === formData.selected_bank_account_id.toString());
+            
+            if (selectedAcc) {
+                finalRemarks = `Deposited into: ${selectedAcc.bank_name} (A/C: ${selectedAcc.account_number})\n${finalRemarks}`.trim();
+            }
+        }
+
         try {
             const response = await axios.post('/api/student-fees/deposit', {
                 student_id: selectedStudent.student_id,
                 voucher_number: searchMode === 'voucher' ? voucherNo : null,
-                ...formData
+                ...formData,
+                remarks: finalRemarks
             });
             showSuccess(`Payment of Rs. ${formData.amount} recorded successfully. Receipt: ${response.data.data.receipt_number}`);
             resetForm();
@@ -102,7 +120,8 @@ const FeeDeposit = () => {
             payment_date: new Date().toISOString().split('T')[0],
             payment_method: 'Cash',
             reference_no: '',
-            remarks: ''
+            remarks: '',
+            selected_bank_account_id: ''
         });
     };
 
@@ -168,7 +187,11 @@ const FeeDeposit = () => {
                                         key={fee.student_id}
                                         onClick={() => {
                                             setSelectedStudent(fee);
-                                            setFormData(prev => ({ ...prev, amount: fee.total_balance }));
+                                            setFormData(prev => ({ 
+                                                ...prev, 
+                                                amount: fee.total_balance,
+                                                selected_bank_account_id: fee.student?.campus?.bank_accounts?.[0]?.id || ''
+                                            }));
                                         }}
                                         className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:shadow-md transition-all group text-left"
                                     >
@@ -301,6 +324,28 @@ const FeeDeposit = () => {
                                 </div>
                             </div>
 
+                            {formData.payment_method !== 'Cash' && (
+                                <div className="p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl animate-in slide-in-from-top-2">
+                                    <label className="block text-xs font-black text-indigo-800 uppercase mb-3 tracking-widest px-1">Deposit To Campus Bank Account</label>
+                                    <select 
+                                        className="w-full p-4 bg-white border-2 border-indigo-100 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 cursor-pointer"
+                                        value={formData.selected_bank_account_id}
+                                        onChange={(e) => setFormData({ ...formData, selected_bank_account_id: e.target.value })}
+                                        required
+                                    >
+                                        <option value="">-- Select Bank Account --</option>
+                                        {selectedStudent?.student?.campus?.bank_accounts?.map(acc => (
+                                            <option key={acc.id} value={acc.id}>
+                                                {acc.bank_name} - {acc.account_number} ({acc.account_title})
+                                            </option>
+                                        ))}
+                                        {(!selectedStudent?.student?.campus?.bank_accounts || selectedStudent.student.campus.bank_accounts.length === 0) && (
+                                            <option value="" disabled>No bank accounts configured for this campus</option>
+                                        )}
+                                    </select>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-xs font-black text-slate-400 uppercase mb-3 tracking-widest px-1">Reference / Transaction ID</label>
                                 <input 
@@ -309,6 +354,7 @@ const FeeDeposit = () => {
                                     placeholder="Enter bank reference or cheque number..."
                                     value={formData.reference_no}
                                     onChange={(e) => setFormData({ ...formData, reference_no: e.target.value })}
+                                    required={formData.payment_method !== 'Cash'}
                                 />
                             </div>
 

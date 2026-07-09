@@ -41,7 +41,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
     {
         try {
             // Start from Student to ensure all students can be listed
-            $query = \App\Models\Student::with(['program', 'academicClass']);
+            $query = \App\Models\Student::with(['program', 'academicClass', 'campus.bankAccounts']);
 
             if ($request->filled('status')) {
                 $status = is_array($request->status) ? $request->status : explode(',', $request->status);
@@ -412,7 +412,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function findByVoucher($voucherNumber)
     {
         try {
-            $fees = StudentFee::with(['student.program', 'student.campus', 'feeHead'])
+            $fees = StudentFee::with(['student.program', 'student.campus.bankAccounts', 'feeHead'])
                 ->where('voucher_number', $voucherNumber)
                 ->whereIn('status', ['unpaid', 'partial'])
                 ->get();

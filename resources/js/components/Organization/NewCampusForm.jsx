@@ -11,12 +11,13 @@ const NewCampusForm = ({ organization, onSuccess, campus = null }) => {
     const isEdit = !!campus;
 
     const [formData, setFormData] = useState({
-        name:     campus?.name     || '',
-        logo:     null,
-        logo_url: campus?.logo_url || '',
-        location: campus?.location || '',
-        code:     campus?.code     || '',
-        status:   campus?.status   || 'active',
+        name:           campus?.name           || '',
+        logo:           null,
+        logo_url:       campus?.logo_url       || '',
+        location:       campus?.location       || '',
+        code:           campus?.code           || '',
+        status:         campus?.status         || 'active',
+        bank_accounts:  campus?.bank_accounts?.length > 0 ? campus.bank_accounts : [{ bank_name: '', account_title: '', account_number: '', branch_code: '' }],
     });
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -35,6 +36,24 @@ const NewCampusForm = ({ organization, onSuccess, campus = null }) => {
         }
     };
 
+    const handleBankChange = (index, field, value) => {
+        const newBankAccounts = [...formData.bank_accounts];
+        newBankAccounts[index][field] = value;
+        setFormData(prev => ({ ...prev, bank_accounts: newBankAccounts }));
+    };
+
+    const addBankAccount = () => {
+        setFormData(prev => ({
+            ...prev,
+            bank_accounts: [...prev.bank_accounts, { bank_name: '', account_title: '', account_number: '', branch_code: '' }]
+        }));
+    };
+
+    const removeBankAccount = (index) => {
+        const newBankAccounts = formData.bank_accounts.filter((_, i) => i !== index);
+        setFormData(prev => ({ ...prev, bank_accounts: newBankAccounts }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -42,7 +61,15 @@ const NewCampusForm = ({ organization, onSuccess, campus = null }) => {
 
         const data = new FormData();
         Object.keys(formData).forEach(key => {
-            if (formData[key] !== null && formData[key] !== '') {
+            if (key === 'bank_accounts') {
+                formData.bank_accounts.forEach((acc, i) => {
+                    Object.keys(acc).forEach(accKey => {
+                        if (acc[accKey] !== null && acc[accKey] !== '') {
+                            data.append(`bank_accounts[${i}][${accKey}]`, acc[accKey]);
+                        }
+                    });
+                });
+            } else if (formData[key] !== null && formData[key] !== '') {
                 data.append(key, formData[key]);
             }
         });
@@ -201,6 +228,85 @@ const NewCampusForm = ({ organization, onSuccess, campus = null }) => {
                             className={`w-full px-4 py-3 rounded-xl border ${errors.location ? 'border-red-500 animate-shake' : 'border-slate-200'} focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none bg-slate-50 font-medium`}
                         />
                         {errors.location && <p className="text-red-500 text-xs font-bold mt-1 uppercase tracking-tight">{errors.location[0]}</p>}
+                    </div>
+
+                    <div className="space-y-4 p-6 bg-slate-100/50 rounded-2xl border border-slate-200/50">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Bank Account Details</h3>
+                                <p className="text-xs text-slate-500 font-medium">These details will be dynamically printed on the fee vouchers generated for students of this campus.</p>
+                            </div>
+                            <button type="button" onClick={addBankAccount} className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors">
+                                + Add Bank Account
+                            </button>
+                        </div>
+
+                        {formData.bank_accounts.map((account, index) => (
+                            <div key={index} className="relative bg-white p-4 rounded-xl border border-slate-200 mb-4 shadow-sm animate-in slide-in-from-top-2">
+                                {formData.bank_accounts.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => removeBankAccount(index)}
+                                        className="absolute top-2 right-2 p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                        title="Remove Account"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bank Name</label>
+                                        <input
+                                            type="text"
+                                            value={account.bank_name}
+                                            onChange={(e) => handleBankChange(index, 'bank_name', e.target.value)}
+                                            placeholder="e.g. Bank Islami Pakistan"
+                                            className={`w-full px-3 py-2 rounded-lg border ${errors[`bank_accounts.${index}.bank_name`] ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 focus:bg-white font-medium text-sm`}
+                                            required
+                                        />
+                                        {errors[`bank_accounts.${index}.bank_name`] && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors[`bank_accounts.${index}.bank_name`][0]}</p>}
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Account Title</label>
+                                        <input
+                                            type="text"
+                                            value={account.account_title}
+                                            onChange={(e) => handleBankChange(index, 'account_title', e.target.value)}
+                                            placeholder="e.g. The Integrity Global Education System"
+                                            className={`w-full px-3 py-2 rounded-lg border ${errors[`bank_accounts.${index}.account_title`] ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 focus:bg-white font-medium text-sm`}
+                                            required
+                                        />
+                                        {errors[`bank_accounts.${index}.account_title`] && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors[`bank_accounts.${index}.account_title`][0]}</p>}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Account Number</label>
+                                        <input
+                                            type="text"
+                                            value={account.account_number}
+                                            onChange={(e) => handleBankChange(index, 'account_number', e.target.value)}
+                                            placeholder="e.g. 31000223490001"
+                                            className={`w-full px-3 py-2 rounded-lg border ${errors[`bank_accounts.${index}.account_number`] ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 focus:bg-white font-medium text-sm`}
+                                            required
+                                        />
+                                        {errors[`bank_accounts.${index}.account_number`] && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors[`bank_accounts.${index}.account_number`][0]}</p>}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Branch Code</label>
+                                        <input
+                                            type="text"
+                                            value={account.branch_code}
+                                            onChange={(e) => handleBankChange(index, 'branch_code', e.target.value)}
+                                            placeholder="e.g. 3100"
+                                            className={`w-full px-3 py-2 rounded-lg border ${errors[`bank_accounts.${index}.branch_code`] ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 focus:bg-white font-medium text-sm`}
+                                        />
+                                        {errors[`bank_accounts.${index}.branch_code`] && <p className="text-red-500 text-[10px] font-bold mt-1 uppercase">{errors[`bank_accounts.${index}.branch_code`][0]}</p>}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
                     <div className="flex gap-4 pt-6 border-t border-slate-100">

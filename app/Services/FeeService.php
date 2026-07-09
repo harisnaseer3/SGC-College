@@ -326,7 +326,7 @@ class FeeService
      */
     public function getVoucherData($studentId, $month = null, $year = null)
     {
-        $student = Student::with(['program', 'academicBatch', 'campus'])->findOrFail($studentId);
+        $student = Student::with(['program', 'academicBatch', 'campus.bankAccounts', 'organization'])->findOrFail($studentId);
         
         // Get all unpaid or partially paid fees
         $allPendingFees = StudentFee::with('feeHead')
@@ -400,6 +400,36 @@ class FeeService
             }
         }
 
+        // Generate dynamic acronyms for Org and Campus
+        $orgName = $student->organization->name ?? 'ORG';
+        preg_match_all('/\b(\w)/', strtoupper($orgName), $m);
+        $orgAbbr = implode('', $m[1] ?? ['O']);
+
+        $campusAbbr = $student->campus->code;
+        if (!$campusAbbr) {
+            $campusName = $student->campus->name ?? 'CMP';
+            preg_match_all('/\b(\w)/', strtoupper($campusName), $m);
+            $campusAbbr = implode('', $m[1] ?? ['C']);
+        }
+        $bankAccounts = $student->campus->bankAccounts ?? [];
+        $bankDetailsArray = [];
+        foreach ($bankAccounts as $acc) {
+            if ($acc->is_active) {
+                $bankDetailsArray[] = trim(implode(' - ', array_filter([
+                    $acc->bank_name,
+                    $acc->account_number,
+                    $acc->account_title,
+                    $acc->branch_code ? "Branch Code: " . $acc->branch_code : null
+                ])));
+            }
+        }
+        
+        $bankDetails = implode("\n", $bankDetailsArray);
+
+        if (empty($bankDetails)) {
+            $bankDetails = 'No Bank Details Available for this Campus';
+        }
+
         return [
             'voucher_number' => $voucherNumber,
             'copy_names' => ["Parent's Copy", "School's Copy", "Bank's Copy"],
@@ -416,7 +446,7 @@ class FeeService
                 'valid_date' => $targetMonth->copy()->endOfMonth()->format('d M Y'),
                 'roll_no' => $student->roll_number,
                 'student_id' => $student->admission_number,
-                'adm_reg_no' => 'TIGES/MZD/' . $student->admission_number . '/',
+                'adm_reg_no' => "{$orgAbbr}/{$campusAbbr}/{$student->admission_number}/",
             ],
             'student' => [
                 'full_name' => $student->first_name . ' ' . $student->last_name,
@@ -440,7 +470,7 @@ class FeeService
                 'payable_after_due_date' => number_format($payableWithinDueDate + 500, 0), // Assuming 500 late fee
             ],
             'bank' => [
-                'info' => 'Bank Islami Pakistan Limited-31000223490001-The Integrity Global Education System',
+                'info' => $bankDetails,
             ]
         ];
     }

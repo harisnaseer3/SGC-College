@@ -46,7 +46,7 @@ class CampusController extends BaseController implements HasMiddleware
                 return $this->sendError('Unauthorized access to this organization.', [], 403);
             }
 
-            $campuses = $organization->campuses;
+            $campuses = $organization->campuses()->with('bankAccounts')->get();
             return $this->sendResponse($campuses, 'Campuses retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve campuses.', ['error' => $e->getMessage()], 500);
@@ -72,9 +72,18 @@ class CampusController extends BaseController implements HasMiddleware
 
             unset($data['logo']);
 
+            $bankAccountsData = $data['bank_accounts'] ?? [];
+            unset($data['bank_accounts']);
+
             $campus = $organization->campuses()->create($data);
 
-            return $this->sendResponse($campus, 'Campus created successfully.', 201);
+            if (!empty($bankAccountsData)) {
+                foreach ($bankAccountsData as $bankData) {
+                    $campus->bankAccounts()->create($bankData);
+                }
+            }
+
+            return $this->sendResponse($campus->load('bankAccounts'), 'Campus created successfully.', 201);
         } catch (\Exception $e) {
             return $this->sendError('Server Error', [
                 'error' => $e->getMessage(),
@@ -113,9 +122,19 @@ class CampusController extends BaseController implements HasMiddleware
 
             unset($data['logo']);
 
+            $bankAccountsData = $data['bank_accounts'] ?? [];
+            unset($data['bank_accounts']);
+
             $campus->update($data);
 
-            return $this->sendResponse($campus->fresh(), 'Campus updated successfully.');
+            $campus->bankAccounts()->delete();
+            if (!empty($bankAccountsData)) {
+                foreach ($bankAccountsData as $bankData) {
+                    $campus->bankAccounts()->create($bankData);
+                }
+            }
+
+            return $this->sendResponse($campus->fresh('bankAccounts'), 'Campus updated successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Server Error', [
                 'error' => $e->getMessage(),
