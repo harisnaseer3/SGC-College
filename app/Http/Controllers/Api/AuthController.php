@@ -50,8 +50,11 @@ class AuthController extends BaseController
 
             $token = $user->createToken('auth_token')->accessToken;
 
+            $loadedUser = $user->load(['organization', 'campus', 'roles', 'permissions']);
+            $loadedUser->permissions_list = $user->getAllPermissions()->pluck('name');
+
             return $this->sendResponse([
-                'user' => $user->load(['organization', 'campus', 'roles']),
+                'user' => $loadedUser,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ], 'User logged in successfully.');

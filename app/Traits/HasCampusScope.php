@@ -23,7 +23,12 @@ trait HasCampusScope
             $user = auth()->user();
             if ($user) {
                 if (!$user->hasAnyRole(['super_admin', 'org_admin']) && $user->campus_id) {
-                    $builder->where($builder->getModel()->getTable() . '.campus_id', $user->campus_id);
+                    // Campus-level users see their campus records AND org-wide records (campus_id IS NULL)
+                    $table = $builder->getModel()->getTable();
+                    $builder->where(function ($q) use ($table, $user) {
+                        $q->where($table . '.campus_id', $user->campus_id)
+                          ->orWhereNull($table . '.campus_id');
+                    });
                 } elseif ($user->hasAnyRole(['super_admin', 'org_admin']) && request()->hasHeader('X-Campus-ID')) {
                     $builder->where($builder->getModel()->getTable() . '.campus_id', request()->header('X-Campus-ID'));
                 }

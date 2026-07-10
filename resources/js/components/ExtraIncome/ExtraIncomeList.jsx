@@ -15,9 +15,9 @@ const ExtraIncomeList = () => {
     const { user } = useAuth();
     const { showSuccess, showError } = useNotifications();
 
-    const canCreate = user?.permissions?.includes('create_extra_incomes') || user?.roles?.some(r => r.name === 'super_admin');
-    const canEdit = user?.permissions?.includes('edit_extra_incomes') || user?.roles?.some(r => r.name === 'super_admin');
-    const canDelete = user?.permissions?.includes('delete_extra_incomes') || user?.roles?.some(r => r.name === 'super_admin');
+    const canCreate = user?.permissions_list?.includes('create_extra_incomes') || user?.roles?.some(r => r.name === 'super_admin');
+    const canEdit = user?.permissions_list?.includes('edit_extra_incomes') || user?.roles?.some(r => r.name === 'super_admin');
+    const canDelete = user?.permissions_list?.includes('delete_extra_incomes') || user?.roles?.some(r => r.name === 'super_admin');
 
     const fetchIncomes = async (page = 1) => {
         try {
@@ -200,12 +200,9 @@ const ExtraIncomeList = () => {
                 <AddExtraIncomeModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
-                    onSuccess={(newId) => {
+                    onSuccess={() => {
                         setIsModalOpen(false);
                         fetchIncomes(pagination.current_page);
-                        if (newId && !editingIncome) {
-                            window.open(`/extra-income/receipt/${newId}`, '_blank');
-                        }
                     }}
                     income={editingIncome}
                     isViewOnly={isViewOnly}

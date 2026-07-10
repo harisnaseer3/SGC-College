@@ -12,6 +12,8 @@ const ExtraExpenses = () => {
     const [loading, setLoading] = useState(true);
     const [totalAmount, setTotalAmount] = useState(0);
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
+    const [currentPage, setCurrentPage] = useState(1);
+    const [refreshKey, setRefreshKey] = useState(0);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState(null);
@@ -19,6 +21,8 @@ const ExtraExpenses = () => {
         expense_category_id: '',
         title: '',
         amount: '',
+        quantity: '',
+        supplier: '',
         expense_date: '',
         description: '',
         attachment: null
@@ -29,15 +33,21 @@ const ExtraExpenses = () => {
     const [filterCategory, setFilterCategory] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
 
-    const canCreate = user?.permissions?.includes('create_expenses') || user?.roles?.some(r => r.name === 'super_admin');
-    const canEdit = user?.permissions?.includes('edit_expenses') || user?.roles?.some(r => r.name === 'super_admin');
-    const canDelete = user?.permissions?.includes('delete_expenses') || user?.roles?.some(r => r.name === 'super_admin');
-    const canChangeStatus = user?.permissions?.includes('change_expense_status') || user?.roles?.some(r => r.name === 'super_admin');
+    const canCreate = user?.permissions_list?.includes('create_expenses') || user?.roles?.some(r => r.name === 'super_admin');
+    const canEdit = user?.permissions_list?.includes('edit_expenses') || user?.roles?.some(r => r.name === 'super_admin');
+    const canDelete = user?.permissions_list?.includes('delete_expenses') || user?.roles?.some(r => r.name === 'super_admin');
+    const canChangeStatus = user?.permissions_list?.includes('change_expense_status') || user?.roles?.some(r => r.name === 'super_admin');
 
+    // Reset to page 1 whenever filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filterCategory, filterStatus]);
+
+    // Fetch whenever page or refreshKey changes
     useEffect(() => {
         fetchCategories();
-        fetchExpenses(pagination.current_page);
-    }, [filterCategory, filterStatus, pagination.current_page]);
+        fetchExpenses(currentPage);
+    }, [filterCategory, filterStatus, currentPage, refreshKey]);
 
     const fetchCategories = async () => {
         try {
@@ -79,6 +89,8 @@ const ExtraExpenses = () => {
                 expense_category_id: expense.expense_category_id,
                 title: expense.title,
                 amount: expense.amount,
+                quantity: expense.quantity || '',
+                supplier: expense.supplier || '',
                 expense_date: expense.expense_date.substring(0, 10),
                 description: expense.description || '',
                 attachment: null
@@ -89,6 +101,8 @@ const ExtraExpenses = () => {
                 expense_category_id: '',
                 title: '',
                 amount: '',
+                quantity: '',
+                supplier: '',
                 expense_date: new Date().toISOString().substring(0, 10),
                 description: '',
                 attachment: null
@@ -125,7 +139,12 @@ const ExtraExpenses = () => {
                 showSuccess('Expense recorded successfully');
             }
             setIsModalOpen(false);
-            fetchExpenses();
+            if (!editingExpense) {
+                // Reset filters so the new record is always visible
+                setFilterCategory('');
+                setFilterStatus('');
+            }
+            setRefreshKey(k => k + 1);
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to save expense');
         } finally {
@@ -138,7 +157,7 @@ const ExtraExpenses = () => {
         try {
             await axios.delete(`/api/expenses/${id}`);
             showSuccess('Expense deleted successfully');
-            fetchExpenses();
+            setRefreshKey(k => k + 1);
         } catch (error) {
             showError('Failed to delete expense');
         }
@@ -149,7 +168,7 @@ const ExtraExpenses = () => {
         try {
             await axios.patch(`/api/expenses/${expense.id}/status`, { status: newStatus });
             showSuccess(`Status updated to ${newStatus}`);
-            fetchExpenses();
+            setRefreshKey(k => k + 1);
         } catch (error) {
             showError('Failed to update status');
         }
@@ -218,6 +237,8 @@ const ExtraExpenses = () => {
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Sr No</th>
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Title / Category</th>
+                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Qty</th>
+                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Supplier</th>
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Attachment</th>
@@ -246,6 +267,8 @@ const ExtraExpenses = () => {
                                             <div className="font-bold text-slate-900">{exp.title}</div>
                                             <div className="text-xs text-slate-500 mt-0.5">{exp.category?.name}</div>
                                         </td>
+                                        <td className="p-4 text-sm text-slate-600 font-medium">{exp.quantity || <span className="text-slate-300">—</span>}</td>
+                                        <td className="p-4 text-sm text-slate-600">{exp.supplier || <span className="text-slate-300">—</span>}</td>
                                         <td className="p-4 font-bold text-slate-900">Rs. {Number(exp.amount).toLocaleString()}</td>
                                         <td className="p-4">
                                             {canChangeStatus ? (
@@ -309,7 +332,7 @@ const ExtraExpenses = () => {
                         currentPage={pagination.current_page}
                         totalItems={pagination.total}
                         itemsPerPage={pagination.per_page}
-                        onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                        onPageChange={(page) => setCurrentPage(page)}
                     />
                 )}
             </div>
@@ -376,6 +399,29 @@ const ExtraExpenses = () => {
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
                                     placeholder="0.00"
                                 />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Quantity</label>
+                                    <input
+                                        type="text"
+                                        value={formData.quantity}
+                                        onChange={(e) => setFormData({...formData, quantity: e.target.value})}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                                        placeholder="e.g. 2 kg, 5 pcs"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Supplier / Shop</label>
+                                    <input
+                                        type="text"
+                                        value={formData.supplier}
+                                        onChange={(e) => setFormData({...formData, supplier: e.target.value})}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                                        placeholder="e.g. Al-Noor Store"
+                                    />
+                                </div>
                             </div>
 
                             <div>

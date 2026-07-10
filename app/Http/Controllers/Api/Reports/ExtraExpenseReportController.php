@@ -21,14 +21,17 @@ class ExtraExpenseReportController extends BaseController implements HasMiddlewa
     }
 
     /**
-     * Get extra expense list filtered by date range.
+     * Get extra expense list filtered by date range and optional filters.
      */
     public function byDate(Request $request)
     {
         try {
             $startDate = $request->input('start_date');
             $endDate   = $request->input('end_date');
-            $campusId = $request->input('campus_id');
+            $campusId  = $request->input('campus_id');
+            $status    = $request->input('status');
+            $supplier  = $request->input('supplier');
+            $title     = $request->input('title');
 
             $query = Expense::with(['category', 'recorder']);
 
@@ -43,6 +46,18 @@ class ExtraExpenseReportController extends BaseController implements HasMiddlewa
                 $query->where('campus_id', $campusId);
             }
 
+            if ($status) {
+                $query->where('status', $status);
+            }
+
+            if ($supplier) {
+                $query->where('supplier', 'like', '%' . $supplier . '%');
+            }
+
+            if ($title) {
+                $query->where('title', 'like', '%' . $title . '%');
+            }
+
             $expenses = $query->orderBy('expense_date', 'desc')->get();
             $totalAmount = $expenses->sum('amount');
 
@@ -53,7 +68,10 @@ class ExtraExpenseReportController extends BaseController implements HasMiddlewa
                 'filters'  => [
                     'start_date' => $startDate,
                     'end_date'   => $endDate,
-                    'campus_id'  => $campusId
+                    'campus_id'  => $campusId,
+                    'status'     => $status,
+                    'supplier'   => $supplier,
+                    'title'      => $title,
                 ]
             ], 'Extra Expense by date report generated.');
 

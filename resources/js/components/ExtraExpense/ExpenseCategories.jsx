@@ -16,9 +16,9 @@ const ExpenseCategories = () => {
     const [formData, setFormData] = useState({ name: '', description: '' });
     const [submitting, setSubmitting] = useState(false);
 
-    const canCreate = user?.permissions?.includes('create_expense_categories') || user?.roles?.some(r => r.name === 'super_admin');
-    const canEdit = user?.permissions?.includes('edit_expense_categories') || user?.roles?.some(r => r.name === 'super_admin');
-    const canDelete = user?.permissions?.includes('delete_expense_categories') || user?.roles?.some(r => r.name === 'super_admin');
+    const canCreate = user?.permissions_list?.includes('create_expense_categories') || user?.roles?.some(r => r.name === 'super_admin');
+    const canEdit = user?.permissions_list?.includes('edit_expense_categories') || user?.roles?.some(r => r.name === 'super_admin');
+    const canDelete = user?.permissions_list?.includes('delete_expense_categories') || user?.roles?.some(r => r.name === 'super_admin');
 
     useEffect(() => {
         fetchCategories(pagination.current_page);

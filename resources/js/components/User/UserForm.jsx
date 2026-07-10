@@ -42,7 +42,7 @@ const UserForm = ({ onSuccess, onCancel }) => {
             // Try fetching roles first as they don't depend on organization
             try {
                 const rolesRes = await axios.get('/api/roles');
-                setRoles(rolesRes.data.data);
+                setRoles(rolesRes.data.data?.data || rolesRes.data.data || []);
             } catch (error) {
                 console.error('Error fetching roles:', error);
             }

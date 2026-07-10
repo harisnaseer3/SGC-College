@@ -16,6 +16,8 @@ class Expense extends Model
         'campus_id',
         'expense_category_id',
         'amount',
+        'quantity',
+        'supplier',
         'expense_date',
         'title',
         'description',

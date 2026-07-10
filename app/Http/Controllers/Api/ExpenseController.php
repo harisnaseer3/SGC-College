@@ -56,11 +56,13 @@ class ExpenseController extends BaseController implements HasMiddleware
     {
         $validated = $request->validate([
             'expense_category_id' => 'required|exists:expense_categories,id',
-            'amount' => 'required|numeric|min:0.01',
-            'expense_date' => 'required|date',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120'
+            'amount'              => 'required|numeric|min:0.01',
+            'quantity'            => 'nullable|string|max:100',
+            'supplier'            => 'nullable|string|max:255',
+            'expense_date'        => 'required|date',
+            'title'               => 'required|string|max:255',
+            'description'         => 'nullable|string',
+            'attachment'          => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120'
         ]);
 
         $validated['recorded_by'] = auth()->id();
@@ -87,11 +89,13 @@ class ExpenseController extends BaseController implements HasMiddleware
     {
         $validated = $request->validate([
             'expense_category_id' => 'required|exists:expense_categories,id',
-            'amount' => 'required|numeric|min:0.01',
-            'expense_date' => 'required|date',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120'
+            'amount'              => 'required|numeric|min:0.01',
+            'quantity'            => 'nullable|string|max:100',
+            'supplier'            => 'nullable|string|max:255',
+            'expense_date'        => 'required|date',
+            'title'               => 'required|string|max:255',
+            'description'         => 'nullable|string',
+            'attachment'          => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120'
         ]);
 
         if ($request->hasFile('attachment')) {

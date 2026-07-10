@@ -14,9 +14,9 @@ const IncomeCategoryList = () => {
     const { user } = useAuth();
     const { showSuccess, showError } = useNotifications();
 
-    const canCreate = user?.permissions?.includes('create_income_categories') || user?.roles?.some(r => r.name === 'super_admin');
-    const canEdit = user?.permissions?.includes('edit_income_categories') || user?.roles?.some(r => r.name === 'super_admin');
-    const canDelete = user?.permissions?.includes('delete_income_categories') || user?.roles?.some(r => r.name === 'super_admin');
+    const canCreate = user?.permissions_list?.includes('create_income_categories') || user?.roles?.some(r => r.name === 'super_admin');
+    const canEdit = user?.permissions_list?.includes('edit_income_categories') || user?.roles?.some(r => r.name === 'super_admin');
+    const canDelete = user?.permissions_list?.includes('delete_income_categories') || user?.roles?.some(r => r.name === 'super_admin');
 
     const fetchCategories = async (page = 1) => {
         try {
