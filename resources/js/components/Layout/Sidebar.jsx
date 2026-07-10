@@ -56,8 +56,8 @@ const Sidebar = () => {
             icon: 'M9 17v-2m3 2v-4m3 2v-6m-8 2.5L12 10.5l4.5 4.5m1.5-1.5V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3.5M9 5h6',
             subItems: [
                 { name: 'Admissions By Date', path: '/reports/admissions-by-date' },
-                { name: 'Extra Income By Date', path: '/reports/extra-income-by-date' },
-                { name: 'Extra Expense By Date', path: '/reports/extra-expense-by-date' }
+                { name: 'Extra Income', path: '/extra-income' },
+                { name: 'Extra Expense', path: '/extra-expense' }
             ]
         },
         { 
