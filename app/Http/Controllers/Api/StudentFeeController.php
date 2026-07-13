@@ -328,7 +328,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
     {
         try {
             $request->validate([
-                'installments' => 'required|array|min:2',
+                'installments' => 'required|array|min:2|max:3',
                 'installments.*.amount' => 'required|numeric|min:1',
                 'installments.*.due_date' => 'required|date',
             ]);
@@ -346,13 +346,15 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $count = count($request->installments);
             $firstDueDate = $request->installments[0]['due_date'];
 
-            // If splitting tuition, move all other unpaid fees to the first installment's due date
-            if (str_contains(strtolower($studentFee->feeHead->name), 'tuition')) {
-                \App\Models\StudentFee::where('student_id', $studentFee->student_id)
-                    ->where('id', '!=', $studentFee->id)
-                    ->whereIn('status', ['unpaid', 'partial'])
-                    ->update(['due_date' => $firstDueDate]);
+            if (!str_contains(strtolower($studentFee->feeHead->name), 'semester')) {
+                return $this->sendError("Installments can only be applied to Semester Fee.", [], 422);
             }
+
+            // Move all other unpaid fees to the first installment's due date
+            \App\Models\StudentFee::where('student_id', $studentFee->student_id)
+                ->where('id', '!=', $studentFee->id)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->update(['due_date' => $firstDueDate]);
 
             foreach ($request->installments as $index => $inst) {
                 StudentFee::create([

@@ -14,6 +14,7 @@ class Expense extends Model
     protected $fillable = [
         'organization_id',
         'campus_id',
+        'bill_no',
         'expense_category_id',
         'amount',
         'quantity',

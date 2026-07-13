@@ -16,7 +16,12 @@ const ExtraExpenses = () => {
     const [refreshKey, setRefreshKey] = useState(0);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [viewingExpense, setViewingExpense] = useState(null);
     const [editingExpense, setEditingExpense] = useState(null);
+    
+    // Sorting
+    const [sortField, setSortField] = useState('expense_date');
+    const [sortDirection, setSortDirection] = useState('desc');
     const [formData, setFormData] = useState({
         expense_category_id: '',
         title: '',
@@ -47,7 +52,7 @@ const ExtraExpenses = () => {
     useEffect(() => {
         fetchCategories();
         fetchExpenses(currentPage);
-    }, [filterCategory, filterStatus, currentPage, refreshKey]);
+    }, [filterCategory, filterStatus, currentPage, refreshKey, sortField, sortDirection]);
 
     const fetchCategories = async () => {
         try {
@@ -65,6 +70,8 @@ const ExtraExpenses = () => {
             params.append('page', page);
             if (filterCategory) params.append('category_id', filterCategory);
             if (filterStatus) params.append('status', filterStatus);
+            params.append('sort_by', sortField);
+            params.append('sort_dir', sortDirection);
 
             const response = await axios.get(`/api/expenses?${params.toString()}`);
             setExpenses(response.data.data.data);
@@ -188,6 +195,40 @@ const ExtraExpenses = () => {
         return <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${styles[status]}`}>{labels[status]}</span>;
     };
 
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    };
+
+    const renderSortableHeader = (label, field) => {
+        const isSorted = sortField === field;
+        return (
+            <th 
+                className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                onClick={() => handleSort(field)}
+            >
+                <div className="flex items-center gap-1">
+                    {label}
+                    <span className="ml-1 flex items-center text-slate-400">
+                        {isSorted ? (
+                            sortDirection === 'asc' ? (
+                                <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            ) : (
+                                <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                            )
+                        ) : (
+                            <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                        )}
+                    </span>
+                </div>
+            </th>
+        );
+    };
+
     return (
         <div>
             <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
@@ -235,12 +276,13 @@ const ExtraExpenses = () => {
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Sr No</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Title / Category</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Qty</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Supplier</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
-                                <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                {renderSortableHeader('Bill No', 'bill_no')}
+                                {renderSortableHeader('Date', 'expense_date')}
+                                {renderSortableHeader('Title / Category', 'title')}
+                                {renderSortableHeader('Qty', 'quantity')}
+                                {renderSortableHeader('Supplier', 'supplier')}
+                                {renderSortableHeader('Amount', 'amount')}
+                                {renderSortableHeader('Status', 'status')}
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Attachment</th>
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                             </tr>
@@ -252,13 +294,16 @@ const ExtraExpenses = () => {
                                 </tr>
                             ) : expenses.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="p-8 text-center text-slate-500">No expenses found.</td>
+                                    <td colSpan="8" className="p-8 text-center text-slate-500">No expenses found.</td>
                                 </tr>
                             ) : (
                                 expenses.map((exp, index) => (
                                     <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
                                         <td className="p-4 text-sm font-medium text-slate-600">
                                             {(pagination.current_page - 1) * pagination.per_page + index + 1}
+                                        </td>
+                                        <td className="p-4 text-sm font-bold text-indigo-600">
+                                            {exp.bill_no || '---'}
                                         </td>
                                         <td className="p-4 text-sm font-medium text-slate-600">
                                             {new Date(exp.expense_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -295,6 +340,17 @@ const ExtraExpenses = () => {
                                         </td>
                                         <td className="p-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setViewingExpense(exp)}
+                                                    title="View Details"
+                                                    className="p-2 text-slate-400 hover:text-indigo-600 transition-all rounded-xl hover:bg-indigo-50 border border-transparent hover:border-indigo-100"
+                                                >
+                                                    <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </button>
                                                 {canEdit && (
                                                     <button
                                                         type="button"
@@ -461,6 +517,71 @@ const ExtraExpenses = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* View Modal */}
+            {viewingExpense && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                            <h2 className="text-xl font-bold text-slate-800">Expense Details</h2>
+                            <button onClick={() => setViewingExpense(null)} className="text-slate-400 hover:text-slate-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4 overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Bill No</div>
+                                    <div className="font-semibold text-slate-800 text-lg">{viewingExpense.bill_no || 'N/A'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Date</div>
+                                    <div className="font-semibold text-slate-800">{new Date(viewingExpense.expense_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Title</div>
+                                    <div className="font-semibold text-slate-800">{viewingExpense.title}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Category</div>
+                                    <div className="font-semibold text-slate-800">{viewingExpense.category?.name}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Amount</div>
+                                    <div className="font-bold text-indigo-600 text-lg">Rs. {Number(viewingExpense.amount).toLocaleString()}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Status</div>
+                                    <div className="mt-1">{getStatusBadge(viewingExpense.status)}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Quantity</div>
+                                    <div className="font-semibold text-slate-800">{viewingExpense.quantity || 'N/A'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Supplier</div>
+                                    <div className="font-semibold text-slate-800">{viewingExpense.supplier || 'N/A'}</div>
+                                </div>
+                            </div>
+                            {viewingExpense.description && (
+                                <div className="mt-4">
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Description</div>
+                                    <div className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg mt-1 whitespace-pre-wrap border border-slate-100">{viewingExpense.description}</div>
+                                </div>
+                            )}
+                            {viewingExpense.attachment_url && (
+                                <div className="mt-6 pt-4 border-t border-slate-100">
+                                    <div className="text-xs font-bold text-slate-400 uppercase mb-2">Attachment</div>
+                                    <a href={viewingExpense.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg font-bold hover:bg-indigo-100 transition-colors border border-indigo-100">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                        View Attached Receipt / Invoice
+                                    </a>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

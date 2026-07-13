@@ -131,11 +131,11 @@ export default function Dashboard() {
             icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
         },
         {
-            label: 'Transferred',
-            value: fmt(counts.transferred),
-            sub: 'Internal & External',
+            label: 'Enrolled',
+            value: fmt(counts.enrolled),
+            sub: 'Currently active students',
             gradient: 'bg-gradient-to-br from-sky-500 to-blue-600 shadow-blue-100',
-            icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4',
+            icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
         },
         {
             label: 'Lifecycle Losses',
@@ -143,6 +143,37 @@ export default function Dashboard() {
             sub: `${fmt(counts.struck_off)} Struck Off · ${fmt(counts.passed_out)} Graduated`,
             gradient: 'bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-200',
             icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+        },
+    ];
+
+    const voucherCards = [
+        {
+            label: 'Total Vouchers',
+            value: fmt(counts.vouchers_total),
+            sub: 'All issued fee vouchers',
+            gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-100',
+            icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+        },
+        {
+            label: 'Paid Vouchers',
+            value: fmt(counts.vouchers_paid),
+            sub: 'Fully paid by students',
+            gradient: 'bg-gradient-to-br from-emerald-500 to-green-600 shadow-emerald-100',
+            icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+        },
+        {
+            label: 'Unpaid Vouchers',
+            value: fmt(counts.vouchers_unpaid),
+            sub: 'Fully unpaid vouchers',
+            gradient: 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-100',
+            icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        },
+        {
+            label: 'Partial Vouchers',
+            value: fmt(counts.vouchers_partial),
+            sub: 'Partially paid by students',
+            gradient: 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-100',
+            icon: 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z',
         },
     ];
 
@@ -174,6 +205,18 @@ export default function Dashboard() {
                 {loading
                     ? Array(4).fill(0).map((_, i) => <div key={i} className="animate-pulse h-36 bg-slate-100 rounded-2xl" />)
                     : statCards.map(s => <StatCard key={s.label} {...s} />)}
+            </div>
+
+            {/* Voucher Cards */}
+            <div className="space-y-4 mt-2">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold text-slate-900 tracking-tight">Financial Overview</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                    {loading
+                        ? Array(4).fill(0).map((_, i) => <div key={i} className="animate-pulse h-36 bg-slate-100 rounded-2xl" />)
+                        : voucherCards.map(s => <StatCard key={s.label} {...s} />)}
+                </div>
             </div>
 
             {/* Row 2: Area Chart (Monthly) + Enrollment Radial */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import DataTable from '../UI/DataTable';
@@ -63,8 +63,14 @@ const AdmissionByDateReport = () => {
         }
     };
 
+    const debounceTimer = useRef(null);
+
+    // Instant fetch on date changes
     useEffect(() => {
         fetchReport();
+    }, [filters.start_date, filters.end_date, selectedCampus, selectedOrganization]);
+
+    useEffect(() => {
         fetchDetails();
     }, [selectedCampus, selectedOrganization]);
 

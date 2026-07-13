@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNotifications } from '../../contexts/NotificationContext';
 import Card from '../UI/Card';
@@ -10,22 +10,42 @@ const FeeReceiptList = () => {
     const [loading, setLoading] = useState(true);
     const [totalReceived, setTotalReceived] = useState(0);
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
+    const [currentPage, setCurrentPage] = useState(1);
     const [filters, setFilters] = useState({
         start_date: '',
         end_date: '',
         search: ''
     });
+    const debounceTimer = useRef(null);
     const { showSuccess, showError } = useNotifications();
 
+    // Debounced live search for text input
     useEffect(() => {
-        fetchPayments();
-    }, [filters.start_date, filters.end_date, pagination.current_page]);
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(() => {
+            setCurrentPage(1);
+            fetchPayments(1);
+        }, 400);
+        return () => clearTimeout(debounceTimer.current);
+    }, [filters.search]);
 
-    const fetchPayments = async () => {
+    // Instant fetch on date changes
+    useEffect(() => {
+        setCurrentPage(1);
+        fetchPayments(1);
+    }, [filters.start_date, filters.end_date]);
+
+    // Fetch on page change
+    useEffect(() => {
+        fetchPayments(currentPage);
+    }, [currentPage]);
+
+    const fetchPayments = async (page) => {
+        const pageNum = page ?? currentPage;
         setLoading(true);
         try {
             const params = {
-                page: pagination.current_page,
+                page: pageNum,
                 start_date: filters.start_date,
                 end_date: filters.end_date,
                 search: filters.search
@@ -47,10 +67,8 @@ const FeeReceiptList = () => {
         }
     };
 
-    const handleFilter = (e) => {
-        e.preventDefault();
-        fetchPayments();
-    };
+    const handleFilter = (e) => { if (e) e.preventDefault(); };
+    const handleSearch = (e) => { if (e) e.preventDefault(); };
 
     const handleDeleteReceipt = async (id) => {
         if (!window.confirm('Are you sure you want to delete this receipt? This will reverse the payment transaction and restore the student\'s unpaid fee balances.')) {
@@ -64,12 +82,6 @@ const FeeReceiptList = () => {
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to delete receipt');
         }
-    };
-
-    const handleSearch = (e) => {
-        e.preventDefault();
-        setPagination({ ...pagination, current_page: 1 });
-        fetchPayments();
     };
 
     return (
@@ -202,7 +214,7 @@ const FeeReceiptList = () => {
                         currentPage={pagination.current_page}
                         totalItems={pagination.total}
                         itemsPerPage={pagination.per_page}
-                        onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                        onPageChange={(page) => setCurrentPage(page)}
                     />
                 )}
             </Card>

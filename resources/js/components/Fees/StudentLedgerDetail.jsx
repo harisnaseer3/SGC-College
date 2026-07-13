@@ -252,7 +252,7 @@ const StudentLedgerDetail = () => {
                                                 >
                                                     Adjust
                                                 </button>
-                                                {fee.status !== 'paid' && fee.fee_head?.name?.toLowerCase().includes('tuition') && (
+                                                {fee.status !== 'paid' && fee.fee_head?.name?.toLowerCase().includes('semester') && (
                                                     <button 
                                                         onClick={() => {
                                                             setSplittingFee(fee);
@@ -535,7 +535,7 @@ const StudentLedgerDetail = () => {
                             </div>
 
                             <div className="flex justify-between items-center mb-6 px-2">
-                                {installments.length < 4 ? (
+                                {installments.length < 3 ? (
                                     <button 
                                         type="button"
                                         onClick={() => {
@@ -555,7 +555,7 @@ const StudentLedgerDetail = () => {
                                         Add Installment
                                     </button>
                                 ) : (
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider italic">Max 4 installments reached</div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider italic">Max 3 installments reached</div>
                                 )}
                                 <div className="text-right">
                                     <div className="text-[10px] font-bold text-slate-500 uppercase">Total Allocated</div>

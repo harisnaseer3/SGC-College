@@ -23,7 +23,7 @@ class ExpenseController extends BaseController implements HasMiddleware
 
     public function index(Request $request)
     {
-        $query = Expense::with(['category', 'recorder', 'organization', 'campus'])->latest('expense_date');
+        $query = Expense::with(['category', 'recorder', 'organization', 'campus']);
 
         if ($request->has('category_id') && $request->category_id) {
             $query->where('expense_category_id', $request->category_id);
@@ -41,8 +41,20 @@ class ExpenseController extends BaseController implements HasMiddleware
             $query->whereDate('expense_date', '<=', $request->end_date);
         }
 
+        if ($request->has('sort_by') && $request->has('sort_dir')) {
+            if ($request->sort_by === 'category') {
+                $query->join('expense_categories', 'expenses.expense_category_id', '=', 'expense_categories.id')
+                      ->select('expenses.*')
+                      ->orderBy('expense_categories.name', $request->sort_dir);
+            } else {
+                $query->orderBy($request->sort_by, $request->sort_dir);
+            }
+        } else {
+            $query->latest('expense_date')->latest('expenses.id');
+        }
+
         $total = (clone $query)->sum('amount');
-        $expenses = $query->latest()->paginate(10);
+        $expenses = $query->paginate(10);
         
         return response()->json([
             'success' => true,
@@ -67,6 +79,9 @@ class ExpenseController extends BaseController implements HasMiddleware
 
         $validated['recorded_by'] = auth()->id();
         $validated['status'] = 'pending';
+
+        $latest = Expense::latest('id')->first();
+        $validated['bill_no'] = $latest && $latest->bill_no ? str_pad(((int)$latest->bill_no + 1), 3, '0', STR_PAD_LEFT) : '001';
 
         if ($request->hasFile('attachment')) {
             $path = $request->file('attachment')->store('expenses', 'public');

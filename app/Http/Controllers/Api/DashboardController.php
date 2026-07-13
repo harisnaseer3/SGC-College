@@ -9,6 +9,7 @@ use App\Models\Student;
 use App\Models\User;
 use App\Models\Campus;
 use App\Models\Program;
+use App\Models\StudentFee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -32,6 +33,15 @@ class DashboardController extends BaseController implements HasMiddleware
             $totalUsers     = User::count();
             $totalCampuses  = Campus::count();
             $totalPrograms  = Program::count();
+
+            // --- Voucher counts ---
+            $totalVouchers   = StudentFee::count();
+            $paidVouchers    = StudentFee::where('status', 'paid')->count();
+            $unpaidVouchers  = StudentFee::where('status', 'unpaid')->count();
+            $partialVouchers = StudentFee::where('status', 'partial')->count();
+            $overdueVouchers = StudentFee::whereIn('status', ['unpaid', 'partial'])
+                                         ->where('due_date', '<', now()->startOfDay())
+                                         ->count();
 
             // --- Gender breakdown ---
             $genderBreakdown = Student::select('gender', DB::raw('count(*) as total'))
@@ -99,6 +109,11 @@ class DashboardController extends BaseController implements HasMiddleware
                     'users'     => $totalUsers,
                     'campuses'  => $totalCampuses,
                     'programs'  => $totalPrograms,
+                    'vouchers_total'   => $totalVouchers,
+                    'vouchers_paid'    => $paidVouchers,
+                    'vouchers_unpaid'  => $unpaidVouchers,
+                    'vouchers_partial' => $partialVouchers,
+                    'vouchers_overdue' => $overdueVouchers,
                 ],
                 'status_breakdown'    => $statusBreakdown,
                 'debug' => [
