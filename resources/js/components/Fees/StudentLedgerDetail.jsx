@@ -5,7 +5,8 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
 
-const getSemesterNumber = (admissionDateStr, dueDateStr) => {
+const getSemesterNumber = (admissionDateStr, dueDateStr, feeSemesterNumber) => {
+    if (feeSemesterNumber) return feeSemesterNumber;
     if (!admissionDateStr) return 1;
     const rawAdmission = new Date(admissionDateStr);
     const startMonth = rawAdmission.getMonth() >= 6 ? 6 : 0;
@@ -151,7 +152,7 @@ const StudentLedgerDetail = () => {
                     <h2 className="text-lg font-black text-slate-800 uppercase tracking-widest">Fee Billing Details</h2>
                 </div>
                 {Object.values(ledger.fees.reduce((acc, fee) => {
-                    const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date);
+                    const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date, fee.semester_number);
                     const key = `Semester-${semNum}`;
                     if (!acc[key]) {
                         const admission = new Date(ledger.student.admission_date);
@@ -292,7 +293,7 @@ const StudentLedgerDetail = () => {
                     <div className="space-y-4">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Cleared Vouchers</div>
                         {Object.values(ledger.paid_fees.reduce((acc, fee) => {
-                            const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date);
+                            const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date, fee.semester_number);
                             const key = `Semester-${semNum}`;
                             if (!acc[key]) {
                                 const admission = new Date(ledger.student.admission_date);
@@ -535,7 +536,7 @@ const StudentLedgerDetail = () => {
                             </div>
 
                             <div className="flex justify-between items-center mb-6 px-2">
-                                {installments.length < 3 ? (
+                                {installments.length < 4 ? (
                                     <button 
                                         type="button"
                                         onClick={() => {
@@ -555,7 +556,7 @@ const StudentLedgerDetail = () => {
                                         Add Installment
                                     </button>
                                 ) : (
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider italic">Max 3 installments reached</div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider italic">Max 4 installments reached</div>
                                 )}
                                 <div className="text-right">
                                     <div className="text-[10px] font-bold text-slate-500 uppercase">Total Allocated</div>

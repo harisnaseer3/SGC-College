@@ -70,7 +70,7 @@ class FeeService
                     ->whereHas('feeHead', function($q) use ($feeHead) {
                         $q->where('name', $feeHead->name);
                     })
-                    ->whereBetween('due_date', [$start, $end])
+                    ->where('semester_number', $semNumber)
                     ->exists();
 
                 if (!$exists) {
@@ -82,7 +82,8 @@ class FeeService
                         'amount' => $item->amount,
                         'balance_amount' => $item->amount,
                         'due_date' => $dueDate,
-                        'status' => 'unpaid'
+                        'status' => 'unpaid',
+                        'semester_number' => $semNumber
                     ]);
                     $generatedCount++;
                 }
@@ -151,7 +152,7 @@ class FeeService
                 ->whereHas('feeHead', function($q) use ($feeHead) {
                     $q->where('name', $feeHead->name);
                 })
-                ->whereBetween('due_date', [$start, $end])
+                ->where('semester_number', $semNumber)
                 ->exists();
 
             if (!$exists) {
@@ -163,7 +164,8 @@ class FeeService
                     'amount' => $item->amount,
                     'balance_amount' => $item->amount,
                     'due_date' => $dueDate,
-                    'status' => 'unpaid'
+                    'status' => 'unpaid',
+                    'semester_number' => $semNumber
                 ]);
                 $generatedCount++;
             }
@@ -252,7 +254,7 @@ class FeeService
                     ->whereHas('feeHead', function($q) use ($feeHead) {
                         $q->where('name', $feeHead->name);
                     })
-                    ->whereBetween('due_date', [$start, $end])
+                    ->where('semester_number', $s)
                     ->exists();
 
                 if (!$exists) {
@@ -266,6 +268,7 @@ class FeeService
                         'due_date'        => $dueDate,
                         'status'          => 'unpaid',
                         'voucher_number'  => $semVoucherNumber,
+                        'semester_number' => $s,
                     ]);
                     $generatedCount++;
                 }
@@ -345,28 +348,38 @@ class FeeService
             $targetMonth = Carbon::now()->startOfMonth();
         }
         
-        $semNumber = $this->getStudentSemesterNumber($student, $targetMonth);
-        [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
+        // Determine target semester number
+        $targetMonthFees = $allPendingFees->filter(function ($fee) use ($targetMonth) {
+            return $fee->due_date->format('Y-m') === $targetMonth->format('Y-m');
+        });
+        
+        $semNumber = $targetMonthFees->isNotEmpty() && $targetMonthFees->first()->semester_number 
+            ? $targetMonthFees->first()->semester_number 
+            : $this->getStudentSemesterNumber($student, $targetMonth);
 
-        // Separate current semester fees and arrears
-        $currentFees = $allPendingFees->filter(function ($fee) use ($start, $end) {
-            return $fee->due_date->between($start, $end);
+        // Separate current semester fees and arrears by semester_number
+        $currentFees = $allPendingFees->filter(function ($fee) use ($student, $semNumber) {
+            $feeSem = $fee->semester_number ?: $this->getStudentSemesterNumber($student, $fee->due_date);
+            return $feeSem == $semNumber;
         });
 
-        $arrearsFees = $allPendingFees->filter(function ($fee) use ($start) {
-            return $fee->due_date->lt($start);
+        $arrearsFees = $allPendingFees->filter(function ($fee) use ($student, $semNumber) {
+            $feeSem = $fee->semester_number ?: $this->getStudentSemesterNumber($student, $fee->due_date);
+            return $feeSem < $semNumber;
         });
 
         // If no fees in target semester, and it was default (now), take latest
         if ($currentFees->isEmpty() && !$month && !$allPendingFees->isEmpty()) {
-            $latestDueDate = $allPendingFees->max('due_date');
-            $semNumber = $this->getStudentSemesterNumber($student, $latestDueDate);
-            [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
-            $currentFees = $allPendingFees->filter(function ($fee) use ($start, $end) {
-                return $fee->due_date->between($start, $end);
+            $latestFee = $allPendingFees->sortByDesc('due_date')->first();
+            $semNumber = $latestFee->semester_number ?: $this->getStudentSemesterNumber($student, $latestFee->due_date);
+            
+            $currentFees = $allPendingFees->filter(function ($fee) use ($student, $semNumber) {
+                $feeSem = $fee->semester_number ?: $this->getStudentSemesterNumber($student, $fee->due_date);
+                return $feeSem == $semNumber;
             });
-            $arrearsFees = $allPendingFees->filter(function ($fee) use ($start) {
-                return $fee->due_date->lt($start);
+            $arrearsFees = $allPendingFees->filter(function ($fee) use ($student, $semNumber) {
+                $feeSem = $fee->semester_number ?: $this->getStudentSemesterNumber($student, $fee->due_date);
+                return $feeSem < $semNumber;
             });
         }
 
@@ -375,30 +388,9 @@ class FeeService
         }
 
         $feeMonth = $this->getStudentSemesterLabel($student, $semNumber);
-        $dueDate = $currentFees->isNotEmpty() ? $currentFees->first()->due_date : $targetMonth->copy()->day(10);
-        $validDate = $dueDate->copy()->endOfMonth();
-
-        $arrearsAmount = $arrearsFees->sum('balance_amount');
-        $previousFine = $allPendingFees->filter(fn($f) => $f->due_date->startOfMonth()->lt($targetMonth))->sum('fine_amount');
         
-        $totalCurrent = $currentFees->sum('balance_amount');
-        $payableWithinDueDate = $totalCurrent + $arrearsAmount;
-
         // Relation label (S/O or D/O)
         $relationLabel = (strtolower($student->gender) === 'female') ? 'D/O' : 'S/O';
-
-        // Get or Generate persistent voucher number — scoped to the target month only
-        $existingVoucher = $currentFees->whereNotNull('voucher_number')->first();
-        if ($existingVoucher) {
-            $voucherNumber = $existingVoucher->voucher_number;
-        } else {
-            $voucherNumber = $this->generateNextVoucherNumber();
-
-            // Persist the new voucher number to this month's fees only
-            foreach ($currentFees as $fee) {
-                $fee->update(['voucher_number' => $voucherNumber]);
-            }
-        }
 
         // Generate dynamic acronyms for Org and Campus
         $orgName = $student->organization->name ?? 'ORG';
@@ -430,50 +422,94 @@ class FeeService
             $bankDetails = 'No Bank Details Available for this Campus';
         }
 
-        return [
-            'voucher_number' => $voucherNumber,
-            'copy_names' => ["Finance's Copy", "Student's Copy", "Bank's Copy"],
-            'institution' => [
-                'name' => $student->campus->name ?? 'Campus Name',
-                'location' => $student->campus->location ?? 'Campus Location',
-                'logo_url' => $student->campus->logo_url,
-                'payment_terms' => $student->campus->payment_terms ?? "Note:\nPayment Terms\nA fine of Rs. 200 will be charged if the fee is not paid by the due date.\nA fine of Rs. 500 will be applicable if the payment remains unpaid in the following month",
-            ],
-            'academic' => [
+        $vouchers = [];
+
+        // If there are no current fees, but we have arrears, create a dummy group for arrears
+        if ($currentFees->isEmpty() && $arrearsFees->isNotEmpty()) {
+            $groupedFees = collect(['arrears' => collect([])]);
+        } else {
+            $groupedFees = $currentFees->groupBy(function($fee) {
+                return $fee->due_date->format('Y-m');
+            })->sortBy(function($fees, $key) {
+                return $key;
+            });
+        }
+
+        $isFirstGroup = true;
+
+        foreach ($groupedFees as $groupKey => $groupFees) {
+            $dueDate = $groupFees->isNotEmpty() ? $groupFees->first()->due_date : $targetMonth->copy()->day(10);
+            $validDate = $dueDate->copy()->endOfMonth();
+
+            // Only apply previous semester arrears to the FIRST voucher generated in this batch
+            $groupArrearsAmount = $isFirstGroup ? $arrearsFees->sum('balance_amount') : 0;
+            $groupPreviousFine = $isFirstGroup ? $allPendingFees->filter(fn($f) => $f->due_date->startOfMonth()->lt($targetMonth))->sum('fine_amount') : 0;
+            
+            $isFirstGroup = false;
+
+            $totalCurrent = $groupFees->sum('balance_amount');
+            $payableWithinDueDate = $totalCurrent + $groupArrearsAmount;
+
+            // Get or Generate persistent voucher number — scoped to this group's fees only
+            $existingVoucher = $groupFees->whereNotNull('voucher_number')->first();
+            if ($existingVoucher) {
+                $voucherNumber = $existingVoucher->voucher_number;
+            } else {
+                $voucherNumber = $this->generateNextVoucherNumber();
+
+                // Persist the new voucher number to this group's fees only
+                foreach ($groupFees as $fee) {
+                    $fee->update(['voucher_number' => $voucherNumber]);
+                }
+            }
+
+            $vouchers[] = [
                 'voucher_number' => $voucherNumber,
-                'fee_month' => $feeMonth,
-                'issue_date' => Carbon::now()->format('d M Y'),
-                'due_date' => $dueDate->format('d M Y'),
-                'valid_date' => $validDate->format('d M Y'),
-                'roll_no' => $student->roll_number,
-                'student_id' => $student->admission_number,
-                'adm_reg_no' => "{$student->admission_number}",
-            ],
-            'student' => [
-                'full_name' => $student->first_name . ' ' . $student->last_name,
-                'parent_relation' => $relationLabel,
-                'guardian_name' => $student->guardian_name,
-                'class' => $student->program ? $student->program->name : 'N/A',
-            ],
-            'fee_items' => $currentFees->values()->map(function ($fee, $index) {
-                return [
-                    'sr_no' => $index + 1,
-                    'head' => $fee->feeHead->name,
-                    'amount' => number_format($fee->amount, 0),
-                ];
-            })->all(),
-            'summary' => [
-                'arrears' => number_format($arrearsAmount, 0),
-                'previous_fine' => number_format($previousFine, 0),
-                'payable_within_due_date' => number_format($payableWithinDueDate, 0),
-                'late_fee_fine' => '0', // Placeholder as per image
-                'absent_fine' => '0',   // Placeholder as per image
-                'payable_after_due_date' => number_format($payableWithinDueDate + 500, 0), // Assuming 500 late fee
-            ],
-            'bank' => [
-                'info' => $bankDetails,
-            ]
-        ];
+                'copy_names' => ["Finance's Copy", "Student's Copy", "Bank's Copy"],
+                'institution' => [
+                    'name' => $student->campus->name ?? 'Campus Name',
+                    'location' => $student->campus->location ?? 'Campus Location',
+                    'logo_url' => $student->campus->logo_url,
+                    'payment_terms' => $student->campus->payment_terms ?? "Note:\nPayment Terms\nA fine of Rs. 200 will be charged if the fee is not paid by the due date.\nA fine of Rs. 500 will be applicable if the payment remains unpaid in the following month",
+                ],
+                'academic' => [
+                    'voucher_number' => $voucherNumber,
+                    'fee_month' => $groupKey === 'arrears' ? $feeMonth : $feeMonth . " (" . Carbon::createFromFormat('Y-m', $groupKey)->format('M Y') . ")",
+                    'issue_date' => Carbon::now()->format('d M Y'),
+                    'due_date' => $dueDate->format('d M Y'),
+                    'valid_date' => $validDate->format('d M Y'),
+                    'roll_no' => $student->roll_number,
+                    'student_id' => $student->admission_number,
+                    'adm_reg_no' => "{$student->admission_number}",
+                ],
+                'student' => [
+                    'full_name' => $student->first_name . ' ' . $student->last_name,
+                    'parent_relation' => $relationLabel,
+                    'guardian_name' => $student->guardian_name,
+                    'class' => $student->program ? $student->program->name : 'N/A',
+                ],
+                'fee_items' => $groupFees->values()->map(function ($fee, $index) {
+                    return [
+                        'sr_no' => $index + 1,
+                        'head' => $fee->feeHead->name,
+                        'amount' => number_format($fee->amount, 0),
+                    ];
+                })->all(),
+                'summary' => [
+                    'arrears' => number_format($groupArrearsAmount, 0),
+                    'previous_fine' => number_format($groupPreviousFine, 0),
+                    'payable_within_due_date' => number_format($payableWithinDueDate, 0),
+                    'late_fee_fine' => '0', // Placeholder as per image
+                    'absent_fine' => '0',   // Placeholder as per image
+                    'payable_after_due_date' => number_format($payableWithinDueDate + 500, 0), // Assuming 500 late fee
+                ],
+                'bank' => [
+                    'info' => $bankDetails,
+                ]
+            ];
+        }
+
+        return $vouchers;
     }
     
     /**
@@ -610,7 +646,7 @@ class FeeService
         
         $grouped = [];
         foreach ($fees as $fee) {
-            $semNumber = $this->getStudentSemesterNumber($student, $fee->due_date);
+            $semNumber = $fee->semester_number ?: $this->getStudentSemesterNumber($student, $fee->due_date);
             // Key by fee_head, semester, amount, and remarks to safely distinguish splits
             $key = $fee->fee_head_id . '_' . $semNumber . '_' . $fee->amount . '_' . ($fee->remarks ?? '');
             if (!isset($grouped[$key])) {

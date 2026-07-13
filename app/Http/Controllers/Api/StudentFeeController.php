@@ -157,11 +157,11 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 foreach ($periods as $p) {
                     if (str_contains($p, '-')) {
                         [$m, $y] = explode('-', $p);
-                        $vouchers[] = $this->feeService->getVoucherData($studentId, (int)$m, (int)$y);
+                        $vouchers = array_merge($vouchers, $this->feeService->getVoucherData($studentId, (int)$m, (int)$y));
                     }
                 }
             } else {
-                $vouchers[] = $this->feeService->getVoucherData($studentId, $request->month, $request->year);
+                $vouchers = array_merge($vouchers, $this->feeService->getVoucherData($studentId, $request->month, $request->year));
             }
             
             return $this->sendResponse($vouchers, 'Voucher data generated successfully.');
@@ -183,7 +183,8 @@ class StudentFeeController extends BaseController implements HasMiddleware
 
             foreach ($studentIds as $id) {
                 try {
-                    $vouchers[] = $this->feeService->getVoucherData($id, $month, $year);
+                    $voucherArray = $this->feeService->getVoucherData($id, $month, $year);
+                    $vouchers = array_merge($vouchers, $voucherArray);
                 } catch (\Exception $e) {
                     // Skip students with no fees for that month instead of failing the whole batch
                     continue;
@@ -328,7 +329,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
     {
         try {
             $request->validate([
-                'installments' => 'required|array|min:2|max:3',
+                'installments' => 'required|array|min:2|max:4',
                 'installments.*.amount' => 'required|numeric|min:1',
                 'installments.*.due_date' => 'required|date',
             ]);
@@ -350,12 +351,6 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 return $this->sendError("Installments can only be applied to Semester Fee.", [], 422);
             }
 
-            // Move all other unpaid fees to the first installment's due date
-            \App\Models\StudentFee::where('student_id', $studentFee->student_id)
-                ->where('id', '!=', $studentFee->id)
-                ->whereIn('status', ['unpaid', 'partial'])
-                ->update(['due_date' => $firstDueDate]);
-
             foreach ($request->installments as $index => $inst) {
                 StudentFee::create([
                     'organization_id' => $studentFee->organization_id,
@@ -370,7 +365,8 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     'due_date' => $inst['due_date'],
                     'status' => 'unpaid',
                     'voucher_number' => $this->feeService->generateNextVoucherNumber(),
-                    'remarks' => $studentFee->feeHead->name . " (Installment " . ($index + 1) . "/$count)"
+                    'remarks' => $studentFee->feeHead->name . " (Installment " . ($index + 1) . "/$count)",
+                    'semester_number' => $studentFee->semester_number,
                 ]);
             }
 

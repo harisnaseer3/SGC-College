@@ -48,6 +48,8 @@ class StudentFee extends Model
         'due_date',
         'status',
         'voucher_number',
+        'remarks',
+        'semester_number',
     ];
 
     protected $casts = [
