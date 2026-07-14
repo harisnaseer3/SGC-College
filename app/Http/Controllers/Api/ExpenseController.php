@@ -41,6 +41,16 @@ class ExpenseController extends BaseController implements HasMiddleware
             $query->whereDate('expense_date', '<=', $request->end_date);
         }
 
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('bill_no', 'like', "%{$search}%")
+                  ->orWhere('supplier', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
         if ($request->has('sort_by') && $request->has('sort_dir')) {
             if ($request->sort_by === 'category') {
                 $query->join('expense_categories', 'expenses.expense_category_id', '=', 'expense_categories.id')
@@ -54,7 +64,7 @@ class ExpenseController extends BaseController implements HasMiddleware
         }
 
         $total = (clone $query)->sum('amount');
-        $expenses = $query->paginate(10);
+        $expenses = $query->paginate(request('per_page', 10));
         
         return response()->json([
             'success' => true,

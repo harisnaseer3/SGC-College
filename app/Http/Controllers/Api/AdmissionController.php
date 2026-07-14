@@ -39,7 +39,7 @@ class AdmissionController extends BaseController implements HasMiddleware
     public function index()
     {
         try {
-            $students = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch'])->latest()->paginate(10);
+            $students = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch'])->latest()->paginate(request('per_page', 10));
             return $this->sendResponse($students, 'Students retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve students.', ['error' => $e->getMessage()], 500);
@@ -86,6 +86,14 @@ class AdmissionController extends BaseController implements HasMiddleware
                 $data['student_picture'] = $path;
             }
 
+            if ($request->hasFile('attachments')) {
+                $attachments = [];
+                foreach ($request->file('attachments') as $file) {
+                    $attachments[] = $file->store('students/attachments', 'public');
+                }
+                $data['attachments'] = $attachments;
+            }
+
             $data['status'] = $request->boolean('is_enrolled') ? 'Enrolled' : 'Pending';
 
             $student = Student::create($data);
@@ -119,6 +127,29 @@ class AdmissionController extends BaseController implements HasMiddleware
                 $path = $request->file('student_picture')->store('students/pictures', 'public');
                 $data['student_picture'] = $path;
             }
+
+            $currentAttachments = $admission->attachments ?? [];
+
+            if ($request->has('deleted_attachments')) {
+                $deletedAttachments = $request->input('deleted_attachments');
+                foreach ($deletedAttachments as $deleted) {
+                    if (($key = array_search($deleted, $currentAttachments)) !== false) {
+                        unset($currentAttachments[$key]);
+                        if (\Storage::disk('public')->exists($deleted)) {
+                            \Storage::disk('public')->delete($deleted);
+                        }
+                    }
+                }
+                $currentAttachments = array_values($currentAttachments);
+            }
+
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    $currentAttachments[] = $file->store('students/attachments', 'public');
+                }
+            }
+            
+            $data['attachments'] = $currentAttachments;
 
             // Keep status logic consistent
             if ($request->has('is_enrolled')) {

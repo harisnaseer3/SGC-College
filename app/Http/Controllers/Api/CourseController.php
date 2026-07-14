@@ -28,7 +28,7 @@ class CourseController extends BaseController implements HasMiddleware
     public function index(): JsonResponse
     {
         try {
-            $courses = Course::latest()->paginate(10);
+            $courses = Course::latest()->paginate(request('per_page', 10));
             return $this->sendResponse($courses, 'Courses retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve courses.', ['error' => $e->getMessage()], 500);

@@ -128,8 +128,20 @@ const StudentLedgerDetail = () => {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <Card className="p-6 bg-slate-50">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+                <Card className="p-6 bg-violet-50 border-violet-100">
+                    <div className="text-xs font-bold text-violet-500 uppercase">Total Semesters</div>
+                    <div className="text-2xl font-bold text-violet-700">
+                        {ledger ? new Set([...(ledger.fees || []), ...(ledger.paid_fees || [])].map(fee => getSemesterNumber(ledger.student.admission_date, fee.due_date, fee.semester_number))).size : 0}
+                    </div>
+                </Card>
+                <Card className="p-6 bg-fuchsia-50 border-fuchsia-100">
+                    <div className="text-xs font-bold text-fuchsia-500 uppercase">Total Vouchers</div>
+                    <div className="text-2xl font-bold text-fuchsia-700">
+                        {ledger ? (ledger.fees?.length || 0) + (ledger.paid_fees?.length || 0) : 0}
+                    </div>
+                </Card>
+                <Card className="p-6 bg-slate-50 border-slate-100">
                     <div className="text-xs font-bold text-slate-500 uppercase">Total Payable</div>
                     <div className="text-2xl font-bold text-slate-900">Rs. {Number(ledger.summary.total_payable).toLocaleString()}</div>
                 </Card>

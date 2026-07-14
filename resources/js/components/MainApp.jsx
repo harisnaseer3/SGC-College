@@ -17,6 +17,7 @@ import ExtraExpenseByDateReport from './Reports/ExtraExpenseByDateReport';
 import FeeManagement from './Fees/FeeManagement';
 import FeeVoucher from './Fees/FeeVoucher';
 import FeePaymentReceipt from './Fees/FeePaymentReceipt';
+import VoucherList from './Fees/VoucherList';
 import ExtraIncomeManagement from './ExtraIncome/ExtraIncomeManagement';
 import ExtraIncomeReceipt from './ExtraIncome/ExtraIncomeReceipt';
 import ExtraExpenseManagement from './ExtraExpense/ExtraExpenseManagement';
@@ -63,6 +64,7 @@ const AppContent = () => {
                             <Route path="/roles/*" element={<RoleManagement />} />
                             <Route path="/academic/*" element={<AcademicManagement />} />
                             <Route path="/system/backups" element={<BackupManagement />} />
+                            <Route path="/fees/vouchers-list" element={<VoucherList />} />
                             <Route path="/fees/*" element={<FeeManagement />} />
                             <Route path="/admissions" element={<AdmissionList />} />
                             <Route path="/new-admission" element={<NewAdmissionForm />} />

@@ -37,6 +37,9 @@ const ExtraExpenses = () => {
     // Filters
     const [filterCategory, setFilterCategory] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
     const canCreate = user?.permissions_list?.includes('create_expenses') || user?.roles?.some(r => r.name === 'super_admin');
     const canEdit = user?.permissions_list?.includes('edit_expenses') || user?.roles?.some(r => r.name === 'super_admin');
@@ -46,13 +49,13 @@ const ExtraExpenses = () => {
     // Reset to page 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [filterCategory, filterStatus]);
+    }, [filterCategory, filterStatus, searchQuery, startDate, endDate]);
 
     // Fetch whenever page or refreshKey changes
     useEffect(() => {
         fetchCategories();
         fetchExpenses(currentPage);
-    }, [filterCategory, filterStatus, currentPage, refreshKey, sortField, sortDirection]);
+    }, [filterCategory, filterStatus, searchQuery, startDate, endDate, currentPage, refreshKey, sortField, sortDirection]);
 
     const fetchCategories = async () => {
         try {
@@ -70,6 +73,9 @@ const ExtraExpenses = () => {
             params.append('page', page);
             if (filterCategory) params.append('category_id', filterCategory);
             if (filterStatus) params.append('status', filterStatus);
+            if (searchQuery) params.append('search', searchQuery);
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
             params.append('sort_by', sortField);
             params.append('sort_dir', sortDirection);
 
@@ -248,26 +254,73 @@ const ExtraExpenses = () => {
                 </div>
             </div>
 
-            <div className="bg-white p-4 rounded-t-xl border border-slate-200 flex gap-4 border-b-0">
-                <select 
-                    value={filterCategory} 
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    className="p-2 border border-slate-200 rounded-lg text-sm font-medium outline-none"
-                >
-                    <option value="">All Categories</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-
-                <select 
-                    value={filterStatus} 
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="p-2 border border-slate-200 rounded-lg text-sm font-medium outline-none"
-                >
-                    <option value="">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="reimbursed">Reimbursed</option>
-                </select>
+            {/* ── Filter Bar ── */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                    <div className="relative group xl:col-span-1">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </span>
+                        <input
+                            type="text"
+                            placeholder="Search title, supplier..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+                        />
+                    </div>
+                    <select
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+                    >
+                        <option value="">All Categories</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="reimbursed">Reimbursed</option>
+                    </select>
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm text-slate-500"
+                        title="Start Date"
+                    />
+                    <div className="flex gap-2">
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm text-slate-500"
+                            title="End Date"
+                        />
+                        <button
+                            onClick={() => {
+                                setFilterCategory('');
+                                setFilterStatus('');
+                                setSearchQuery('');
+                                setStartDate('');
+                                setEndDate('');
+                            }}
+                            title="Reset Filters"
+                            className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl border border-slate-200 bg-white transition-all shadow-sm shrink-0"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div className="bg-white rounded-b-xl shadow-sm border border-slate-200 overflow-hidden">

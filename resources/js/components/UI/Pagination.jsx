@@ -7,7 +7,6 @@ const Pagination = ({
     onPageChange 
 }) => {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
-    if (totalPages <= 1) return null;
 
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
@@ -44,8 +43,24 @@ const Pagination = ({
 
     return (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-slate-50/50 border-t border-slate-100">
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                Showing <span className="text-slate-900">{startItem}</span> to <span className="text-slate-900">{endItem}</span> of <span className="text-slate-900">{totalItems}</span> results
+            <div className="flex items-center gap-4">
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    Showing <span className="text-slate-900">{startItem}</span> to <span className="text-slate-900">{endItem}</span> of <span className="text-slate-900">{totalItems}</span> results
+                </div>
+                <select 
+                    value={localStorage.getItem('per_page') || itemsPerPage} 
+                    onChange={(e) => {
+                        localStorage.setItem('per_page', e.target.value);
+                        window.location.reload();
+                    }}
+                    className="text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-400 cursor-pointer"
+                >
+                    <option value={10}>10 per page</option>
+                    <option value={20}>20 per page</option>
+                    <option value={50}>50 per page</option>
+                    <option value={100}>100 per page</option>
+                    <option value={500}>500 per page</option>
+                </select>
             </div>
 
             <div className="flex items-center gap-1.5">

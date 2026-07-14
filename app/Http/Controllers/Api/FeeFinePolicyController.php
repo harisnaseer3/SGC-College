@@ -26,7 +26,7 @@ class FeeFinePolicyController extends BaseController implements HasMiddleware
      */
     public function index()
     {
-        $policies = FeeFinePolicy::with('feeHead')->paginate(10);
+        $policies = FeeFinePolicy::with('feeHead')->paginate(request('per_page', 10));
         return $this->sendResponse($policies, 'Fine policies retrieved successfully.');
     }
 

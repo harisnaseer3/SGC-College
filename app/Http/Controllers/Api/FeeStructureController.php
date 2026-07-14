@@ -27,7 +27,7 @@ class FeeStructureController extends BaseController implements HasMiddleware
      */
     public function index()
     {
-        $structures = FeeStructure::with(['campus', 'program', 'academicBatch', 'items.feeHead'])->paginate(10);
+        $structures = FeeStructure::with(['campus', 'program', 'academicBatch', 'items.feeHead'])->paginate(request('per_page', 10));
         return $this->sendResponse($structures, 'Fee structures retrieved successfully.');
     }
 

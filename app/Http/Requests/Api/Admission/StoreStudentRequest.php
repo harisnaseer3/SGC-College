@@ -50,6 +50,10 @@ class StoreStudentRequest extends FormRequest
             'religion'            => 'required|string|max:255',
             'student_picture'     => 'nullable|image|max:2048',
             'is_enrolled'         => 'nullable|boolean',
+            'attachments'         => 'nullable|array',
+            'attachments.*'       => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'deleted_attachments'   => 'nullable|array',
+            'deleted_attachments.*' => 'string',
         ];
     }
 }

@@ -40,6 +40,11 @@ class Student extends Model
         'is_transfer',
         'religion',
         'student_picture',
+        'attachments',
+    ];
+
+    protected $casts = [
+        'attachments' => 'array',
     ];
 
     protected static function boot()

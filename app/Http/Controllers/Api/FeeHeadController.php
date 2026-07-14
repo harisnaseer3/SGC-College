@@ -25,7 +25,7 @@ class FeeHeadController extends BaseController implements HasMiddleware
      */
     public function index()
     {
-        $heads = FeeHead::paginate(10);
+        $heads = FeeHead::paginate(request('per_page', 10));
         return $this->sendResponse($heads, 'Fee heads retrieved successfully.');
     }
 

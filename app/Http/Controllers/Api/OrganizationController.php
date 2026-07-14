@@ -31,7 +31,7 @@ class OrganizationController extends BaseController implements HasMiddleware
     public function index(): JsonResponse
     {
         try {
-            $organizations = Organization::paginate(10);
+            $organizations = Organization::paginate(request('per_page', 10));
             return $this->sendResponse($organizations, 'Organizations retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve organizations.', ['error' => $e->getMessage()], 500);

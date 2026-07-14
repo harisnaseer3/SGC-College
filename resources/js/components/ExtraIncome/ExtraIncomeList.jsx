@@ -9,6 +9,14 @@ const ExtraIncomeList = () => {
     const [incomes, setIncomes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
+    const [categories, setCategories] = useState([]);
+    
+    // Filters
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterCategory, setFilterCategory] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingIncome, setEditingIncome] = useState(null);
     const [isViewOnly, setIsViewOnly] = useState(false);
@@ -19,10 +27,26 @@ const ExtraIncomeList = () => {
     const canEdit = user?.permissions_list?.includes('edit_extra_incomes') || user?.roles?.some(r => r.name === 'super_admin');
     const canDelete = user?.permissions_list?.includes('delete_extra_incomes') || user?.roles?.some(r => r.name === 'super_admin');
 
+    const fetchCategories = async () => {
+        try {
+            const response = await axios.get('/api/income-categories');
+            setCategories(response.data.data.data || response.data.data); // depending on pagination
+        } catch (error) {
+            console.error('Failed to fetch categories');
+        }
+    };
+
     const fetchIncomes = async (page = 1) => {
         try {
             setLoading(true);
-            const response = await axios.get('/api/extra-incomes', { params: { page } });
+            const params = new URLSearchParams();
+            params.append('page', page);
+            if (searchQuery) params.append('search', searchQuery);
+            if (filterCategory) params.append('category_id', filterCategory);
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+
+            const response = await axios.get(`/api/extra-incomes?${params.toString()}`);
             setIncomes(response.data.data.data);
             setPagination({
                 current_page: response.data.data.current_page,
@@ -37,9 +61,19 @@ const ExtraIncomeList = () => {
         }
     };
 
+    // Fetch categories once
+    useEffect(() => {
+        fetchCategories();
+    }, []);
+
+    // Reset page to 1 when filters change
+    useEffect(() => {
+        setPagination(prev => ({ ...prev, current_page: 1 }));
+    }, [searchQuery, filterCategory, startDate, endDate]);
+
     useEffect(() => {
         fetchIncomes(pagination.current_page);
-    }, [pagination.current_page]);
+    }, [pagination.current_page, searchQuery, filterCategory, startDate, endDate]);
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this income record?')) {
@@ -72,6 +106,64 @@ const ExtraIncomeList = () => {
                         Record Income
                     </button>
                 )}
+            </div>
+
+            {/* ── Filter Bar ── */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="relative group">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </span>
+                        <input
+                            type="text"
+                            placeholder="Search form no, method..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+                        />
+                    </div>
+                    <select
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+                    >
+                        <option value="">All Categories</option>
+                        {Array.isArray(categories) && categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm text-slate-500"
+                        title="Start Date"
+                    />
+                    <div className="flex gap-2">
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm text-slate-500"
+                            title="End Date"
+                        />
+                        <button
+                            onClick={() => {
+                                setFilterCategory('');
+                                setSearchQuery('');
+                                setStartDate('');
+                                setEndDate('');
+                            }}
+                            title="Reset Filters"
+                            className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl border border-slate-200 bg-white transition-all shadow-sm shrink-0"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {loading ? (

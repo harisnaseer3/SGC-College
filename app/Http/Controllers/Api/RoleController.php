@@ -44,7 +44,7 @@ class RoleController extends BaseController implements HasMiddleware
                 $query->whereNotIn('name', $excludedRoles);
             }
 
-            $roles = $query->paginate(10);
+            $roles = $query->paginate(request('per_page', 10));
 
             $roles->getCollection()->transform(function ($role) {
                 return [

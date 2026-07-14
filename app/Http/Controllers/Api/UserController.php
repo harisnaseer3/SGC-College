@@ -31,7 +31,7 @@ class UserController extends BaseController implements HasMiddleware
     public function index(Request $request): JsonResponse
     {
         try {
-            $users = User::with(['roles', 'campus'])->paginate(10);
+            $users = User::with(['roles', 'campus'])->paginate(request('per_page', 10));
             return $this->sendResponse($users, 'Users retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve users.', ['error' => $e->getMessage()], 500);

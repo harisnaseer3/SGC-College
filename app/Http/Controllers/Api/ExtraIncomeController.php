@@ -26,12 +26,28 @@ class ExtraIncomeController extends BaseController implements HasMiddleware
     {
         $query = ExtraIncome::with(['incomeCategory', 'collectedBy'])->latest();
         
-        if ($request->has('category_id')) {
+        if ($request->has('category_id') && $request->category_id) {
             $query->where('income_category_id', $request->category_id);
+        }
+
+        if ($request->has('start_date') && $request->start_date) {
+            $query->whereDate('date', '>=', $request->start_date);
+        }
+
+        if ($request->has('end_date') && $request->end_date) {
+            $query->whereDate('date', '<=', $request->end_date);
+        }
+
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('form_number', 'like', "%{$search}%")
+                  ->orWhere('payment_method', 'like', "%{$search}%");
+            });
         }
         
         $total = (clone $query)->sum('amount');
-        $incomes = $query->paginate(10);
+        $incomes = $query->paginate(request('per_page', 10));
         
         return response()->json([
             'success' => true,

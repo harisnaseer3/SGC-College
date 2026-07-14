@@ -428,8 +428,22 @@ class FeeService
         if ($currentFees->isEmpty() && $arrearsFees->isNotEmpty()) {
             $groupedFees = collect(['arrears' => collect([])]);
         } else {
-            $groupedFees = $currentFees->groupBy(function($fee) {
-                return $fee->due_date->format('Y-m');
+            // Find the first installment's date, or default to earliest date if no installments exist
+            $firstInstallment = $currentFees->filter(function($fee) {
+                return str_contains($fee->remarks ?? '', '(Installment 1/');
+            })->first();
+
+            $firstGroupKey = $firstInstallment 
+                ? $firstInstallment->due_date->format('Y-m') 
+                : $currentFees->min('due_date')->format('Y-m');
+
+            $groupedFees = $currentFees->groupBy(function($fee) use ($firstGroupKey) {
+                // If it is an installment, it goes to its own month's group
+                if (str_contains($fee->remarks ?? '', '(Installment')) {
+                    return $fee->due_date->format('Y-m');
+                }
+                // Otherwise, it gets bundled into the first group
+                return $firstGroupKey;
             })->sortBy(function($fees, $key) {
                 return $key;
             });

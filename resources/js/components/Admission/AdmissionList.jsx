@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import DataTable from '../UI/DataTable';
 import Card from '../UI/Card';
@@ -19,6 +19,7 @@ const DetailRow = ({ label, value }) => value ? (
 
 const AdmissionList = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
@@ -48,7 +49,7 @@ const AdmissionList = () => {
         program_id: '',
         campus_id: '',
         academic_batch_id: '',
-        status: '',
+        status: searchParams.get('status') || '',
         intake_session: ''
     });
 
@@ -161,7 +162,16 @@ const AdmissionList = () => {
         const matchesProgram = !filters.program_id || s.program_id == filters.program_id;
         const matchesCampus  = !filters.campus_id || s.campus_id == filters.campus_id;
         const matchesBatch   = !filters.academic_batch_id || s.academic_batch_id == filters.academic_batch_id;
-        const matchesStatus  = !filters.status || s.status == filters.status;
+        
+        let matchesStatus = true;
+        if (filters.status) {
+            if (filters.status === 'Losses') {
+                matchesStatus = ['Struck Off', 'Passed Out'].includes(s.status);
+            } else {
+                matchesStatus = s.status === filters.status;
+            }
+        }
+
         const matchesIntake  = !filters.intake_session || s.intake_session == filters.intake_session;
 
         return matchesSearch && matchesProgram && matchesCampus && matchesBatch && matchesStatus && matchesIntake;
@@ -367,6 +377,7 @@ const AdmissionList = () => {
                         <option value="Promoted">Promoted</option>
                         <option value="Transferred">Transferred</option>
                         <option value="Pending">Pending</option>
+                        <option value="Losses">Lifecycle Losses (Struck/Passed)</option>
                     </select>
 
                     <div className="flex gap-2">
@@ -662,6 +673,21 @@ const AdmissionList = () => {
                                     <DetailRow label="CNIC" value={selected.guardian_cnic} />
                                 </div>
                             </div>
+
+                            {/* Attachments */}
+                            {selected.attachments && selected.attachments.length > 0 && (
+                                <div className="border-t border-slate-100 pt-5">
+                                    <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Attachments</h3>
+                                    <div className="flex flex-col gap-2">
+                                        {selected.attachments.map((path, idx) => (
+                                            <a key={idx} href={`/storage/${path}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+                                                <svg className="w-5 h-5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                                <span className="text-sm font-bold text-indigo-600 truncate">{path.split('/').pop()}</span>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

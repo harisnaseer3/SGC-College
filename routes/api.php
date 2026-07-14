@@ -83,6 +83,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('student-fees/split/{studentFee}', [StudentFeeController::class, 'split']);
     Route::post('student-fees/assign/{student}', [StudentFeeController::class, 'manualAssign']);
     Route::get('student-fees/vouchers/bulk', [StudentFeeController::class, 'bulkVouchers']);
+    Route::get('student-fees/vouchers-list', [StudentFeeController::class, 'vouchersList']);
     Route::get('student-fees/voucher/{student}', [StudentFeeController::class, 'voucher']);
     Route::post('student-fees/deposit', [StudentFeeController::class, 'deposit']);
     Route::get('student-fees/payments', [StudentFeeController::class, 'allPayments']);

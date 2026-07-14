@@ -34,7 +34,7 @@ class ProgramController extends BaseController implements HasMiddleware
                 $programs = Program::with('campus')->latest()->get();
                 return $this->sendResponse($programs, 'Programs retrieved successfully.');
             }
-            $programs = Program::with('campus')->latest()->paginate(10);
+            $programs = Program::with('campus')->latest()->paginate(request('per_page', 10));
             return $this->sendResponse($programs, 'Programs retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve programs.', ['error' => $e->getMessage()], 500);

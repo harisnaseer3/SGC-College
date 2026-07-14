@@ -10,6 +10,7 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import Button from '../UI/Button';
+import FeeAnalyticsChart from './FeeAnalyticsChart';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 const fmt = (n) => (n ?? 0).toLocaleString();
@@ -33,9 +34,12 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 // ─── Stat Card ──────────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, gradient, icon, trend }) {
+function StatCard({ label, value, sub, gradient, icon, trend, onClick }) {
     return (
-        <div className={`rounded-2xl p-6 text-white ${gradient} shadow-lg relative overflow-hidden`}>
+        <div 
+            onClick={onClick}
+            className={`rounded-2xl p-6 text-white ${gradient} shadow-lg relative overflow-hidden ${onClick ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-200' : ''}`}
+        >
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full" />
             <div className="absolute -right-2 -bottom-6 w-16 h-16 bg-white/10 rounded-full" />
             <div className="relative z-10">
@@ -85,14 +89,15 @@ export default function Dashboard() {
     const { user, selectedOrganization, selectedCampus } = useAuth();
     const [data, setData]     = useState(null);
     const [loading, setLoading] = useState(true);
+    const [voucherMonth, setVoucherMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
     useEffect(() => {
         setLoading(true);
-        axios.get('/api/dashboard/stats')
+        axios.get('/api/dashboard/stats', { params: { voucher_month: voucherMonth } })
             .then(r => setData(r.data.data))
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, [selectedOrganization, selectedCampus]);
+    }, [selectedOrganization, selectedCampus, voucherMonth]);
 
     const counts   = data?.counts ?? {};
     const monthly  = data?.monthly_admissions ?? [];
@@ -122,6 +127,7 @@ export default function Dashboard() {
             sub: `${fmt(enrolled)} enrolled · ${fmt(pending)} pending`,
             gradient: 'bg-gradient-to-br from-indigo-500 to-violet-600',
             icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+            onClick: () => navigate('/admissions')
         },
         {
             label: 'Promoted',
@@ -129,6 +135,7 @@ export default function Dashboard() {
             sub: 'Advanced to next semester',
             gradient: 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-100',
             icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
+            onClick: () => navigate('/admissions?status=Promoted')
         },
         {
             label: 'Enrolled',
@@ -136,6 +143,7 @@ export default function Dashboard() {
             sub: 'Currently active students',
             gradient: 'bg-gradient-to-br from-sky-500 to-blue-600 shadow-blue-100',
             icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+            onClick: () => navigate('/admissions?status=Enrolled')
         },
         {
             label: 'Lifecycle Losses',
@@ -143,9 +151,12 @@ export default function Dashboard() {
             sub: `${fmt(counts.struck_off)} Struck Off · ${fmt(counts.passed_out)} Graduated`,
             gradient: 'bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-200',
             icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+            onClick: () => navigate('/admissions?status=Losses')
         },
     ];
 
+    const [voucherYear, voucherM] = voucherMonth.split('-');
+    
     const voucherCards = [
         {
             label: 'Total Vouchers',
@@ -153,6 +164,7 @@ export default function Dashboard() {
             sub: 'All issued fee vouchers',
             gradient: 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-100',
             icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+            onClick: () => navigate(`/fees/vouchers-list?month=${parseInt(voucherM)}&year=${voucherYear}`)
         },
         {
             label: 'Paid Vouchers',
@@ -160,6 +172,7 @@ export default function Dashboard() {
             sub: 'Fully paid by students',
             gradient: 'bg-gradient-to-br from-emerald-500 to-green-600 shadow-emerald-100',
             icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+            onClick: () => navigate(`/fees/vouchers-list?month=${parseInt(voucherM)}&year=${voucherYear}&status=paid`)
         },
         {
             label: 'Unpaid Vouchers',
@@ -167,6 +180,7 @@ export default function Dashboard() {
             sub: 'Fully unpaid vouchers',
             gradient: 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-100',
             icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+            onClick: () => navigate(`/fees/vouchers-list?month=${parseInt(voucherM)}&year=${voucherYear}&status=unpaid`)
         },
         {
             label: 'Partial Vouchers',
@@ -174,6 +188,7 @@ export default function Dashboard() {
             sub: 'Partially paid by students',
             gradient: 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-100',
             icon: 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z',
+            onClick: () => navigate(`/fees/vouchers-list?month=${parseInt(voucherM)}&year=${voucherYear}&status=partial`)
         },
     ];
 
@@ -211,12 +226,39 @@ export default function Dashboard() {
             <div className="space-y-4 mt-2">
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-bold text-slate-900 tracking-tight">Financial Overview</h2>
+                    <div className="flex items-center gap-2">
+                        <label htmlFor="voucher_month" className="text-sm font-bold text-slate-500 uppercase tracking-wider">Billing Month</label>
+                        <input 
+                            id="voucher_month"
+                            type="month"
+                            value={voucherMonth}
+                            onChange={(e) => setVoucherMonth(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+                        />
+                        {voucherMonth !== new Date().toISOString().slice(0, 7) && (
+                            <button 
+                                onClick={() => setVoucherMonth(new Date().toISOString().slice(0, 7))}
+                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4 ml-1"
+                            >
+                                Reset
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                     {loading
                         ? Array(4).fill(0).map((_, i) => <div key={i} className="animate-pulse h-36 bg-slate-100 rounded-2xl" />)
                         : voucherCards.map(s => <StatCard key={s.label} {...s} />)}
                 </div>
+            </div>
+
+            {/* Fee Analytics Chart */}
+            <div className="mt-8 mb-8">
+                {loading ? (
+                    <div className="animate-pulse bg-slate-100 h-[400px] rounded-2xl w-full"></div>
+                ) : (
+                    <FeeAnalyticsChart data={data?.fee_analytics} />
+                )}
             </div>
 
             {/* Row 2: Area Chart (Monthly) + Enrollment Radial */}

@@ -51,6 +51,10 @@ const NewAdmissionForm = () => {
     const [pictureFile, setPictureFile] = useState(null);
     const [picturePreview, setPicturePreview] = useState(null);
 
+    const [attachmentFiles, setAttachmentFiles] = useState([]);
+    const [existingAttachments, setExistingAttachments] = useState([]);
+    const [deletedAttachments, setDeletedAttachments] = useState([]);
+
     const [formOptions, setFormOptions] = useState({
         campuses: [],
         programs: [],
@@ -123,6 +127,9 @@ const NewAdmissionForm = () => {
             if (s.student_picture) {
                 setPicturePreview(`/storage/${s.student_picture}`);
             }
+            if (s.attachments && Array.isArray(s.attachments)) {
+                setExistingAttachments(s.attachments);
+            }
         } catch (error) {
             console.error('Error fetching student:', error);
             showError('Failed to load student data.');
@@ -173,6 +180,14 @@ const NewAdmissionForm = () => {
             if (pictureFile) {
                 payload.append('student_picture', pictureFile);
             }
+
+            attachmentFiles.forEach((file) => {
+                payload.append('attachments[]', file);
+            });
+
+            deletedAttachments.forEach((path) => {
+                payload.append('deleted_attachments[]', path);
+            });
 
             const url = isEdit ? `/api/admissions/${id}` : '/api/admissions';
             
@@ -397,6 +412,34 @@ const NewAdmissionForm = () => {
                                 )}
                                 <input type="file" name="student_picture" accept="image/*" onChange={handlePictureChange} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
                             </div>
+                        </div>
+
+                        {/* Attachments */}
+                        <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+                            <label className={labelCls}>Additional Attachments (CNIC, Transcripts, etc.)</label>
+                            <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setAttachmentFiles(Array.from(e.target.files))} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
+                            
+                            {(existingAttachments.length > 0 || attachmentFiles.length > 0) && (
+                                <div className="mt-4 flex flex-col gap-2">
+                                    {existingAttachments.map((path, idx) => (
+                                        <div key={`exist-${idx}`} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl">
+                                            <a href={`/storage/${path}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-indigo-600 hover:underline break-all">
+                                                {path.split('/').pop()}
+                                            </a>
+                                            <button type="button" onClick={() => {
+                                                setDeletedAttachments([...deletedAttachments, path]);
+                                                setExistingAttachments(existingAttachments.filter(p => p !== path));
+                                            }} className="text-red-500 hover:text-red-700 text-xs font-bold uppercase tracking-wider px-2 py-1 bg-red-50 rounded">Delete</button>
+                                        </div>
+                                    ))}
+                                    {attachmentFiles.map((file, idx) => (
+                                        <div key={`new-${idx}`} className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+                                            <span className="text-sm font-bold text-slate-700">{file.name}</span>
+                                            <span className="text-xs font-bold text-indigo-500 uppercase">New</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 

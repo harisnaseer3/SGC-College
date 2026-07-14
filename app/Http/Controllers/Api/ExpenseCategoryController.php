@@ -25,7 +25,7 @@ class ExpenseCategoryController extends BaseController implements HasMiddleware
             $categories = ExpenseCategory::latest()->get();
             return $this->sendResponse($categories, 'Expense Categories retrieved successfully.');
         }
-        $categories = ExpenseCategory::latest()->paginate(10);
+        $categories = ExpenseCategory::latest()->paginate(request('per_page', 10));
         return $this->sendResponse($categories, 'Expense Categories retrieved successfully.');
     }
 

@@ -22,13 +22,17 @@ const DataTable = ({
     }, [data.length, pagination]);
 
     const isServerPaginated = pagination !== null;
+    
+    // Allow localStorage to override client-side itemsPerPage if set, otherwise fallback to prop
+    const clientItemsPerPage = Number(localStorage.getItem('per_page')) || itemsPerPage;
+    const perPage = isServerPaginated ? pagination.per_page : clientItemsPerPage;
+
     const currentList = isServerPaginated ? data : data.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
+        (currentPage - 1) * perPage,
+        currentPage * perPage
     );
     const totalItems = isServerPaginated ? pagination.total : data.length;
     const activePage = isServerPaginated ? pagination.current_page : currentPage;
-    const perPage = isServerPaginated ? pagination.per_page : itemsPerPage;
 
     return (
         <Card className={`overflow-hidden ${className}`}>

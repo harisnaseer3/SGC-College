@@ -34,12 +34,19 @@ class DashboardController extends BaseController implements HasMiddleware
             $totalCampuses  = Campus::count();
             $totalPrograms  = Program::count();
 
-            // --- Voucher counts ---
-            $totalVouchers   = StudentFee::count();
-            $paidVouchers    = StudentFee::where('status', 'paid')->count();
-            $unpaidVouchers  = StudentFee::where('status', 'unpaid')->count();
-            $partialVouchers = StudentFee::where('status', 'partial')->count();
-            $overdueVouchers = StudentFee::whereIn('status', ['unpaid', 'partial'])
+            // --- Voucher counts (filtered by month) ---
+            $voucherMonth = request('voucher_month', now()->format('Y-m'));
+            
+            $voucherQuery = StudentFee::query();
+            if ($voucherMonth) {
+                $voucherQuery->where('due_date', 'like', $voucherMonth . '%');
+            }
+
+            $totalVouchers   = (clone $voucherQuery)->count();
+            $paidVouchers    = (clone $voucherQuery)->where('status', 'paid')->count();
+            $unpaidVouchers  = (clone $voucherQuery)->where('status', 'unpaid')->count();
+            $partialVouchers = (clone $voucherQuery)->where('status', 'partial')->count();
+            $overdueVouchers = (clone $voucherQuery)->whereIn('status', ['unpaid', 'partial'])
                                          ->where('due_date', '<', now()->startOfDay())
                                          ->count();
 
@@ -97,6 +104,50 @@ class DashboardController extends BaseController implements HasMiddleware
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
+            // --- Monthly Fee Analytics (Current Year) ---
+            $monthlyFeesData = StudentFee::select(
+                    DB::raw('MONTH(due_date) as month'),
+                    DB::raw('SUM(COALESCE(amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as expected'),
+                    DB::raw('SUM(COALESCE(paid_amount, 0)) as collected')
+                )
+                ->whereYear('due_date', now()->year)
+                ->groupBy(DB::raw('MONTH(due_date)'))
+                ->orderBy('month')
+                ->get()
+                ->keyBy('month');
+
+            $monthlyFeeAnalytics = collect(range(1, 12))->map(function($m) use ($months, $monthlyFeesData) {
+                $receivable = (float) ($monthlyFeesData->get($m)->expected ?? 0);
+                $received   = (float) ($monthlyFeesData->get($m)->collected ?? 0);
+                return [
+                    'name'       => $months[$m - 1],
+                    'receivable' => $receivable,
+                    'received'   => $received,
+                    'pending'    => max(0, $receivable - $received),
+                ];
+            });
+
+            // --- Semester-wise Fee Analytics ---
+            $semesterFeesData = StudentFee::select(
+                    'semester_number',
+                    DB::raw('SUM(COALESCE(amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as expected'),
+                    DB::raw('SUM(COALESCE(paid_amount, 0)) as collected')
+                )
+                ->whereNotNull('semester_number')
+                ->groupBy('semester_number')
+                ->orderBy('semester_number')
+                ->get()
+                ->map(function($row) {
+                    $receivable = (float) ($row->expected ?? 0);
+                    $received   = (float) ($row->collected ?? 0);
+                    return [
+                        'name'       => 'Semester ' . $row->semester_number,
+                        'receivable' => $receivable,
+                        'received'   => $received,
+                        'pending'    => max(0, $receivable - $received),
+                    ];
+                })->values();
+
             return $this->sendResponse([
                 'counts' => [
                     'students'  => $totalStudents,
@@ -127,6 +178,10 @@ class DashboardController extends BaseController implements HasMiddleware
                 'students_by_program' => $studentsByProgram,
                 'recent_admissions'   => $recentAdmissions,
                 'monthly_admissions'  => $monthlyData,
+                'fee_analytics'       => [
+                    'monthly'  => $monthlyFeeAnalytics,
+                    'semester' => $semesterFeesData,
+                ]
             ], 'Dashboard stats retrieved.');
 
         } catch (\Exception $e) {

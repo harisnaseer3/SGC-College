@@ -32,7 +32,7 @@ class AcademicBatchController extends BaseController implements HasMiddleware
                 $batches = AcademicBatch::with('campus')->latest()->get();
                 return $this->sendResponse($batches, 'Academic batches retrieved successfully.');
             }
-            $batches = AcademicBatch::with('campus')->latest()->paginate(10);
+            $batches = AcademicBatch::with('campus')->latest()->paginate(request('per_page', 10));
             return $this->sendResponse($batches, 'Academic batches retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve batches.', ['error' => $e->getMessage()], 500);

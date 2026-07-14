@@ -15,15 +15,14 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:view_student_fees', only: ['index', 'studentLedger', 'voucher', 'bulkVouchers', 'findByVoucher']),
-            new Middleware('permission:create_student_fees', only: ['generate', 'manualAssign']),
-            new Middleware('permission:edit_student_fees', only: ['update']),
-            new Middleware('permission:pay_student_fees|create_fee_receipts|manage_fee_receipts', only: ['deposit']),
-            new Middleware('permission:split_student_fees', only: ['split']),
-            new Middleware('permission:apply_fines', only: ['applyFines']),
-            new Middleware('permission:view_fee_receipts|manage_fee_receipts', only: ['allPayments']),
-            new Middleware('permission:print_fee_receipts|manage_fee_receipts', only: ['showPayment']),
-            new Middleware('permission:delete_fee_receipts|manage_fee_receipts', only: ['destroyPayment']),
+            new Middleware('role_or_permission:super_admin|view_student_fees', only: ['index', 'studentLedger', 'voucher', 'bulkVouchers', 'findByVoucher']),
+            new Middleware('role_or_permission:super_admin|create_student_fees', only: ['generate', 'manualAssign']),
+            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['update']),
+            new Middleware('role_or_permission:super_admin|pay_student_fees|create_fee_receipts|manage_fee_receipts', only: ['deposit']),
+            new Middleware('role_or_permission:super_admin|split_student_fees', only: ['split']),
+            new Middleware('role_or_permission:super_admin|apply_fines', only: ['applyFines']),
+            new Middleware('role_or_permission:super_admin|view_student_fees', only: ['allPayments', 'showPayment']),
+            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['destroyPayment']),
         ];
     }
 
@@ -78,7 +77,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 ->withSum('studentFees as total_paid', 'paid_amount')
                 ->withSum('studentFees as total_balance', 'balance_amount')
                 ->orderBy('id', 'desc')
-                ->paginate(10);
+                ->paginate(request('per_page', 10));
 
             $students->getCollection()->transform(function ($student) {
                 $totalAmount = $student->total_amount ?? 0;
@@ -496,6 +495,63 @@ class StudentFeeController extends BaseController implements HasMiddleware
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('showPayment failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return $this->sendError('Failed to retrieve payment.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get a paginated list of all generated fee vouchers, filterable by month/year/status.
+     */
+    public function vouchersList(\Illuminate\Http\Request $request)
+    {
+        try {
+            $query = \App\Models\StudentFee::with(['student.program', 'student.campus', 'feeHead']);
+
+            if ($request->filled('month') && $request->filled('year')) {
+                $query->whereYear('due_date', $request->year)
+                      ->whereMonth('due_date', $request->month);
+            }
+
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('voucher_number', 'like', "%$search%")
+                      ->orWhereHas('student', function($sq) use ($search) {
+                          $sq->where('first_name', 'like', "%$search%")
+                             ->orWhere('last_name', 'like', "%$search%")
+                             ->orWhere('roll_number', 'like', "%$search%");
+                      });
+                });
+            }
+
+            $vouchers = $query->orderBy('due_date', 'desc')
+                              ->paginate($request->get('per_page', 10));
+
+            // Calculate aggregates for the filtered query (ignoring pagination)
+            $aggregatesQuery = clone $query;
+            $aggregates = $aggregatesQuery->select(
+                \Illuminate\Support\Facades\DB::raw('SUM(COALESCE(amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as total_expected'),
+                \Illuminate\Support\Facades\DB::raw('SUM(COALESCE(paid_amount, 0)) as total_received')
+            )->first();
+
+            $totalExpected = (float) ($aggregates->total_expected ?? 0);
+            $totalReceived = (float) ($aggregates->total_received ?? 0);
+            $totalBalance = max(0, $totalExpected - $totalReceived);
+
+            return $this->sendResponse([
+                'paginator' => $vouchers,
+                'aggregates' => [
+                    'expected' => $totalExpected,
+                    'received' => $totalReceived,
+                    'balance'  => $totalBalance
+                ]
+            ], 'Vouchers retrieved successfully.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('vouchersList failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return $this->sendError('Failed to retrieve vouchers.', ['error' => $e->getMessage()], 500);
         }
     }
 
