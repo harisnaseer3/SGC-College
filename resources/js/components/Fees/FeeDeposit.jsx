@@ -36,7 +36,8 @@ const FeeDeposit = () => {
             setLoading(true);
             try {
                 const response = await axios.get(`/api/student-fees?search=${search}&status=Enrolled`);
-                setStudents(response.data.data || []);
+                const payload = response.data.data;
+                setStudents(payload.data || payload || []);
             } catch (error) {
                 console.error('Search error:', error);
             } finally {

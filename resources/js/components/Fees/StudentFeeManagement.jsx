@@ -46,8 +46,8 @@ const StudentFeeManagement = () => {
         setLoading(true);
         try {
             const response = await axios.get('/api/student-fees', { params: filterData });
-            // Assuming response.data.data is now the array from ->get()
-            setFees(response.data.data || []);
+            const payload = response.data.data;
+            setFees(payload.data || payload || []);
         } catch (error) {
             showError('Failed to fetch fee records');
         } finally {

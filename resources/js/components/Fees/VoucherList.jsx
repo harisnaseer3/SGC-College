@@ -205,7 +205,7 @@ const VoucherList = () => {
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <button 
-                                                    onClick={() => window.open(`/api/student-fees/voucher/${v.student_id}?month=${new Date(v.due_date).getMonth() + 1}&year=${new Date(v.due_date).getFullYear()}`, '_blank')}
+                                                    onClick={() => window.open(`/fees/voucher/${v.student_id}?month=${new Date(v.due_date).getMonth() + 1}&year=${new Date(v.due_date).getFullYear()}`, '_blank')}
                                                     className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 
                                                     title="Print Voucher"
                                                 >
