@@ -18,7 +18,7 @@ const FeeDeposit = () => {
     const [formData, setFormData] = useState({
         amount: '',
         payment_date: new Date().toISOString().split('T')[0],
-        payment_method: 'Cash',
+        payment_method: 'Bank Transfer',
         reference_no: '',
         remarks: '',
         selected_bank_account_id: ''
@@ -119,7 +119,7 @@ const FeeDeposit = () => {
         setFormData({
             amount: '',
             payment_date: new Date().toISOString().split('T')[0],
-            payment_method: 'Cash',
+            payment_method: 'Bank Transfer',
             reference_no: '',
             remarks: '',
             selected_bank_account_id: ''
@@ -317,9 +317,7 @@ const FeeDeposit = () => {
                                         value={formData.payment_method}
                                         onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
                                     >
-                                        <option value="Cash">💵 Cash Payment</option>
                                         <option value="Bank Transfer">🏦 Bank Transfer</option>
-                                        <option value="Cheque">✍️ Cheque / Pay Order</option>
                                         <option value="Online">📱 Online Transfer</option>
                                     </select>
                                 </div>
