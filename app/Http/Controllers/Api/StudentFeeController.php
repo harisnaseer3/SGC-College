@@ -260,41 +260,65 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 'discount_type' => 'nullable|string|in:fixed,percentage',
                 'fine_amount' => 'nullable|numeric',
                 'due_date' => 'nullable|date',
-                'apply_to_all' => 'nullable|boolean'
+                'apply_to_all' => 'nullable|boolean',
+                'apply_due_date_to_all' => 'nullable|boolean'
             ]);
 
             $discountVal = $request->discount_amount ?? 0;
             $discountType = $request->discount_type ?? 'fixed';
 
-            if ($request->apply_to_all) {
-                $fees = StudentFee::where('student_id', $studentFee->student_id)
+            // First, update the specific fee being edited
+            $currentFeeUpdates = [];
+            if ($request->filled('due_date')) {
+                $currentFeeUpdates['due_date'] = $request->due_date;
+            }
+            if ($request->filled('fine_amount')) {
+                $currentFeeUpdates['fine_amount'] = $request->fine_amount;
+            }
+            if ($request->has('discount_amount') || $request->has('discount_type')) {
+                $actualDiscount = ($discountType === 'percentage') 
+                    ? ($studentFee->amount * $discountVal) / 100 
+                    : $discountVal;
+                $currentFeeUpdates['discount_amount'] = $actualDiscount;
+            }
+            if ($request->filled('amount')) {
+                $currentFeeUpdates['amount'] = $request->amount;
+            }
+
+            $studentFee->update($currentFeeUpdates);
+
+            // Now, handle bulk application to other fees
+            if ($request->apply_to_all || $request->apply_due_date_to_all) {
+                $otherFees = StudentFee::where('student_id', $studentFee->student_id)
+                    ->where('id', '!=', $studentFee->id)
                     ->whereIn('status', ['unpaid', 'partial'])
                     ->get();
                 
-                foreach ($fees as $fee) {
+                foreach ($otherFees as $fee) {
                     $updates = [];
-                    if ($request->filled('due_date')) {
+
+                    // Apply due date to all other fees if requested
+                    if ($request->apply_due_date_to_all && $request->filled('due_date')) {
                         $updates['due_date'] = $request->due_date;
                     }
-                    if ($request->filled('fine_amount')) {
-                        $updates['fine_amount'] = $request->fine_amount;
-                    }
-                    if ($request->has('discount_amount') || $request->has('discount_type')) {
-                        $actualDiscount = ($discountType === 'percentage') 
-                            ? ($fee->amount * $discountVal) / 100 
-                            : $discountVal;
-                        $updates['discount_amount'] = $actualDiscount;
+
+                    // Apply discount/fine only to the SAME fee head in other semesters
+                    if ($request->apply_to_all && $fee->fee_head_id === $studentFee->fee_head_id) {
+                        if ($request->filled('fine_amount')) {
+                            $updates['fine_amount'] = $request->fine_amount;
+                        }
+                        if ($request->has('discount_amount') || $request->has('discount_type')) {
+                            $actualDiscount = ($discountType === 'percentage') 
+                                ? ($fee->amount * $discountVal) / 100 
+                                : $discountVal;
+                            $updates['discount_amount'] = $actualDiscount;
+                        }
                     }
 
                     if (!empty($updates)) {
                         $fee->update($updates);
                     }
                 }
-            } else {
-                if ($discountType === 'percentage') {
-                    $validated['discount_amount'] = ($studentFee->amount * $discountVal) / 100;
-                }
-                $studentFee->update($validated);
             }
 
             return $this->sendResponse($studentFee, 'Fee record(s) updated successfully.');

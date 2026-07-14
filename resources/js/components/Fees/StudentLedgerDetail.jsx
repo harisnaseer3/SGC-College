@@ -36,7 +36,7 @@ const StudentLedgerDetail = () => {
     const [ledger, setLedger] = useState(null);
     const [loading, setLoading] = useState(true);
     const [editingFee, setEditingFee] = useState(null);
-    const [adjustment, setAdjustment] = useState({ discount_amount: 0, fine_amount: 0, discount_type: 'fixed', apply_to_all: false });
+    const [adjustment, setAdjustment] = useState({ discount_amount: 0, fine_amount: 0, discount_type: 'fixed', apply_to_all: false, apply_due_date_to_all: false });
     const [splittingFee, setSplittingFee] = useState(null);
     const [installments, setInstallments] = useState([]);
     const [selectedPeriods, setSelectedPeriods] = useState([]);
@@ -254,7 +254,8 @@ const StudentLedgerDetail = () => {
                                                             fine_amount: fee.fine_amount || 0, 
                                                             due_date: fee.due_date ? fee.due_date.substring(0, 10) : '',
                                                             discount_type: 'fixed',
-                                                            apply_to_all: false 
+                                                            apply_to_all: false,
+                                                            apply_due_date_to_all: false 
                                                         });
                                                     }}
                                                     className={`text-[10px] font-bold underline underline-offset-4 ${
@@ -463,15 +464,27 @@ const StudentLedgerDetail = () => {
                                     onChange={(e) => setAdjustment({ ...adjustment, due_date: e.target.value })}
                                 />
                             </div>
-                            <div className="flex items-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-                                <input 
-                                    type="checkbox" 
-                                    id="apply_to_all"
-                                    className="w-4 h-4 text-indigo-600 rounded"
-                                    checked={adjustment.apply_to_all}
-                                    onChange={(e) => setAdjustment({ ...adjustment, apply_to_all: e.target.checked })}
-                                />
-                                <label htmlFor="apply_to_all" className="text-sm font-bold text-indigo-700">Apply to all semester fees</label>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 p-3 bg-rose-50 rounded-xl border border-rose-100">
+                                    <input 
+                                        type="checkbox" 
+                                        id="apply_to_all"
+                                        className="w-4 h-4 text-rose-600 rounded"
+                                        checked={adjustment.apply_to_all}
+                                        onChange={(e) => setAdjustment({ ...adjustment, apply_to_all: e.target.checked })}
+                                    />
+                                    <label htmlFor="apply_to_all" className="text-sm font-bold text-rose-700">Apply discount/fine to this fee head in all semesters</label>
+                                </div>
+                                <div className="flex items-center gap-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                                    <input 
+                                        type="checkbox" 
+                                        id="apply_due_date_to_all"
+                                        className="w-4 h-4 text-indigo-600 rounded"
+                                        checked={adjustment.apply_due_date_to_all}
+                                        onChange={(e) => setAdjustment({ ...adjustment, apply_due_date_to_all: e.target.checked })}
+                                    />
+                                    <label htmlFor="apply_due_date_to_all" className="text-sm font-bold text-indigo-700">Apply due date to all unpaid fees</label>
+                                </div>
                             </div>
                             <div className="pt-4 flex gap-3">
                                 <Button type="button" variant="secondary" className="flex-1" onClick={() => setEditingFee(null)}>Cancel</Button>

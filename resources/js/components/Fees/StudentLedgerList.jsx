@@ -43,12 +43,16 @@ const StudentLedgerList = () => {
         try {
             const [campusRes, progRes, batchRes] = await Promise.all([
                 axios.get('/api/admissions/form-data'),
-                axios.get('/api/programs'),
-                axios.get('/api/academic-batches')
+                axios.get('/api/programs?all=1'),
+                axios.get('/api/academic-batches?all=1')
             ]);
-            setCampuses(campusRes.data.data.campuses);
-            setPrograms(progRes.data.data);
-            setBatches(batchRes.data.data);
+            setCampuses(campusRes.data.data.campuses || []);
+            
+            const programsPayload = progRes.data.data;
+            setPrograms(programsPayload.data || programsPayload || []);
+            
+            const batchesPayload = batchRes.data.data;
+            setBatches(batchesPayload.data || batchesPayload || []);
             fetchFees();
         } catch (error) {
             showError('Failed to fetch filter data');
