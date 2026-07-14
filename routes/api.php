@@ -99,6 +99,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('expense-categories', App\Http\Controllers\Api\ExpenseCategoryController::class);
     Route::apiResource('expenses', App\Http\Controllers\Api\ExpenseController::class);
     Route::patch('expenses/{expense}/status', [App\Http\Controllers\Api\ExpenseController::class, 'updateStatus']);
+    Route::post('expenses/bulk-status', [App\Http\Controllers\Api\ExpenseController::class, 'bulkStatus']);
 
     // System Backups
     Route::get('backups', [App\Http\Controllers\Api\BackupController::class, 'index']);

@@ -138,7 +138,7 @@ const StudentLedgerDetail = () => {
                 <Card className="p-6 bg-fuchsia-50 border-fuchsia-100">
                     <div className="text-xs font-bold text-fuchsia-500 uppercase">Total Vouchers</div>
                     <div className="text-2xl font-bold text-fuchsia-700">
-                        {ledger ? (ledger.fees?.length || 0) + (ledger.paid_fees?.length || 0) : 0}
+                        {ledger ? new Set([...(ledger.fees || []), ...(ledger.paid_fees || [])].map(fee => fee.voucher_number).filter(Boolean)).size : 0}
                     </div>
                 </Card>
                 <Card className="p-6 bg-slate-50 border-slate-100">

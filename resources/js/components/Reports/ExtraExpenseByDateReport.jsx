@@ -109,10 +109,13 @@ const ExtraExpenseByDateReport = () => {
         }));
     };
 
-    const columns = ["Date", "Title", "Category", "Qty", "Supplier", "Recorded By", "Status", "Amount"];
+    const columns = ["Sr No", "Date", "Title", "Category", "Qty", "Supplier", "Recorded By", "Status", "Amount"];
 
     const renderRow = (item, index) => (
         <React.Fragment key={item?.id || index}>
+            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700 font-medium">
+                {index + 1}
+            </td>
             <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700 font-medium">
                 {new Date(item?.expense_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
             </td>
@@ -155,6 +158,7 @@ const ExtraExpenseByDateReport = () => {
         const worksheet = workbook.addWorksheet('Report');
 
         worksheet.columns = [
+            { width: 8 },  // Sr No
             { width: 14 }, // Date
             { width: 22 }, // Title
             { width: 20 }, // Category
@@ -167,7 +171,7 @@ const ExtraExpenseByDateReport = () => {
 
         const addMergedHeader = (text, size = 12, isBold = true) => {
             const row = worksheet.addRow([text]);
-            worksheet.mergeCells(`A${row.number}:H${row.number}`);
+            worksheet.mergeCells(`A${row.number}:I${row.number}`);
             const cell = row.getCell(1);
             cell.font      = { bold: isBold, size, color: { argb: 'FF0F172A' } };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -184,15 +188,16 @@ const ExtraExpenseByDateReport = () => {
         addMergedHeader(`Generated: ${new Date().toLocaleDateString()}`, 10, false);
         worksheet.addRow([]);
 
-        const headerRow = worksheet.addRow(['Date', 'Title', 'Category', 'Qty', 'Supplier', 'Recorded By', 'Status', 'Amount']);
+        const headerRow = worksheet.addRow(['Sr No', 'Date', 'Title', 'Category', 'Qty', 'Supplier', 'Recorded By', 'Status', 'Amount']);
         headerRow.font = { bold: true };
         headerRow.eachCell(cell => {
             cell.alignment = { horizontal: 'center' };
             cell.border    = { bottom: { style: 'thin' } };
         });
 
-        data.forEach(item => {
+        data.forEach((item, index) => {
             const row = worksheet.addRow([
+                index + 1,
                 new Date(item.expense_date).toLocaleDateString('en-GB'),
                 item.title    || '',
                 item.category?.name || '',
@@ -202,16 +207,16 @@ const ExtraExpenseByDateReport = () => {
                 STATUS_LABELS[item.status] || item.status || '',
                 Number(item.amount || 0),
             ]);
-            row.getCell(8).alignment = { horizontal: 'right' };
+            row.getCell(9).alignment = { horizontal: 'right' };
         });
 
         worksheet.addRow([]);
-        const totalRow = worksheet.addRow(['Total Expense', '', '', '', '', '', '', Number(total)]);
-        worksheet.mergeCells(`A${totalRow.number}:G${totalRow.number}`);
+        const totalRow = worksheet.addRow(['Total Expense', '', '', '', '', '', '', '', Number(total)]);
+        worksheet.mergeCells(`A${totalRow.number}:H${totalRow.number}`);
         const totalLabelCell = totalRow.getCell(1);
         totalLabelCell.font      = { bold: true };
         totalLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
-        const totalAmountCell = totalRow.getCell(8);
+        const totalAmountCell = totalRow.getCell(9);
         totalAmountCell.font      = { bold: true, color: { argb: 'FF4338CA' } };
         totalAmountCell.alignment = { horizontal: 'right', vertical: 'middle' };
 

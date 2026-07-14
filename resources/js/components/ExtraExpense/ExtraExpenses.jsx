@@ -18,6 +18,7 @@ const ExtraExpenses = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [viewingExpense, setViewingExpense] = useState(null);
     const [editingExpense, setEditingExpense] = useState(null);
+    const [selectedExpenses, setSelectedExpenses] = useState([]);
     
     // Sorting
     const [sortField, setSortField] = useState('expense_date');
@@ -49,6 +50,7 @@ const ExtraExpenses = () => {
     // Reset to page 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
+        setSelectedExpenses([]);
     }, [filterCategory, filterStatus, searchQuery, startDate, endDate]);
 
     // Fetch whenever page or refreshKey changes
@@ -81,6 +83,7 @@ const ExtraExpenses = () => {
 
             const response = await axios.get(`/api/expenses?${params.toString()}`);
             setExpenses(response.data.data.data);
+            setSelectedExpenses([]);
             setTotalAmount(response.data.total_amount || 0);
             setPagination({
                 current_page: response.data.data.current_page,
@@ -187,6 +190,21 @@ const ExtraExpenses = () => {
         }
     };
 
+    const handleBulkStatusChange = async (newStatus) => {
+        if (!canChangeStatus || selectedExpenses.length === 0) return;
+        try {
+            await axios.post('/api/expenses/bulk-status', {
+                expense_ids: selectedExpenses,
+                status: newStatus
+            });
+            showSuccess(`Bulk status updated to ${newStatus}`);
+            setSelectedExpenses([]);
+            setRefreshKey(k => k + 1);
+        } catch (error) {
+            showError('Failed to bulk update status');
+        }
+    };
+
     const getStatusBadge = (status) => {
         const styles = {
             pending: 'bg-amber-100 text-amber-700',
@@ -240,6 +258,23 @@ const ExtraExpenses = () => {
             <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
                 <h3 className="text-lg font-bold text-slate-800">Expense Records</h3>
                 <div className="flex gap-3 items-center">
+                    {selectedExpenses.length > 0 && canChangeStatus && (
+                        <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
+                            <span className="text-sm font-bold text-indigo-700">{selectedExpenses.length} selected</span>
+                            <select
+                                onChange={(e) => {
+                                    if(e.target.value) handleBulkStatusChange(e.target.value);
+                                    e.target.value = "";
+                                }}
+                                className="bg-white border border-indigo-200 text-indigo-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 font-bold"
+                            >
+                                <option value="">Bulk Status...</option>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="reimbursed">Reimbursed</option>
+                            </select>
+                        </div>
+                    )}
                     <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 font-bold text-slate-700">
                         Total: <span className="text-indigo-600">Rs. {Number(totalAmount).toLocaleString()}</span>
                     </div>
@@ -328,6 +363,20 @@ const ExtraExpenses = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="p-4 w-10">
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                        checked={expenses.length > 0 && selectedExpenses.length === expenses.length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setSelectedExpenses(expenses.map(exp => exp.id));
+                                            } else {
+                                                setSelectedExpenses([]);
+                                            }
+                                        }}
+                                    />
+                                </th>
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Sr No</th>
                                 {renderSortableHeader('Bill No', 'bill_no')}
                                 {renderSortableHeader('Date', 'expense_date')}
@@ -343,15 +392,29 @@ const ExtraExpenses = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="p-8 text-center text-slate-500">Loading...</td>
+                                    <td colSpan="7" className="p-8 text-center text-slate-500">Loading...</td>
                                 </tr>
                             ) : expenses.length === 0 ? (
                                 <tr>
-                                    <td colSpan="8" className="p-8 text-center text-slate-500">No expenses found.</td>
+                                    <td colSpan="9" className="p-8 text-center text-slate-500">No expenses found.</td>
                                 </tr>
                             ) : (
                                 expenses.map((exp, index) => (
                                     <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="p-4">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                                checked={selectedExpenses.includes(exp.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedExpenses([...selectedExpenses, exp.id]);
+                                                    } else {
+                                                        setSelectedExpenses(selectedExpenses.filter(id => id !== exp.id));
+                                                    }
+                                                }}
+                                            />
+                                        </td>
                                         <td className="p-4 text-sm font-medium text-slate-600">
                                             {(pagination.current_page - 1) * pagination.per_page + index + 1}
                                         </td>

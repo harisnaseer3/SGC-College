@@ -80,6 +80,7 @@ const ExtraIncomeByDateReport = () => {
     };
 
     const columns = [
+        "Sr No",
         "Date",
         "Form No",
         "Category",
@@ -91,6 +92,9 @@ const ExtraIncomeByDateReport = () => {
 
     const renderRow = (item, index) => (
         <React.Fragment key={item?.id || index}>
+            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">
+                {index + 1}
+            </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">
                 {new Date(item?.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
             </td>
@@ -128,6 +132,7 @@ const ExtraIncomeByDateReport = () => {
         const worksheet = workbook.addWorksheet('Report');
 
         worksheet.columns = [
+            { width: 8 },  // Sr No
             { width: 15 }, // Date
             { width: 20 }, // Form No
             { width: 25 }, // Category
@@ -139,7 +144,7 @@ const ExtraIncomeByDateReport = () => {
 
         const addMergedHeader = (text, size = 12, isBold = true) => {
             const row = worksheet.addRow([text]);
-            worksheet.mergeCells(`A${row.number}:G${row.number}`);
+            worksheet.mergeCells(`A${row.number}:H${row.number}`);
             const cell = row.getCell(1);
             cell.font = { bold: isBold, size: size, color: { argb: 'FF0F172A' } };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -153,15 +158,16 @@ const ExtraIncomeByDateReport = () => {
         addMergedHeader(`Generated: ${new Date().toLocaleDateString()}`, 10, false);
         worksheet.addRow([]); // Empty row
 
-        const headerRow = worksheet.addRow(["Date", "Form No", "Category", "Program", "Payment Method", "Collected By", "Amount"]);
+        const headerRow = worksheet.addRow(["Sr No", "Date", "Form No", "Category", "Program", "Payment Method", "Collected By", "Amount"]);
         headerRow.font = { bold: true };
         headerRow.eachCell(cell => {
             cell.alignment = { horizontal: 'center' };
             cell.border = { bottom: { style: 'thin' } };
         });
 
-        data.forEach(item => {
+        data.forEach((item, index) => {
             const row = worksheet.addRow([
+                index + 1,
                 new Date(item.date).toLocaleDateString('en-GB'),
                 item.form_number || '',
                 item.income_category?.name || '',
@@ -170,19 +176,19 @@ const ExtraIncomeByDateReport = () => {
                 item.collected_by?.name || '',
                 Number(item.amount || 0)
             ]);
-            row.getCell(7).alignment = { horizontal: 'right' };
+            row.getCell(8).alignment = { horizontal: 'right' };
         });
 
         // Add empty row before total
         worksheet.addRow([]);
         
-        const totalRow = worksheet.addRow(['Total Income', '', '', '', '', '', Number(total)]);
-        worksheet.mergeCells(`A${totalRow.number}:F${totalRow.number}`);
+        const totalRow = worksheet.addRow(['Total Income', '', '', '', '', '', '', Number(total)]);
+        worksheet.mergeCells(`A${totalRow.number}:G${totalRow.number}`);
         const totalLabelCell = totalRow.getCell(1);
         totalLabelCell.font = { bold: true };
         totalLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
         
-        const totalAmountCell = totalRow.getCell(7);
+        const totalAmountCell = totalRow.getCell(8);
         totalAmountCell.font = { bold: true, color: { argb: 'FF4338CA' } };
         totalAmountCell.alignment = { horizontal: 'right', vertical: 'middle' };
 

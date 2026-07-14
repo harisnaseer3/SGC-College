@@ -148,6 +148,18 @@ class ExpenseController extends BaseController implements HasMiddleware
         return $this->sendResponse($expense, 'Expense status updated successfully.');
     }
 
+    public function bulkStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'expense_ids' => 'required|array',
+            'expense_ids.*' => 'exists:expenses,id',
+            'status' => 'required|in:pending,in_progress,reimbursed'
+        ]);
+
+        Expense::whereIn('id', $validated['expense_ids'])->update(['status' => $validated['status']]);
+        return $this->sendResponse([], 'Bulk status updated successfully.');
+    }
+
     public function destroy(Expense $expense)
     {
         if ($expense->attachment_url) {
