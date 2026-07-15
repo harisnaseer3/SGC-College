@@ -482,8 +482,6 @@ class FeeService
             // Only apply previous semester arrears to the FIRST voucher generated in this batch
             $groupArrearsAmount = $isFirstGroup ? $arrearsFees->sum('balance_amount') : 0;
             $groupPreviousFine = $isFirstGroup ? $allPendingFees->filter(fn($f) => $f->due_date->startOfMonth()->lt($targetMonth))->sum('fine_amount') : 0;
-            
-            $isFirstGroup = false;
 
             $totalCurrent = $groupFees->sum('balance_amount');
             $payableWithinDueDate = $totalCurrent + $groupArrearsAmount;
@@ -494,10 +492,21 @@ class FeeService
                 $voucherNumber = $existingVoucher->voucher_number;
             } else {
                 $voucherNumber = $this->generateNextVoucherNumber();
+            }
 
-                // Persist the new voucher number to this group's fees only
-                foreach ($groupFees as $fee) {
+            // Persist the new voucher number to this group's fees only
+            foreach ($groupFees as $fee) {
+                if ($fee->voucher_number !== $voucherNumber) {
                     $fee->update(['voucher_number' => $voucherNumber]);
+                }
+            }
+
+            // Also persist the voucher number to all arrears so they are grouped in the deposit screen
+            if ($isFirstGroup && $arrearsFees->isNotEmpty()) {
+                foreach ($arrearsFees as $fee) {
+                    if ($fee->voucher_number !== $voucherNumber) {
+                        $fee->update(['voucher_number' => $voucherNumber]);
+                    }
                 }
             }
 
@@ -530,7 +539,7 @@ class FeeService
                     return [
                         'sr_no' => $index + 1,
                         'head' => $fee->feeHead->name,
-                        'amount' => number_format($fee->amount, 0),
+                        'amount' => number_format($fee->balance_amount, 0),
                     ];
                 })->all(),
                 'summary' => [
@@ -545,6 +554,7 @@ class FeeService
                     'info' => $bankDetails,
                 ]
             ];
+            $isFirstGroup = false;
         }
 
         return $vouchers;

@@ -49,6 +49,26 @@ const FeeDeposit = () => {
         return () => clearTimeout(timer);
     }, [search, searchMode]);
 
+    const handleStudentSelect = async (fee) => {
+        setSelectedStudent(fee);
+        setFormData(prev => ({ 
+            ...prev, 
+            amount: fee.total_balance,
+            selected_bank_account_id: fee.student?.campus?.bank_accounts?.[0]?.id || ''
+        }));
+        
+        setLoading(true);
+        try {
+            const response = await axios.get(`/api/student-fees/ledger/${fee.student_id}`);
+            // Populating voucherData with the unpaid fees so the breakdown works exactly like a voucher
+            setVoucherData({ fees: response.data.data.fees || [] });
+        } catch (error) {
+            console.error('Failed to fetch pending fees:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleVoucherSearch = async (e) => {
         if (e) e.preventDefault();
         if (!voucherNo) return;
@@ -186,14 +206,7 @@ const FeeDeposit = () => {
                                 {students.map((fee) => (
                                     <button
                                         key={fee.student_id}
-                                        onClick={() => {
-                                            setSelectedStudent(fee);
-                                            setFormData(prev => ({ 
-                                                ...prev, 
-                                                amount: fee.total_balance,
-                                                selected_bank_account_id: fee.student?.campus?.bank_accounts?.[0]?.id || ''
-                                            }));
-                                        }}
+                                        onClick={() => handleStudentSelect(fee)}
                                         className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl hover:border-indigo-500 hover:shadow-md transition-all group text-left"
                                     >
                                         <div>
@@ -247,22 +260,44 @@ const FeeDeposit = () => {
                                 </div>
                             </Card>
 
-                            {voucherData && (
-                                <Card className="p-5 border-emerald-100 bg-emerald-50/30">
-                                    <h4 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                                        Voucher #{voucherNo} Breakdown
-                                    </h4>
-                                    <div className="space-y-2">
-                                        {voucherData.fees.map(fee => (
-                                            <div key={fee.id} className="flex justify-between items-center text-sm bg-white p-3 rounded-xl border border-emerald-100/50 shadow-sm">
-                                                <span className="font-bold text-slate-700">{fee.fee_head?.name}</span>
-                                                <span className="font-black text-emerald-600">Rs. {Number(fee.balance_amount).toLocaleString()}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </Card>
-                            )}
+                            {voucherData && (() => {
+                                const maxDueDate = voucherData.fees.reduce((max, fee) => {
+                                    return new Date(fee.due_date) > new Date(max) ? fee.due_date : max;
+                                }, voucherData.fees[0]?.due_date || new Date());
+                                
+                                const targetDate = new Date(maxDueDate);
+                                const startOfTargetMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+                                
+                                const currentFees = voucherData.fees.filter(fee => new Date(fee.due_date) >= startOfTargetMonth);
+                                const arrearsFees = voucherData.fees.filter(fee => new Date(fee.due_date) < startOfTargetMonth);
+                                const arrearsTotal = arrearsFees.reduce((sum, fee) => sum + Number(fee.balance_amount), 0);
+
+                                return (
+                                    <Card className="p-5 border-emerald-100 bg-emerald-50/30">
+                                        <h4 className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                                            {searchMode === 'voucher' ? `Voucher #${voucherNo} Breakdown` : 'Pending Fees Breakdown'}
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {currentFees.map(fee => (
+                                                <div key={fee.id} className="flex justify-between items-center text-sm bg-white p-3 rounded-xl border border-emerald-100/50 shadow-sm">
+                                                    <span className="font-bold text-slate-700">{fee.fee_head?.name}</span>
+                                                    <span className="font-black text-emerald-600">Rs. {Number(fee.balance_amount).toLocaleString()}</span>
+                                                </div>
+                                            ))}
+                                            {arrearsTotal > 0 && (
+                                                <div className="flex justify-between items-center text-sm bg-rose-50 p-3 rounded-xl border border-rose-100 shadow-sm mt-3">
+                                                    <span className="font-bold text-rose-700 uppercase tracking-widest text-[11px]">{searchMode === 'voucher' ? 'Arrears' : 'Previous Unpaid (Arrears)'}</span>
+                                                    <span className="font-black text-rose-600">Rs. {arrearsTotal.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {voucherData.fees.length === 0 && (
+                                                <div className="text-center p-3 text-emerald-600 font-bold text-sm">No pending fees.</div>
+                                            )}
+                                        </div>
+                                    </Card>
+                                );
+                            })()}
                         </div>
                     )}
                 </div>

@@ -32,8 +32,8 @@ const FeeStructureManagement = () => {
             const [structRes, headRes, progRes, batchRes, campusRes] = await Promise.all([
                 axios.get('/api/fee-structures', { params: { page } }),
                 axios.get('/api/fee-heads'),
-                axios.get('/api/programs'),
-                axios.get('/api/academic-batches'),
+                axios.get('/api/programs?all=1'),
+                axios.get('/api/academic-batches?all=1'),
                 axios.get('/api/admissions/form-data')
             ]);
             setStructures(structRes.data.data.data);
@@ -94,10 +94,10 @@ const FeeStructureManagement = () => {
 
     const handleEdit = (struct) => {
         setFormData({
-            campus_id: struct.campus_id,
-            program_id: struct.program_id,
-            academic_batch_id: struct.academic_batch_id,
-            items: struct.items.map(i => ({ fee_head_id: i.fee_head_id, amount: i.amount }))
+            campus_id: struct.campus_id || '',
+            program_id: struct.program_id || '',
+            academic_batch_id: struct.academic_batch_id || '',
+            items: struct.items ? struct.items.map(i => ({ fee_head_id: i.fee_head_id, amount: i.amount })) : []
         });
         setEditingId(struct.id);
         setShowForm(true);
