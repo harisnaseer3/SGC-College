@@ -488,7 +488,9 @@ class FeeService
 
             // Get or Generate persistent voucher number — scoped to this group's fees only
             $existingVoucher = $groupFees->whereNotNull('voucher_number')->first();
-            if ($existingVoucher) {
+            $hasPartialPayment = $groupFees->where('paid_amount', '>', 0)->isNotEmpty();
+
+            if ($existingVoucher && !$hasPartialPayment) {
                 $voucherNumber = $existingVoucher->voucher_number;
             } else {
                 $voucherNumber = $this->generateNextVoucherNumber();
