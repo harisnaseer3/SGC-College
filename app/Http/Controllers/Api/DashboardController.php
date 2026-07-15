@@ -37,7 +37,7 @@ class DashboardController extends BaseController implements HasMiddleware
             // --- Voucher counts (filtered by month) ---
             $voucherMonth = request('voucher_month', now()->format('Y-m'));
             
-            $voucherQuery = StudentFee::query();
+            $voucherQuery = StudentFee::query()->where('amount', '>', 0);
             if ($voucherMonth) {
                 $voucherQuery->where('due_date', 'like', $voucherMonth . '%');
             }

@@ -66,6 +66,10 @@ class FeeService
                     }
                 }
                 
+                if ($item->amount <= 0) {
+                    continue;
+                }
+                
                 $exists = StudentFee::where('student_id', $student->id)
                     ->whereHas('feeHead', function($q) use ($feeHead) {
                         $q->where('name', $feeHead->name);
@@ -147,6 +151,10 @@ class FeeService
                 if (!$isSemester) {
                     continue;
                 }
+            }
+            
+            if ($item->amount <= 0) {
+                continue;
             }
             $exists = StudentFee::where('student_id', $student->id)
                 ->whereHas('feeHead', function($q) use ($feeHead) {
@@ -249,6 +257,10 @@ class FeeService
                     if (!$isSemester) {
                         continue;
                     }
+                }
+                
+                if ($item->amount <= 0) {
+                    continue;
                 }
                 $exists = StudentFee::where('student_id', $student->id)
                     ->whereHas('feeHead', function($q) use ($feeHead) {
