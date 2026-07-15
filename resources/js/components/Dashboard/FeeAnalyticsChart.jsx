@@ -94,6 +94,7 @@ const FeeAnalyticsChart = ({ data }) => {
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
                             <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                            <Bar dataKey="receivable" name="Total Receivable" fill="#94a3b8" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="current_fee" name="Current Fee" fill="#6366f1" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="arrears" name="Arrears" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="received" name="Total Received" fill="#d946ef" radius={[4, 4, 0, 0]} />
