@@ -547,8 +547,13 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 ->groupBy('voucher_number', 'student_id');
 
             if ($request->filled('month') && $request->filled('year')) {
-                $query->whereYear('due_date', $request->year)
-                      ->whereMonth('due_date', $request->month);
+                $query->whereIn('voucher_number', function($subquery) use ($request) {
+                    $subquery->select('voucher_number')
+                             ->from('student_fees')
+                             ->whereNotNull('voucher_number')
+                             ->whereYear('due_date', $request->year)
+                             ->whereMonth('due_date', $request->month);
+                });
             }
 
             if ($request->filled('status')) {
@@ -578,9 +583,25 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $vouchers = $query->orderBy('due_date', 'desc')
                               ->paginate($request->get('per_page', 10));
             
-            // Map aggregated_status to status for frontend compatibility
-            $vouchers->getCollection()->transform(function ($voucher) {
+            $voucherNumbers = $vouchers->pluck('voucher_number')->filter()->toArray();
+            $allFees = \App\Models\StudentFee::whereIn('voucher_number', $voucherNumbers)->get()->groupBy('voucher_number');
+
+            // Map aggregated_status to status and calculate arrears for frontend compatibility
+            $vouchers->getCollection()->transform(function ($voucher) use ($allFees) {
                 $voucher->status = $voucher->aggregated_status;
+                
+                $fees = $allFees->get($voucher->voucher_number, collect());
+                $maxDueDate = $fees->max('due_date');
+                if ($maxDueDate) {
+                    $startOfMonth = \Carbon\Carbon::parse($maxDueDate)->startOfMonth();
+                    $arrears = $fees->filter(function($fee) use ($startOfMonth) {
+                        return \Carbon\Carbon::parse($fee->due_date)->lt($startOfMonth);
+                    })->sum('balance_amount');
+                    $voucher->arrears_amount = $arrears;
+                } else {
+                    $voucher->arrears_amount = 0;
+                }
+                
                 return $voucher;
             });
 
@@ -595,14 +616,23 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     \Illuminate\Support\Facades\DB::raw('SUM(paid_amount) as total_received')
                 )->first();
 
+            $arrearsAggregate = \Illuminate\Support\Facades\DB::table(\Illuminate\Support\Facades\DB::raw("({$baseSql}) as grouped_vouchers"))
+                ->setBindings($bindings)
+                ->join('student_fees as sf', 'sf.voucher_number', '=', 'grouped_vouchers.voucher_number')
+                ->whereRaw('sf.due_date < DATE_FORMAT(grouped_vouchers.due_date, "%Y-%m-01")')
+                ->select(\Illuminate\Support\Facades\DB::raw('SUM(sf.amount + sf.fine_amount - sf.discount_amount - sf.paid_amount) as total_arrears'))
+                ->first();
+
             $totalExpected = (float) ($aggregates->total_expected ?? 0);
             $totalReceived = (float) ($aggregates->total_received ?? 0);
             $totalBalance = max(0, $totalExpected - $totalReceived);
+            $totalArrears = (float) ($arrearsAggregate->total_arrears ?? 0);
 
             return $this->sendResponse([
                 'paginator' => $vouchers,
                 'aggregates' => [
                     'expected' => $totalExpected,
+                    'arrears'  => $totalArrears,
                     'received' => $totalReceived,
                     'balance'  => $totalBalance
                 ]
