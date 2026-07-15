@@ -37,18 +37,30 @@ class DashboardController extends BaseController implements HasMiddleware
             // --- Voucher counts (filtered by month) ---
             $voucherMonth = request('voucher_month', now()->format('Y-m'));
             
-            $voucherQuery = StudentFee::query()->where('amount', '>', 0);
-            if ($voucherMonth) {
-                $voucherQuery->where('due_date', 'like', $voucherMonth . '%');
-            }
+            $voucherStatsQuery = DB::table('student_fees')
+                ->where('amount', '>', 0)
+                ->whereNotNull('voucher_number')
+                ->when($voucherMonth, fn($q) => $q->where('due_date', 'like', $voucherMonth . '%'))
+                ->select('voucher_number')
+                ->selectRaw('SUM(amount + fine_amount - discount_amount) as expected')
+                ->selectRaw('SUM(paid_amount) as collected')
+                ->selectRaw('MAX(due_date) as max_due_date')
+                ->groupBy('voucher_number');
+                
+            $stats = DB::table(DB::raw("({$voucherStatsQuery->toSql()}) as aggregated_vouchers"))
+                ->mergeBindings($voucherStatsQuery)
+                ->selectRaw('COUNT(*) as total')
+                ->selectRaw('SUM(CASE WHEN collected >= expected THEN 1 ELSE 0 END) as paid')
+                ->selectRaw('SUM(CASE WHEN collected > 0 AND collected < expected THEN 1 ELSE 0 END) as partial')
+                ->selectRaw('SUM(CASE WHEN collected = 0 THEN 1 ELSE 0 END) as unpaid')
+                ->selectRaw('SUM(CASE WHEN collected < expected AND max_due_date < ? THEN 1 ELSE 0 END) as overdue', [now()->startOfDay()])
+                ->first();
 
-            $totalVouchers   = (clone $voucherQuery)->count();
-            $paidVouchers    = (clone $voucherQuery)->where('status', 'paid')->count();
-            $unpaidVouchers  = (clone $voucherQuery)->where('status', 'unpaid')->count();
-            $partialVouchers = (clone $voucherQuery)->where('status', 'partial')->count();
-            $overdueVouchers = (clone $voucherQuery)->whereIn('status', ['unpaid', 'partial'])
-                                         ->where('due_date', '<', now()->startOfDay())
-                                         ->count();
+            $totalVouchers   = (int) $stats->total;
+            $paidVouchers    = (int) $stats->paid;
+            $partialVouchers = (int) $stats->partial;
+            $unpaidVouchers  = (int) $stats->unpaid;
+            $overdueVouchers = (int) $stats->overdue;
 
             // --- Gender breakdown ---
             $genderBreakdown = Student::select('gender', DB::raw('count(*) as total'))

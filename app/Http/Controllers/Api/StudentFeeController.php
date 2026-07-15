@@ -528,7 +528,23 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function vouchersList(\Illuminate\Http\Request $request)
     {
         try {
-            $query = \App\Models\StudentFee::with(['student.program', 'student.campus', 'feeHead']);
+            $query = \App\Models\StudentFee::with(['student.program', 'student.campus'])
+                ->select('voucher_number', 'student_id')
+                ->selectRaw('MIN(id) as id')
+                ->selectRaw('MAX(due_date) as due_date')
+                ->selectRaw('SUM(amount) as amount')
+                ->selectRaw('SUM(fine_amount) as fine_amount')
+                ->selectRaw('SUM(discount_amount) as discount_amount')
+                ->selectRaw('SUM(paid_amount) as paid_amount')
+                ->selectRaw('
+                    CASE 
+                        WHEN SUM(paid_amount) >= SUM(amount + fine_amount - discount_amount) THEN "paid"
+                        WHEN SUM(paid_amount) > 0 THEN "partial"
+                        ELSE "unpaid"
+                    END as aggregated_status
+                ')
+                ->whereNotNull('voucher_number')
+                ->groupBy('voucher_number', 'student_id');
 
             if ($request->filled('month') && $request->filled('year')) {
                 $query->whereYear('due_date', $request->year)
@@ -536,7 +552,14 @@ class StudentFeeController extends BaseController implements HasMiddleware
             }
 
             if ($request->filled('status')) {
-                $query->where('status', $request->status);
+                $statusFilter = $request->status;
+                if ($statusFilter === 'paid') {
+                    $query->havingRaw('SUM(paid_amount) >= SUM(amount + fine_amount - discount_amount)');
+                } elseif ($statusFilter === 'partial') {
+                    $query->havingRaw('SUM(paid_amount) > 0 AND SUM(paid_amount) < SUM(amount + fine_amount - discount_amount)');
+                } elseif ($statusFilter === 'unpaid') {
+                    $query->havingRaw('SUM(paid_amount) <= 0');
+                }
             }
 
             if ($request->filled('search')) {
@@ -551,15 +574,26 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 });
             }
 
+            // Apply pagination based on grouped results
             $vouchers = $query->orderBy('due_date', 'desc')
                               ->paginate($request->get('per_page', 10));
+            
+            // Map aggregated_status to status for frontend compatibility
+            $vouchers->getCollection()->transform(function ($voucher) {
+                $voucher->status = $voucher->aggregated_status;
+                return $voucher;
+            });
 
-            // Calculate aggregates for the filtered query (ignoring pagination)
-            $aggregatesQuery = clone $query;
-            $aggregates = $aggregatesQuery->select(
-                \Illuminate\Support\Facades\DB::raw('SUM(COALESCE(amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as total_expected'),
-                \Illuminate\Support\Facades\DB::raw('SUM(COALESCE(paid_amount, 0)) as total_received')
-            )->first();
+            // Calculate aggregates for the filtered query using a subquery
+            $baseSql = $query->toSql();
+            $bindings = $query->getBindings();
+
+            $aggregates = \Illuminate\Support\Facades\DB::table(\Illuminate\Support\Facades\DB::raw("({$baseSql}) as grouped_vouchers"))
+                ->setBindings($bindings)
+                ->select(
+                    \Illuminate\Support\Facades\DB::raw('SUM(amount + fine_amount - discount_amount) as total_expected'),
+                    \Illuminate\Support\Facades\DB::raw('SUM(paid_amount) as total_received')
+                )->first();
 
             $totalExpected = (float) ($aggregates->total_expected ?? 0);
             $totalReceived = (float) ($aggregates->total_received ?? 0);

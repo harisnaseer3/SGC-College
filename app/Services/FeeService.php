@@ -351,7 +351,19 @@ class FeeService
             ->get();
 
         if ($allPendingFees->isEmpty()) {
-            throw new \Exception("No pending fees found for this student.");
+            // Fallback: If they requested a specific month/year, they might be trying to print a paid voucher
+            if ($month && $year) {
+                $allPendingFees = StudentFee::with('feeHead')
+                    ->where('student_id', $studentId)
+                    ->whereYear('due_date', $year)
+                    ->whereMonth('due_date', $month)
+                    ->orderBy('due_date', 'asc')
+                    ->get();
+            }
+            
+            if ($allPendingFees->isEmpty()) {
+                throw new \Exception("No fees found for this student.");
+            }
         }
 
         if ($month && $year) {

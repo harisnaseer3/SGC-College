@@ -15,17 +15,27 @@ const StudentLedgerList = () => {
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
     const [showProgramDropdown, setShowProgramDropdown] = useState(false);
     const [showBatchDropdown, setShowBatchDropdown] = useState(false);
-    const [filterData, setFilterData] = useState({
+    const defaultFilters = {
         campus_id: '',
         program_id: [],
         academic_batch_id: [],
         status: ['Enrolled'],
         search: '',
+    };
+
+    const [filterData, setFilterData] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('studentLedgerFilters');
+            return saved ? JSON.parse(saved) : defaultFilters;
+        } catch (e) {
+            return defaultFilters;
+        }
     });
+
+    const [searchTerm, setSearchTerm] = useState(() => filterData.search);
     const [selectedStudents, setSelectedStudents] = useState([]);
     const [printMonth, setPrintMonth] = useState(new Date().getMonth() + 1 >= 7 ? 7 : 1);
     const [printYear, setPrintYear] = useState(new Date().getFullYear());
-    const [searchTerm, setSearchTerm] = useState('');
     const { showSuccess, showError } = useNotifications();
 
     useEffect(() => {
@@ -33,11 +43,21 @@ const StudentLedgerList = () => {
     }, []);
 
     useEffect(() => {
+        sessionStorage.setItem('studentLedgerFilters', JSON.stringify(filterData));
+    }, [filterData]);
+
+    useEffect(() => {
         const timer = setTimeout(() => {
             setFilterData(prev => ({ ...prev, search: searchTerm }));
         }, 500);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    const handleResetFilters = () => {
+        setFilterData(defaultFilters);
+        setSearchTerm('');
+        setPagination(prev => ({ ...prev, current_page: 1 }));
+    };
 
     const fetchInitialData = async () => {
         try {
@@ -103,7 +123,15 @@ const StudentLedgerList = () => {
 
     return (
         <div className="space-y-6">
-            <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 relative">
+                <button 
+                    onClick={handleResetFilters}
+                    className="absolute top-3 right-4 text-[10px] uppercase font-black tracking-widest text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    Reset Filters
+                </button>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-3">
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Search</label>
                     <input
@@ -242,6 +270,7 @@ const StudentLedgerList = () => {
                         </>
                     )}
                 </div>
+            </div>
             </div>
 
             <div className="flex justify-between items-center bg-indigo-50 p-4 rounded-xl border border-indigo-100">
