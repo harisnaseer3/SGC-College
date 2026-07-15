@@ -59,6 +59,22 @@ const StudentLedgerDetail = () => {
         }
     };
 
+    const handleGenerateVoucher = async (semNum, feeIds = null) => {
+        try {
+            const payload = { student_id: studentId };
+            if (feeIds) {
+                payload.fee_ids = feeIds;
+            } else {
+                payload.semester_number = semNum;
+            }
+            await axios.post('/api/student-fees/vouchers/generate', payload);
+            showSuccess('Voucher generated successfully!');
+            fetchLedger();
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to generate voucher');
+        }
+    };
+
     const handleUpdateFee = async (e) => {
         e.preventDefault();
         try {
@@ -103,27 +119,51 @@ const StudentLedgerDetail = () => {
                         <p className="text-slate-500 text-sm">Detailed financial history for {ledger.student?.first_name} {ledger.student?.last_name} (ID: {studentId})</p>
                     </div>
                 </div>
-                <Button 
-                    onClick={() => {
-                        const earliestUnpaid = ledger.fees.filter(f => f.status !== 'paid').sort((a, b) => new Date(a.due_date) - new Date(b.due_date))[0];
-                        if (earliestUnpaid) {
-                            const d = new Date(earliestUnpaid.due_date);
-                            navigate(`/fees/voucher/${studentId}?month=${d.getMonth() + 1}&year=${d.getFullYear()}`);
-                        } else {
-                            navigate(`/fees/voucher/${studentId}`);
-                        }
-                    }} 
-                    variant="secondary"
-                >
-                    Print Current Voucher
-                </Button>
+                {ledger.fees.some(f => f.status !== 'paid' && !f.voucher_number) && (
+                    <Button 
+                        onClick={() => {
+                            const earliestUngenerated = ledger.fees.filter(f => f.status !== 'paid' && !f.voucher_number).sort((a, b) => new Date(a.due_date) - new Date(b.due_date))[0];
+                            if (earliestUngenerated) {
+                                const semNum = getSemesterNumber(ledger.student.admission_date, earliestUngenerated.due_date, earliestUngenerated.semester_number);
+                                handleGenerateVoucher(semNum);
+                            }
+                        }} 
+                        variant="primary"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                    >
+                        Generate Current Voucher
+                    </Button>
+                )}
                 {selectedPeriods.length > 0 && (
                     <Button 
-                        onClick={() => navigate(`/fees/voucher/${studentId}?periods=${selectedPeriods.join(',')}`)} 
+                        onClick={async () => {
+                            try {
+                                const selectedSems = Object.values(ledger.fees.reduce((acc, fee) => {
+                                    const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date, fee.semester_number);
+                                    const key = `${fee.due_date ? new Date(fee.due_date).getMonth() + 1 : 1}-${fee.due_date ? new Date(fee.due_date).getFullYear() : 2026}`;
+                                    if (selectedPeriods.includes(key)) {
+                                        acc.add(semNum);
+                                    }
+                                    return acc;
+                                }, new Set()));
+                                
+                                for (const sem of selectedSems) {
+                                    await axios.post('/api/student-fees/vouchers/generate', {
+                                        student_id: studentId,
+                                        semester_number: sem
+                                    });
+                                }
+                                showSuccess('Selected voucher(s) generated successfully!');
+                                setSelectedPeriods([]);
+                                fetchLedger();
+                            } catch (error) {
+                                showError(error.response?.data?.message || 'Failed to generate selected vouchers');
+                            }
+                        }} 
                         variant="primary"
-                        className="animate-bounce"
+                        className="animate-bounce bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
                     >
-                        Print Selected ({selectedPeriods.length})
+                        Generate Selected ({selectedPeriods.length})
                     </Button>
                 )}
             </div>
@@ -200,14 +240,28 @@ const StudentLedgerDetail = () => {
                                 />
                                 <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">{group.label}</h3>
                             </div>
-                            <Button 
-                                onClick={() => navigate(`/fees/voucher/${studentId}?month=${group.month}&year=${group.year}`)} 
-                                variant="secondary" 
-                                size="sm"
-                                className="text-[10px] py-1 px-3"
-                            >
-                                Print {group.label} Voucher
-                            </Button>
+                            {group.fees.some(f => f.voucher_number) ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-slate-500">Voucher: #{group.fees.find(f => f.voucher_number)?.voucher_number}</span>
+                                    <Button 
+                                        onClick={() => window.open(`/fees/voucher/${studentId}?voucher_number=${group.fees.find(f => f.voucher_number)?.voucher_number}`, '_blank')} 
+                                        variant="secondary" 
+                                        size="sm"
+                                        className="text-[10px] py-1 px-3"
+                                    >
+                                        Print Voucher
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button 
+                                    onClick={() => handleGenerateVoucher(group.semNum)} 
+                                    variant="primary" 
+                                    size="sm"
+                                    className="text-[10px] py-1 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                                >
+                                    Generate Voucher
+                                </Button>
+                            )}
                         </div>
                         <table className="w-full text-left">
                             <thead className="bg-white border-b border-slate-100">
@@ -245,6 +299,25 @@ const StudentLedgerDetail = () => {
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex flex-col gap-1">
+                                                {fee.status !== 'paid' && !fee.voucher_number && fee.remarks?.toLowerCase().includes('(installment') && (
+                                                    <button 
+                                                        onClick={() => handleGenerateVoucher(fee.semester_number, [fee.id])}
+                                                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
+                                                    >
+                                                        Generate Voucher
+                                                    </button>
+                                                )}
+                                                {fee.voucher_number && (
+                                                    <div className="flex flex-col items-center gap-0.5">
+                                                        <span className="text-[10px] font-bold text-slate-500">Voucher: #{fee.voucher_number}</span>
+                                                        <button 
+                                                            onClick={() => window.open(`/fees/voucher/${studentId}?voucher_number=${fee.voucher_number}`, '_blank')}
+                                                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
+                                                        >
+                                                            Print
+                                                        </button>
+                                                    </div>
+                                                )}
                                                 <button 
                                                     disabled={fee.status === 'paid'}
                                                     onClick={() => {

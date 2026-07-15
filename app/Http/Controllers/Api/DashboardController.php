@@ -37,30 +37,20 @@ class DashboardController extends BaseController implements HasMiddleware
             // --- Voucher counts (filtered by month) ---
             $voucherMonth = request('voucher_month', now()->format('Y-m'));
             
-            $voucherStatsQuery = DB::table('student_fees')
-                ->where('amount', '>', 0)
-                ->whereNotNull('voucher_number')
+            $stats = \App\Models\GeneratedVoucher::query()
                 ->when($voucherMonth, fn($q) => $q->where('due_date', 'like', $voucherMonth . '%'))
-                ->select('voucher_number')
-                ->selectRaw('SUM(amount + fine_amount - discount_amount) as expected')
-                ->selectRaw('SUM(paid_amount) as collected')
-                ->selectRaw('MAX(due_date) as max_due_date')
-                ->groupBy('voucher_number');
-                
-            $stats = DB::table(DB::raw("({$voucherStatsQuery->toSql()}) as aggregated_vouchers"))
-                ->mergeBindings($voucherStatsQuery)
                 ->selectRaw('COUNT(*) as total')
-                ->selectRaw('SUM(CASE WHEN collected >= expected THEN 1 ELSE 0 END) as paid')
-                ->selectRaw('SUM(CASE WHEN collected > 0 AND collected < expected THEN 1 ELSE 0 END) as partial')
-                ->selectRaw('SUM(CASE WHEN collected = 0 THEN 1 ELSE 0 END) as unpaid')
-                ->selectRaw('SUM(CASE WHEN collected < expected AND max_due_date < ? THEN 1 ELSE 0 END) as overdue', [now()->startOfDay()])
+                ->selectRaw('SUM(CASE WHEN status = "paid" THEN 1 ELSE 0 END) as paid')
+                ->selectRaw('SUM(CASE WHEN status = "partial" THEN 1 ELSE 0 END) as partial')
+                ->selectRaw('SUM(CASE WHEN status = "unpaid" THEN 1 ELSE 0 END) as unpaid')
+                ->selectRaw('SUM(CASE WHEN status != "paid" AND due_date < ? THEN 1 ELSE 0 END) as overdue', [now()->startOfDay()])
                 ->first();
 
-            $totalVouchers   = (int) $stats->total;
-            $paidVouchers    = (int) $stats->paid;
-            $partialVouchers = (int) $stats->partial;
-            $unpaidVouchers  = (int) $stats->unpaid;
-            $overdueVouchers = (int) $stats->overdue;
+            $totalVouchers   = (int) ($stats->total ?? 0);
+            $paidVouchers    = (int) ($stats->paid ?? 0);
+            $partialVouchers = (int) ($stats->partial ?? 0);
+            $unpaidVouchers  = (int) ($stats->unpaid ?? 0);
+            $overdueVouchers = (int) ($stats->overdue ?? 0);
 
             // --- Gender breakdown ---
             $genderBreakdown = Student::select('gender', DB::raw('count(*) as total'))
@@ -117,9 +107,11 @@ class DashboardController extends BaseController implements HasMiddleware
                 ->pluck('total', 'status');
 
             // --- Monthly Fee Analytics (Current Year) ---
-            $monthlyFeesData = StudentFee::select(
+            $monthlyFeesData = \App\Models\GeneratedVoucher::select(
                     DB::raw('MONTH(due_date) as month'),
-                    DB::raw('SUM(COALESCE(amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as expected'),
+                    DB::raw('SUM(COALESCE(amount, 0)) as current_fee'),
+                    DB::raw('SUM(COALESCE(arrears_amount, 0)) as arrears'),
+                    DB::raw('SUM(COALESCE(amount, 0) + COALESCE(arrears_amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as expected'),
                     DB::raw('SUM(COALESCE(paid_amount, 0)) as collected')
                 )
                 ->whereYear('due_date', now()->year)
@@ -129,20 +121,26 @@ class DashboardController extends BaseController implements HasMiddleware
                 ->keyBy('month');
 
             $monthlyFeeAnalytics = collect(range(1, 12))->map(function($m) use ($months, $monthlyFeesData) {
+                $currentFee = (float) ($monthlyFeesData->get($m)->current_fee ?? 0);
+                $arrears    = (float) ($monthlyFeesData->get($m)->arrears ?? 0);
                 $receivable = (float) ($monthlyFeesData->get($m)->expected ?? 0);
                 $received   = (float) ($monthlyFeesData->get($m)->collected ?? 0);
                 return [
-                    'name'       => $months[$m - 1],
-                    'receivable' => $receivable,
-                    'received'   => $received,
-                    'pending'    => max(0, $receivable - $received),
+                    'name'        => $months[$m - 1],
+                    'current_fee' => $currentFee,
+                    'arrears'     => $arrears,
+                    'receivable'  => $receivable,
+                    'received'    => $received,
+                    'pending'     => max(0, $receivable - $received),
                 ];
             });
 
             // --- Semester-wise Fee Analytics ---
-            $semesterFeesData = StudentFee::select(
+            $semesterFeesData = \App\Models\GeneratedVoucher::select(
                     'semester_number',
-                    DB::raw('SUM(COALESCE(amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as expected'),
+                    DB::raw('SUM(COALESCE(amount, 0)) as current_fee'),
+                    DB::raw('SUM(COALESCE(arrears_amount, 0)) as arrears'),
+                    DB::raw('SUM(COALESCE(amount, 0) + COALESCE(arrears_amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as expected'),
                     DB::raw('SUM(COALESCE(paid_amount, 0)) as collected')
                 )
                 ->whereNotNull('semester_number')
@@ -150,13 +148,17 @@ class DashboardController extends BaseController implements HasMiddleware
                 ->orderBy('semester_number')
                 ->get()
                 ->map(function($row) {
+                    $currentFee = (float) ($row->current_fee ?? 0);
+                    $arrears    = (float) ($row->arrears ?? 0);
                     $receivable = (float) ($row->expected ?? 0);
                     $received   = (float) ($row->collected ?? 0);
                     return [
-                        'name'       => 'Semester ' . $row->semester_number,
-                        'receivable' => $receivable,
-                        'received'   => $received,
-                        'pending'    => max(0, $receivable - $received),
+                        'name'        => 'Semester ' . $row->semester_number,
+                        'current_fee' => $currentFee,
+                        'arrears'     => $arrears,
+                        'receivable'  => $receivable,
+                        'received'    => $received,
+                        'pending'     => max(0, $receivable - $received),
                     ];
                 })->values();
 

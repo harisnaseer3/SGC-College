@@ -35,6 +35,7 @@ const Sidebar = () => {
                 { name: 'Fee Structures', path: '/fees/structures' },
                 { name: 'Fine Policies', path: '/fees/policies' },
                 { name: 'Student Ledgers', path: '/fees/ledgers' },
+                { name: 'Generated Vouchers', path: '/fees/vouchers-list' },
                 { name: 'Fee Deposit', path: '/fees/deposit' },
                 { name: 'Fee Receipts', path: '/fees/receipts' },
                 { name: 'Misc Fee Operations', path: '/fees/billing' },

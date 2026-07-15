@@ -76,6 +76,19 @@ const VoucherList = () => {
         }
     };
 
+    const handleDeleteVoucher = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this voucher? This will dissociate its fees and return them to the ledger.')) {
+            return;
+        }
+        try {
+            await axios.delete(`/api/student-fees/vouchers/${id}`);
+            showSuccess('Voucher deleted successfully');
+            fetchVouchers(currentPage);
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to delete voucher');
+        }
+    };
+
     const getStatusColor = (status) => {
         switch (status?.toLowerCase()) {
             case 'paid': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -88,7 +101,7 @@ const VoucherList = () => {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Vouchers List</h1>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Generated Vouchers</h1>
                 <button 
                     onClick={() => navigate('/dashboard')}
                     className="text-sm font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
@@ -207,12 +220,21 @@ const VoucherList = () => {
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <button 
-                                                    onClick={() => window.open(`/fees/voucher/${v.student_id}?month=${new Date(v.due_date).getMonth() + 1}&year=${new Date(v.due_date).getFullYear()}`, '_blank')}
+                                                    onClick={() => window.open(`/fees/voucher/${v.student_id}?voucher_number=${v.voucher_number}`, '_blank')}
                                                     className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 
                                                     title="Print Voucher"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                                 </button>
+                                                {v.status === 'unpaid' && (
+                                                    <button 
+                                                        onClick={() => handleDeleteVoucher(v.id)}
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all ml-1" 
+                                                        title="Delete Voucher"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     );

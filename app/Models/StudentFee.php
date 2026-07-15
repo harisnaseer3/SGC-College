@@ -33,6 +33,24 @@ class StudentFee extends Model
                 $model->status = 'unpaid';
             }
         });
+
+        static::saved(function ($model) {
+            if ($model->isDirty('voucher_number')) {
+                $oldVoucher = $model->getOriginal('voucher_number');
+                if ($oldVoucher) {
+                    \App\Models\GeneratedVoucher::recalculateVoucher($oldVoucher);
+                }
+            }
+            if ($model->voucher_number) {
+                \App\Models\GeneratedVoucher::recalculateVoucher($model->voucher_number);
+            }
+        });
+
+        static::deleted(function ($model) {
+            if ($model->voucher_number) {
+                \App\Models\GeneratedVoucher::recalculateVoucher($model->voucher_number);
+            }
+        });
     }
 
     protected $fillable = [

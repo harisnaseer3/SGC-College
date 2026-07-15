@@ -15,9 +15,9 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('role_or_permission:super_admin|view_student_fees', only: ['index', 'studentLedger', 'voucher', 'bulkVouchers', 'findByVoucher']),
-            new Middleware('role_or_permission:super_admin|create_student_fees', only: ['generate', 'manualAssign']),
-            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['update']),
+            new Middleware('role_or_permission:super_admin|view_student_fees', only: ['index', 'studentLedger', 'voucher', 'bulkVouchers', 'findByVoucher', 'vouchersList']),
+            new Middleware('role_or_permission:super_admin|create_student_fees', only: ['generate', 'manualAssign', 'generateVoucher']),
+            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['update', 'destroyVoucher']),
             new Middleware('role_or_permission:super_admin|pay_student_fees|create_fee_receipts|manage_fee_receipts', only: ['deposit']),
             new Middleware('role_or_permission:super_admin|split_student_fees', only: ['split']),
             new Middleware('role_or_permission:super_admin|apply_fines', only: ['applyFines']),
@@ -150,7 +150,9 @@ class StudentFeeController extends BaseController implements HasMiddleware
         try {
             $vouchers = [];
             
-            if ($request->has('periods')) {
+            if ($request->has('voucher_number')) {
+                $vouchers = $this->feeService->getVoucherData($studentId, null, null, $request->voucher_number);
+            } elseif ($request->has('periods')) {
                 // periods=5-2026,6-2026
                 $periods = explode(',', $request->periods);
                 foreach ($periods as $p) {
@@ -165,6 +167,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
             
             return $this->sendResponse($vouchers, 'Voucher data generated successfully.');
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Voucher Generation Error for student ' . $studentId . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return $this->sendError('Voucher Generation Error.', ['error' => $e->getMessage()], 400);
         }
     }
@@ -387,7 +390,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     'balance_amount' => $inst['amount'],
                     'due_date' => $inst['due_date'],
                     'status' => 'unpaid',
-                    'voucher_number' => $this->feeService->generateNextVoucherNumber(),
+                    'voucher_number' => null,
                     'remarks' => $studentFee->feeHead->name . " (Installment " . ($index + 1) . "/$count)",
                     'semester_number' => $studentFee->semester_number,
                 ]);
@@ -528,43 +531,15 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function vouchersList(\Illuminate\Http\Request $request)
     {
         try {
-            $query = \App\Models\StudentFee::with(['student.program', 'student.campus'])
-                ->select('voucher_number', 'student_id')
-                ->selectRaw('MIN(id) as id')
-                ->selectRaw('MAX(due_date) as due_date')
-                ->selectRaw('SUM(amount) as amount')
-                ->selectRaw('SUM(fine_amount) as fine_amount')
-                ->selectRaw('SUM(discount_amount) as discount_amount')
-                ->selectRaw('SUM(paid_amount) as paid_amount')
-                ->selectRaw('
-                    CASE 
-                        WHEN SUM(paid_amount) >= SUM(amount + fine_amount - discount_amount) THEN "paid"
-                        WHEN SUM(paid_amount) > 0 THEN "partial"
-                        ELSE "unpaid"
-                    END as aggregated_status
-                ')
-                ->whereNotNull('voucher_number')
-                ->groupBy('voucher_number', 'student_id');
+            $query = \App\Models\GeneratedVoucher::with(['student.program', 'student.campus']);
 
             if ($request->filled('month') && $request->filled('year')) {
-                $query->whereIn('voucher_number', function($subquery) use ($request) {
-                    $subquery->select('voucher_number')
-                             ->from('student_fees')
-                             ->whereNotNull('voucher_number')
-                             ->whereYear('due_date', $request->year)
-                             ->whereMonth('due_date', $request->month);
-                });
+                $query->whereMonth('due_date', $request->month)
+                      ->whereYear('due_date', $request->year);
             }
 
             if ($request->filled('status')) {
-                $statusFilter = $request->status;
-                if ($statusFilter === 'paid') {
-                    $query->havingRaw('SUM(paid_amount) >= SUM(amount + fine_amount - discount_amount)');
-                } elseif ($statusFilter === 'partial') {
-                    $query->havingRaw('SUM(paid_amount) > 0 AND SUM(paid_amount) < SUM(amount + fine_amount - discount_amount)');
-                } elseif ($statusFilter === 'unpaid') {
-                    $query->havingRaw('SUM(paid_amount) <= 0');
-                }
+                $query->where('status', $request->status);
             }
 
             if ($request->filled('search')) {
@@ -579,62 +554,25 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 });
             }
 
-            // Apply pagination based on grouped results
             $vouchers = $query->orderBy('due_date', 'desc')
                               ->paginate($request->get('per_page', 10));
-            
-            $voucherNumbers = $vouchers->pluck('voucher_number')->filter()->toArray();
-            $allFees = \App\Models\StudentFee::whereIn('voucher_number', $voucherNumbers)->get()->groupBy('voucher_number');
 
-            // Map aggregated_status to status and calculate arrears for frontend compatibility
-            $vouchers->getCollection()->transform(function ($voucher) use ($allFees) {
-                $voucher->status = $voucher->aggregated_status;
-                
-                $fees = $allFees->get($voucher->voucher_number, collect());
-                $maxDueDate = $fees->max('due_date');
-                if ($maxDueDate) {
-                    $startOfMonth = \Carbon\Carbon::parse($maxDueDate)->startOfMonth();
-                    $arrears = $fees->filter(function($fee) use ($startOfMonth) {
-                        return \Carbon\Carbon::parse($fee->due_date)->lt($startOfMonth);
-                    })->sum('balance_amount');
-                    $voucher->arrears_amount = $arrears;
-                } else {
-                    $voucher->arrears_amount = 0;
-                }
-                
-                return $voucher;
-            });
-
-            // Calculate aggregates for the filtered query using a subquery
-            $baseSql = $query->toSql();
-            $bindings = $query->getBindings();
-
-            $aggregates = \Illuminate\Support\Facades\DB::table(\Illuminate\Support\Facades\DB::raw("({$baseSql}) as grouped_vouchers"))
-                ->setBindings($bindings)
-                ->select(
-                    \Illuminate\Support\Facades\DB::raw('SUM(amount + fine_amount - discount_amount) as total_expected'),
-                    \Illuminate\Support\Facades\DB::raw('SUM(paid_amount) as total_received')
-                )->first();
-
-            $arrearsAggregate = \Illuminate\Support\Facades\DB::table(\Illuminate\Support\Facades\DB::raw("({$baseSql}) as grouped_vouchers"))
-                ->setBindings($bindings)
-                ->join('student_fees as sf', 'sf.voucher_number', '=', 'grouped_vouchers.voucher_number')
-                ->whereRaw('sf.due_date < DATE_FORMAT(grouped_vouchers.due_date, "%Y-%m-01")')
-                ->select(\Illuminate\Support\Facades\DB::raw('SUM(sf.amount + sf.fine_amount - sf.discount_amount - sf.paid_amount) as total_arrears'))
-                ->first();
-
-            $totalExpected = (float) ($aggregates->total_expected ?? 0);
-            $totalReceived = (float) ($aggregates->total_received ?? 0);
-            $totalBalance = max(0, $totalExpected - $totalReceived);
-            $totalArrears = (float) ($arrearsAggregate->total_arrears ?? 0);
+            // Calculate aggregates
+            $aggregatesQuery = clone $query;
+            $aggregates = $aggregatesQuery->selectRaw('
+                SUM(amount + fine_amount - discount_amount) as total_expected,
+                SUM(arrears_amount) as total_arrears,
+                SUM(paid_amount) as total_received,
+                SUM(balance_amount) as total_balance
+            ')->first();
 
             return $this->sendResponse([
                 'paginator' => $vouchers,
                 'aggregates' => [
-                    'expected' => $totalExpected,
-                    'arrears'  => $totalArrears,
-                    'received' => $totalReceived,
-                    'balance'  => $totalBalance
+                    'expected' => (float) ($aggregates->total_expected ?? 0),
+                    'arrears'  => (float) ($aggregates->total_arrears ?? 0),
+                    'received' => (float) ($aggregates->total_received ?? 0),
+                    'balance'  => (float) ($aggregates->total_balance ?? 0)
                 ]
             ], 'Vouchers retrieved successfully.');
         } catch (\Exception $e) {
@@ -678,6 +616,133 @@ class StudentFeeController extends BaseController implements HasMiddleware
             \Illuminate\Support\Facades\DB::rollback();
             \Illuminate\Support\Facades\Log::error('destroyPayment failed: ' . $e->getMessage());
             return $this->sendError('Failed to delete payment.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function generateVoucher(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:students,id',
+            'fee_ids' => 'nullable|array',
+            'fee_ids.*' => 'exists:student_fees,id',
+            'semester_number' => 'nullable|integer',
+            'due_date' => 'nullable|date',
+        ]);
+
+        $studentId = $request->student_id;
+        $student = \App\Models\Student::findOrFail($studentId);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $feesQuery = StudentFee::where('student_id', $studentId)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->whereNull('voucher_number');
+
+            if ($request->filled('fee_ids')) {
+                $feesQuery->whereIn('id', $request->fee_ids);
+            } elseif ($request->filled('semester_number')) {
+                $feesQuery->where('semester_number', $request->semester_number);
+            }
+
+            $fees = $feesQuery->get();
+
+            if ($fees->isEmpty()) {
+                return $this->sendError('No unpaid fees found to generate a voucher.', [], 400);
+            }
+
+            $firstInstallment = $fees->filter(function($fee) {
+                return str_contains($fee->remarks ?? '', '(Installment 1/');
+            })->first();
+
+            $firstGroupKey = $firstInstallment 
+                ? $firstInstallment->due_date->format('Y-m') 
+                : ($fees->min('due_date') ? \Carbon\Carbon::parse($fees->min('due_date'))->format('Y-m') : now()->format('Y-m'));
+
+            $groupedFees = $fees->groupBy(function($fee) use ($firstGroupKey) {
+                if (str_contains($fee->remarks ?? '', '(Installment')) {
+                    return $fee->due_date->format('Y-m');
+                }
+                return $firstGroupKey;
+            })->sortBy(function($fees, $key) {
+                return $key;
+            });
+
+            $vouchers = [];
+            $isFirstGroup = true;
+
+            foreach ($groupedFees as $groupKey => $groupFees) {
+                $maxSem = $groupFees->max('semester_number') ?: 1;
+
+                $arrears = collect();
+                if ($isFirstGroup) {
+                    $arrears = StudentFee::where('student_id', $studentId)
+                        ->whereIn('status', ['unpaid', 'partial'])
+                        ->where('semester_number', '<', $maxSem)
+                        ->get();
+                }
+
+                $voucherNumber = $this->feeService->generateNextVoucherNumber();
+                $dueDate = $request->due_date ?? ($groupFees->min('due_date') ?? now()->addDays(10));
+
+                $voucher = \App\Models\GeneratedVoucher::create([
+                    'organization_id' => $student->organization_id,
+                    'campus_id' => $student->campus_id,
+                    'student_id' => $studentId,
+                    'voucher_number' => $voucherNumber,
+                    'due_date' => $dueDate,
+                    'semester_number' => $maxSem,
+                    'amount' => $groupFees->sum('amount'),
+                    'arrears_amount' => $arrears->sum('balance_amount'),
+                    'fine_amount' => $groupFees->sum('fine_amount') + $arrears->sum('fine_amount'),
+                    'discount_amount' => $groupFees->sum('discount_amount') + $arrears->sum('discount_amount'),
+                    'paid_amount' => $groupFees->sum('paid_amount') + $arrears->sum('paid_amount'),
+                    'balance_amount' => $groupFees->sum('balance_amount') + $arrears->sum('balance_amount'),
+                    'status' => 'unpaid',
+                ]);
+
+                foreach ($groupFees as $fee) {
+                    $fee->update(['voucher_number' => $voucherNumber]);
+                }
+
+                foreach ($arrears as $fee) {
+                    $fee->update(['voucher_number' => $voucherNumber]);
+                }
+
+                $vouchers[] = $voucher;
+                $isFirstGroup = false;
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return $this->sendResponse($vouchers, count($vouchers) . ' voucher(s) generated successfully.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollback();
+            return $this->sendError('Failed to generate voucher.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function destroyVoucher($id)
+    {
+        try {
+            $voucher = \App\Models\GeneratedVoucher::findOrFail($id);
+
+            if ($voucher->status !== 'unpaid') {
+                return $this->sendError('Only unpaid vouchers can be deleted.', [], 400);
+            }
+
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            StudentFee::withoutGlobalScopes()
+                ->where('voucher_number', $voucher->voucher_number)
+                ->update(['voucher_number' => null]);
+
+            $voucher->delete();
+
+            \Illuminate\Support\Facades\DB::commit();
+            return $this->sendResponse([], 'Voucher deleted successfully.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollback();
+            return $this->sendError('Failed to delete voucher.', ['error' => $e->getMessage()], 500);
         }
     }
 }

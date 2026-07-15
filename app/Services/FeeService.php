@@ -225,15 +225,6 @@ class FeeService
             [$start, $end] = $this->getStudentSemesterRange($student, $s);
             $dueDate = $start->copy()->day(10);
 
-            // Find any existing voucher number already assigned to this semester's fees
-            $existingSemVoucher = StudentFee::where('student_id', $student->id)
-                ->whereBetween('due_date', [$start, $end])
-                ->whereNotNull('voucher_number')
-                ->value('voucher_number');
-
-            // Generate one new voucher number for the semester only if none exists
-            $semVoucherNumber = $existingSemVoucher ?? $this->generateNextVoucherNumber();
-
             $itemsToApply = [];
             foreach ($structures as $structure) {
                 foreach ($structure->items as $item) {
@@ -279,7 +270,7 @@ class FeeService
                         'balance_amount'  => $item->amount,
                         'due_date'        => $dueDate,
                         'status'          => 'unpaid',
-                        'voucher_number'  => $semVoucherNumber,
+                        'voucher_number'  => null,
                         'semester_number' => $s,
                     ]);
                     $generatedCount++;
@@ -339,9 +330,148 @@ class FeeService
     /**
      * Get aggregated voucher data for a student, matching the official format.
      */
-    public function getVoucherData($studentId, $month = null, $year = null)
+    public function getVoucherData($studentId, $month = null, $year = null, $voucherNumber = null)
     {
         $student = Student::with(['program', 'academicBatch', 'campus.bankAccounts', 'organization'])->findOrFail($studentId);
+
+        if ($voucherNumber) {
+            $allPendingFees = StudentFee::with('feeHead')
+                ->where('student_id', $studentId)
+                ->where('voucher_number', $voucherNumber)
+                ->orderBy('due_date', 'asc')
+                ->get();
+
+            if ($allPendingFees->isEmpty()) {
+                throw new \Exception("Voucher not found.");
+            }
+
+            $voucherRecord = \App\Models\GeneratedVoucher::where('voucher_number', $voucherNumber)->first();
+            if (!$voucherRecord) {
+                // Auto-heal: Backfill the GeneratedVoucher record from the student fees!
+                $maxSem = $allPendingFees->max('semester_number') ?: 1;
+                $currentFees = $allPendingFees->filter(function($fee) use ($maxSem) {
+                    return $fee->semester_number == $maxSem;
+                });
+                if ($currentFees->isEmpty()) {
+                    $currentFees = $allPendingFees;
+                }
+                
+                $arrearsAmount = $allPendingFees->filter(function($fee) use ($maxSem) {
+                    return $fee->semester_number < $maxSem;
+                })->sum('balance_amount');
+
+                $voucherRecord = \App\Models\GeneratedVoucher::create([
+                    'organization_id' => $student->organization_id,
+                    'campus_id' => $student->campus_id,
+                    'student_id' => $studentId,
+                    'voucher_number' => $voucherNumber,
+                    'due_date' => $allPendingFees->min('due_date') ?? now(),
+                    'semester_number' => $maxSem,
+                    'amount' => $currentFees->sum('amount'),
+                    'arrears_amount' => $arrearsAmount,
+                    'fine_amount' => $allPendingFees->sum('fine_amount'),
+                    'discount_amount' => $allPendingFees->sum('discount_amount'),
+                    'paid_amount' => $allPendingFees->sum('paid_amount'),
+                    'balance_amount' => $allPendingFees->sum('balance_amount'),
+                    'status' => $allPendingFees->sum('balance_amount') <= 0 ? 'paid' : ($allPendingFees->sum('paid_amount') > 0 ? 'partial' : 'unpaid'),
+                ]);
+            }
+
+            $dueDate = $voucherRecord->due_date;
+            $validDate = $dueDate->copy()->endOfMonth();
+            $semNumber = $voucherRecord->semester_number;
+            $feeMonth = $this->getStudentSemesterLabel($student, $semNumber);
+
+            $relationLabel = (strtolower($student->gender) === 'female') ? 'D/O' : 'S/O';
+
+            $orgName = $student->organization->name ?? 'ORG';
+            preg_match_all('/\b(\w)/', strtoupper($orgName), $m);
+            $orgAbbr = implode('', $m[1] ?? ['O']);
+
+            $campusAbbr = $student->campus->code;
+            if (!$campusAbbr) {
+                $campusName = $student->campus->name ?? 'CMP';
+                preg_match_all('/\b(\w)/', strtoupper($campusName), $m);
+                $campusAbbr = implode('', $m[1] ?? ['C']);
+            }
+            $bankAccounts = $student->campus->bankAccounts ?? [];
+            $bankDetailsArray = [];
+            foreach ($bankAccounts as $acc) {
+                if ($acc->is_active) {
+                    $bankDetailsArray[] = trim(implode(' - ', array_filter([
+                        $acc->bank_name,
+                        $acc->account_number,
+                        $acc->account_title,
+                        $acc->branch_code ? "Branch Code: " . $acc->branch_code : null
+                    ])));
+                }
+            }
+            $bankDetails = implode("\n", $bankDetailsArray);
+            if (empty($bankDetails)) {
+                $bankDetails = 'No Bank Details Available for this Campus';
+            }
+
+            $currentFees = $allPendingFees->filter(function ($fee) use ($semNumber) {
+                return $fee->semester_number == $semNumber;
+            });
+
+            // If there are no current fees for this semester (e.g. only arrears in the voucher), use all pending
+            if ($currentFees->isEmpty()) {
+                $currentFees = $allPendingFees;
+            }
+
+            $arrearsAmount = (float) $voucherRecord->arrears_amount;
+            $previousFine = $allPendingFees->filter(fn($f) => $f->semester_number < $semNumber)->sum('fine_amount');
+
+            $payableWithinDueDate = (float) $voucherRecord->balance_amount;
+
+            $feeItems = $currentFees->values()->map(function ($fee, $index) {
+                return [
+                    'sr_no' => $index + 1,
+                    'head' => $fee->feeHead->name,
+                    'amount' => number_format($fee->balance_amount, 0),
+                ];
+            })->all();
+
+            return [[
+                'voucher_number' => $voucherNumber,
+                'copy_names' => ["Finance's Copy", "Student's Copy", "Bank's Copy"],
+                'institution' => [
+                    'name' => $student->campus->name ?? 'Campus Name',
+                    'location' => $student->campus->location ?? 'Campus Location',
+                    'logo_url' => $student->campus->logo_url,
+                    'payment_terms' => $student->campus->payment_terms ?? "Note:\nPayment Terms\nA fine of Rs. 200 will be charged if the fee is not paid by the due date.\nA fine of Rs. 500 will be applicable if the payment remains unpaid in the following month",
+                ],
+                'academic' => [
+                    'voucher_number' => $voucherNumber,
+                    'fee_month' => $feeMonth,
+                    'issue_date' => $voucherRecord->created_at->format('d M Y'),
+                    'due_date' => $dueDate->format('d M Y'),
+                    'valid_date' => $validDate->format('d M Y'),
+                    'roll_no' => $student->roll_number,
+                    'student_id' => $student->admission_number,
+                    'adm_reg_no' => "{$student->admission_number}",
+                ],
+                'student' => [
+                    'full_name' => $student->first_name . ' ' . $student->last_name,
+                    'parent_relation' => $relationLabel,
+                    'guardian_name' => $student->guardian_name,
+                    'class' => $student->program ? $student->program->name : 'N/A',
+                ],
+                'fee_items' => $feeItems,
+                'summary' => [
+                    'arrears' => number_format($arrearsAmount, 0),
+                    'previous_fine' => number_format($previousFine, 0),
+                    'payable_within_due_date' => number_format($payableWithinDueDate, 0),
+                    'late_fee_fine' => '0', 
+                    'absent_fine' => '0',   
+                    'payable_after_due_date' => number_format($payableWithinDueDate + 500, 0), 
+                ],
+                'bank' => [
+                    'info' => $bankDetails,
+                ]
+            ]];
+        }
         
         // Get all unpaid or partially paid fees
         $allPendingFees = StudentFee::with('feeHead')
@@ -622,6 +752,13 @@ class FeeService
      */
     public function generateNextVoucherNumber()
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $maxVoucher = StudentFee::all()
+                ->filter(fn($f) => is_numeric($f->voucher_number))
+                ->max(fn($f) => (int)$f->voucher_number);
+            return $maxVoucher ? $maxVoucher + 1 : 1001;
+        }
+
         $maxVoucher = StudentFee::whereRaw('voucher_number REGEXP "^[0-9]+$"')->max(DB::raw('CAST(voucher_number AS UNSIGNED)'));
         return $maxVoucher ? $maxVoucher + 1 : 1001;
     }
