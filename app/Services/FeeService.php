@@ -633,14 +633,7 @@ class FeeService
                 }
             }
 
-            // Also persist the voucher number to all arrears so they are grouped in the deposit screen
-            if ($isFirstGroup && $arrearsFees->isNotEmpty()) {
-                foreach ($arrearsFees as $fee) {
-                    if ($fee->voucher_number !== $voucherNumber) {
-                        $fee->update(['voucher_number' => $voucherNumber]);
-                    }
-                }
-            }
+
 
             $vouchers[] = [
                 'voucher_number' => $voucherNumber,
@@ -722,10 +715,31 @@ class FeeService
                 ->whereIn('status', ['unpaid', 'partial']);
 
             if (isset($details['voucher_number']) && $details['voucher_number']) {
-                $query->where('voucher_number', $details['voucher_number']);
+                $vNum = $details['voucher_number'];
+                
+                $voucherFees = StudentFee::where('student_id', $studentId)
+                    ->where('voucher_number', $vNum)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->orderBy('due_date', 'asc')
+                    ->get();
+                
+                $voucherRecord = \App\Models\GeneratedVoucher::where('voucher_number', $vNum)->first();
+                $arrearsFees = collect();
+                if ($voucherRecord) {
+                    $arrearsFees = StudentFee::where('student_id', $studentId)
+                        ->where('semester_number', '<', $voucherRecord->semester_number)
+                        ->whereIn('status', ['unpaid', 'partial'])
+                        ->orderBy('due_date', 'asc')
+                        ->get();
+                }
+                
+                $pendingFees = $voucherFees->concat($arrearsFees);
+            } else {
+                $pendingFees = StudentFee::where('student_id', $studentId)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->orderBy('due_date', 'asc')
+                    ->get();
             }
-
-            $pendingFees = $query->orderBy('due_date', 'asc')->get();
 
             foreach ($pendingFees as $fee) {
                 if ($remainingAmount <= 0) break;

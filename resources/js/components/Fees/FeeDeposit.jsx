@@ -261,15 +261,23 @@ const FeeDeposit = () => {
                             </Card>
 
                             {voucherData && (() => {
-                                const maxDueDate = voucherData.fees.reduce((max, fee) => {
-                                    return new Date(fee.due_date) > new Date(max) ? fee.due_date : max;
-                                }, voucherData.fees[0]?.due_date || new Date());
+                                const isVoucherMode = searchMode === 'voucher';
+                                const currentFees = voucherData.fees.filter(fee => {
+                                    if (isVoucherMode) {
+                                        return fee.voucher_number === voucherNo;
+                                    }
+                                    const maxSem = Math.max(...voucherData.fees.map(f => Number(f.semester_number) || 0), 1);
+                                    return (Number(fee.semester_number) || 0) === maxSem;
+                                });
                                 
-                                const targetDate = new Date(maxDueDate);
-                                const startOfTargetMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+                                const arrearsFees = voucherData.fees.filter(fee => {
+                                    if (isVoucherMode) {
+                                        return fee.voucher_number !== voucherNo;
+                                    }
+                                    const maxSem = Math.max(...voucherData.fees.map(f => Number(f.semester_number) || 0), 1);
+                                    return (Number(fee.semester_number) || 0) < maxSem;
+                                });
                                 
-                                const currentFees = voucherData.fees.filter(fee => new Date(fee.due_date) >= startOfTargetMonth);
-                                const arrearsFees = voucherData.fees.filter(fee => new Date(fee.due_date) < startOfTargetMonth);
                                 const arrearsTotal = arrearsFees.reduce((sum, fee) => sum + Number(fee.balance_amount), 0);
 
                                 return (

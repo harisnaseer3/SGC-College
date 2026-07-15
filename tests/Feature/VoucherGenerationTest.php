@@ -116,7 +116,7 @@ class VoucherGenerationTest extends TestCase
         $arrearsFee->refresh();
         $this->assertEquals($voucher->voucher_number, $fee1->voucher_number);
         $this->assertEquals($voucher->voucher_number, $fee2->voucher_number);
-        $this->assertEquals($voucher->voucher_number, $arrearsFee->voucher_number);
+        $this->assertNull($arrearsFee->voucher_number);
 
         // 5. Pay a fee and assert voucher is recalculated
         $fee1->update(['paid_amount' => 10000.00]);
@@ -219,5 +219,123 @@ class VoucherGenerationTest extends TestCase
         $voucher = GeneratedVoucher::where('voucher_number', 'PRE-EXISTING-123')->first();
         $this->assertEquals(8000.00, $voucher->amount);
         $this->assertEquals('unpaid', $voucher->status);
+    }
+
+    public function test_voucher_payment_allocation_integrity(): void
+    {
+        $this->seed(\Database\Seeders\PermissionsSeeder::class);
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+
+        $org = Organization::create(['name' => 'Test Org', 'slug' => 'test-org']);
+        $campus = Campus::create(['organization_id' => $org->id, 'name' => 'Test Campus', 'code' => 'TC']);
+        $student = Student::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'first_name' => 'Jane',
+            'last_name' => 'Doe',
+            'admission_number' => 'ADM-002',
+            'roll_number' => '1002',
+            'status' => 'Enrolled',
+            'gender' => 'female',
+            'admission_date' => '2026-07-15',
+        ]);
+        $feeHead1 = FeeHead::create(['organization_id' => $org->id, 'campus_id' => $campus->id, 'name' => 'Admission Fee', 'frequency' => 'once']);
+        $feeHead2 = FeeHead::create(['organization_id' => $org->id, 'campus_id' => $campus->id, 'name' => 'Semester Fee', 'frequency' => 'semester']);
+
+        // Voucher 1 fees
+        $v1Admission = StudentFee::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'student_id' => $student->id,
+            'fee_head_id' => $feeHead1->id,
+            'amount' => 15000.00,
+            'due_date' => now()->subMonths(3),
+            'semester_number' => 1,
+        ]);
+        $v1Semester = StudentFee::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'student_id' => $student->id,
+            'fee_head_id' => $feeHead2->id,
+            'amount' => 45000.00,
+            'due_date' => now()->subMonths(3),
+            'semester_number' => 1,
+        ]);
+
+        // Voucher 2 fees
+        $v2Semester = StudentFee::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'student_id' => $student->id,
+            'fee_head_id' => $feeHead2->id,
+            'amount' => 90000.00,
+            'due_date' => now()->addDays(10),
+            'semester_number' => 2,
+        ]);
+
+        $user = User::create([
+            'name' => 'Admin User',
+            'email' => 'admin@test.com',
+            'password' => bcrypt('password'),
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+        ]);
+        $user->assignRole('super_admin');
+
+        // Generate Voucher 1
+        $this->actingAs($user, 'api')
+            ->withHeaders(['X-Organization-ID' => $org->id, 'X-Campus-ID' => $campus->id])
+            ->postJson('/api/student-fees/vouchers/generate', [
+                'student_id' => $student->id,
+                'semester_number' => 1,
+            ]);
+
+        $v1 = GeneratedVoucher::where('student_id', $student->id)->where('semester_number', 1)->first();
+        $this->assertNotNull($v1);
+
+        // Generate Voucher 2
+        $this->actingAs($user, 'api')
+            ->withHeaders(['X-Organization-ID' => $org->id, 'X-Campus-ID' => $campus->id])
+            ->postJson('/api/student-fees/vouchers/generate', [
+                'student_id' => $student->id,
+                'semester_number' => 2,
+            ]);
+
+        $v2 = GeneratedVoucher::where('student_id', $student->id)->where('semester_number', 2)->first();
+        $this->assertNotNull($v2);
+
+        // Assert that Voucher 1 fees keep their voucher number and Voucher 2 has its own
+        $v1Admission->refresh();
+        $v1Semester->refresh();
+        $v2Semester->refresh();
+        $this->assertEquals($v1->voucher_number, $v1Admission->voucher_number);
+        $this->assertEquals($v1->voucher_number, $v1Semester->voucher_number);
+        $this->assertEquals($v2->voucher_number, $v2Semester->voucher_number);
+
+        // Record a payment against Voucher 2
+        $response = $this->actingAs($user, 'api')
+            ->withHeaders(['X-Organization-ID' => $org->id, 'X-Campus-ID' => $campus->id])
+            ->postJson('/api/student-fees/deposit', [
+                'student_id' => $student->id,
+                'amount' => 50000.00,
+                'payment_date' => now()->format('Y-m-d'),
+                'payment_method' => 'Cash',
+                'voucher_number' => $v2->voucher_number,
+            ]);
+
+        $response->assertStatus(200);
+
+        // Assert that payment was ONLY applied to Voucher 2 fees
+        $v1Admission->refresh();
+        $v1Semester->refresh();
+        $v2Semester->refresh();
+
+        // Voucher 1 fees must remain completely unpaid
+        $this->assertEquals(0.00, $v1Admission->paid_amount);
+        $this->assertEquals(0.00, $v1Semester->paid_amount);
+
+        // Voucher 2 fees must receive the payment
+        $this->assertEquals(50000.00, $v2Semester->paid_amount);
+        $this->assertEquals(40000.00, $v2Semester->balance_amount);
     }
 }

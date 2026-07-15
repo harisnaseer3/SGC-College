@@ -63,18 +63,41 @@ class GeneratedVoucher extends Model
             return $fee->semester_number == $maxSem;
         });
 
-        $amount = $currentFees->sum('amount');
-        $arrearsAmount = (float) $voucher->arrears_amount;
-        $fineAmount = $fees->sum('fine_amount');
-        $discountAmount = $fees->sum('discount_amount');
-        $paidAmount = $fees->sum('paid_amount');
-        
-        $totalExpected = $amount + $arrearsAmount + $fineAmount - $discountAmount;
-        $totalBalance = max(0.00, $totalExpected - $paidAmount);
+        // If there are no current semester fees, treat all associated fees as current
+        if ($currentFees->isEmpty()) {
+            $currentFees = $fees;
+        }
 
-        if ($paidAmount >= $totalExpected) {
+        $amount = $currentFees->sum('amount');
+        $fineAmount = $currentFees->sum('fine_amount');
+        $discountAmount = $currentFees->sum('discount_amount');
+        $currentPaid = $currentFees->sum('paid_amount');
+        
+        $currentExpected = $amount + $fineAmount - $discountAmount;
+        $currentBalance = max(0.00, $currentExpected - $currentPaid);
+
+        // Fetch current arrears balance from previous semesters
+        $arrearsBalance = (float) StudentFee::withoutGlobalScopes()
+            ->where('student_id', $voucher->student_id)
+            ->where('semester_number', '<', $maxSem)
+            ->where(function($q) use ($voucherNumber) {
+                $q->whereNull('voucher_number')
+                  ->orWhere('voucher_number', '!=', $voucherNumber);
+            })
+            ->sum('balance_amount');
+
+        // Total balance of the voucher (current balance + arrears balance)
+        $totalBalance = $currentBalance + $arrearsBalance;
+
+        // Total paid amount on this voucher is currentPaid
+        $paidAmount = $currentPaid;
+
+        // Total expected of the voucher (current expected + arrears snapshot)
+        $totalExpected = $currentExpected + (float)$voucher->arrears_amount;
+
+        if ($totalBalance <= 0) {
             $status = 'paid';
-        } elseif ($paidAmount > 0) {
+        } elseif ($paidAmount > 0 || $arrearsBalance < (float)$voucher->arrears_amount) {
             $status = 'partial';
         } else {
             $status = 'unpaid';

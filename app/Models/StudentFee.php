@@ -35,19 +35,24 @@ class StudentFee extends Model
         });
 
         static::saved(function ($model) {
+            $vouchers = \App\Models\GeneratedVoucher::where('student_id', $model->student_id)->get();
+            foreach ($vouchers as $voucher) {
+                \App\Models\GeneratedVoucher::recalculateVoucher($voucher->voucher_number);
+            }
             if ($model->isDirty('voucher_number')) {
                 $oldVoucher = $model->getOriginal('voucher_number');
-                if ($oldVoucher) {
+                if ($oldVoucher && !$vouchers->contains('voucher_number', $oldVoucher)) {
                     \App\Models\GeneratedVoucher::recalculateVoucher($oldVoucher);
                 }
-            }
-            if ($model->voucher_number) {
-                \App\Models\GeneratedVoucher::recalculateVoucher($model->voucher_number);
             }
         });
 
         static::deleted(function ($model) {
-            if ($model->voucher_number) {
+            $vouchers = \App\Models\GeneratedVoucher::where('student_id', $model->student_id)->get();
+            foreach ($vouchers as $voucher) {
+                \App\Models\GeneratedVoucher::recalculateVoucher($voucher->voucher_number);
+            }
+            if ($model->voucher_number && !$vouchers->contains('voucher_number', $model->voucher_number)) {
                 \App\Models\GeneratedVoucher::recalculateVoucher($model->voucher_number);
             }
         });

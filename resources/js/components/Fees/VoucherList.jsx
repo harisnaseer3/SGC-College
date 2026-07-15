@@ -173,8 +173,9 @@ const VoucherList = () => {
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Voucher #</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Due Date</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Expected</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Voucher Amount</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Arrears</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Receivable</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Received</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Balance</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
@@ -184,7 +185,7 @@ const VoucherList = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="10" className="px-6 py-20 text-center">
+                                    <td colSpan="11" className="px-6 py-20 text-center">
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Vouchers...</span>
@@ -193,9 +194,11 @@ const VoucherList = () => {
                                 </tr>
                             ) : vouchers.length > 0 ? (
                                 vouchers.map((v, index) => {
-                                    const expected = (Number(v.amount) || 0) + (Number(v.fine_amount) || 0) - (Number(v.discount_amount) || 0);
-                                    const received = Number(v.paid_amount) || 0;
-                                    const balance = Math.max(0, expected - received);
+                                    const voucherAmount = (Number(v.amount) || 0) + (Number(v.fine_amount) || 0) - (Number(v.discount_amount) || 0);
+                                    const arrears = Number(v.arrears_amount) || 0;
+                                    const receivable = voucherAmount + arrears;
+                                    const balance = Number(v.balance_amount) || 0;
+                                    const received = Math.max(0, receivable - balance);
                                     const srNo = (pagination.current_page - 1) * pagination.per_page + index + 1;
 
                                     return (
@@ -209,8 +212,9 @@ const VoucherList = () => {
                                             <td className="px-6 py-4 text-slate-600 text-sm font-medium">
                                                 {new Date(v.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </td>
-                                            <td className="px-6 py-4 text-slate-600 font-black text-right">Rs. {expected.toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-rose-500 font-black text-right">Rs. {(Number(v.arrears_amount) || 0).toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-slate-600 font-black text-right">Rs. {voucherAmount.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-rose-500 font-black text-right">Rs. {arrears.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-indigo-600 font-black text-right">Rs. {receivable.toLocaleString()}</td>
                                             <td className="px-6 py-4 text-emerald-600 font-black text-right">Rs. {received.toLocaleString()}</td>
                                             <td className="px-6 py-4 text-rose-600 font-black text-right">Rs. {balance.toLocaleString()}</td>
                                             <td className="px-6 py-4">
@@ -241,7 +245,7 @@ const VoucherList = () => {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="10" className="px-6 py-20 text-center">
+                                    <td colSpan="11" className="px-6 py-20 text-center">
                                         <div className="text-slate-400 italic text-sm">No vouchers found matching your criteria.</div>
                                     </td>
                                 </tr>
@@ -255,7 +259,8 @@ const VoucherList = () => {
                                     </td>
                                     <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.expected.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-rose-800 font-black text-right">Rs. {aggregates.arrears.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.received.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {(aggregates.expected + aggregates.arrears).toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {((aggregates.expected + aggregates.arrears) - aggregates.balance).toLocaleString()}</td>
                                     <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.balance.toLocaleString()}</td>
                                     <td colSpan="2"></td>
                                 </tr>

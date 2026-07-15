@@ -448,16 +448,36 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function findByVoucher($voucherNumber)
     {
         try {
-            $fees = StudentFee::with(['student.program', 'student.campus.bankAccounts', 'feeHead'])
+            $voucherRecord = \App\Models\GeneratedVoucher::with('student.program', 'student.campus.bankAccounts')
+                ->where('voucher_number', $voucherNumber)
+                ->first();
+
+            if (!$voucherRecord) {
+                return $this->sendError('Active voucher not found or already paid.', [], 404);
+            }
+
+            // Get current fees directly associated with this voucher
+            $voucherFees = StudentFee::with(['student.program', 'student.campus.bankAccounts', 'feeHead'])
                 ->where('voucher_number', $voucherNumber)
                 ->whereIn('status', ['unpaid', 'partial'])
                 ->get();
 
+            $student = $voucherRecord->student;
+            $maxSem = $voucherRecord->semester_number;
+
+            // Get arrears fees from previous semesters
+            $arrearsFees = StudentFee::with(['student.program', 'student.campus.bankAccounts', 'feeHead'])
+                ->where('student_id', $student->id)
+                ->where('semester_number', '<', $maxSem)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->get();
+
+            $fees = $voucherFees->concat($arrearsFees);
+
             if ($fees->isEmpty()) {
-                return $this->sendError('Active voucher not found or already paid.', [], 404);
+                return $this->sendError('Active fees for this voucher are already fully paid.', [], 400);
             }
 
-            $student = $fees->first()->student;
             $totalBalance = $fees->sum('balance_amount');
 
             return $this->sendResponse([
@@ -693,18 +713,14 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     'semester_number' => $maxSem,
                     'amount' => $groupFees->sum('amount'),
                     'arrears_amount' => $arrears->sum('balance_amount'),
-                    'fine_amount' => $groupFees->sum('fine_amount') + $arrears->sum('fine_amount'),
-                    'discount_amount' => $groupFees->sum('discount_amount') + $arrears->sum('discount_amount'),
-                    'paid_amount' => $groupFees->sum('paid_amount') + $arrears->sum('paid_amount'),
+                    'fine_amount' => $groupFees->sum('fine_amount'),
+                    'discount_amount' => $groupFees->sum('discount_amount'),
+                    'paid_amount' => 0.00,
                     'balance_amount' => $groupFees->sum('balance_amount') + $arrears->sum('balance_amount'),
                     'status' => 'unpaid',
                 ]);
 
                 foreach ($groupFees as $fee) {
-                    $fee->update(['voucher_number' => $voucherNumber]);
-                }
-
-                foreach ($arrears as $fee) {
                     $fee->update(['voucher_number' => $voucherNumber]);
                 }
 

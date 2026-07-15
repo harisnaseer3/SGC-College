@@ -109,10 +109,10 @@ class DashboardController extends BaseController implements HasMiddleware
             // --- Monthly Fee Analytics (Current Year) ---
             $monthlyFeesData = \App\Models\GeneratedVoucher::select(
                     DB::raw('MONTH(due_date) as month'),
-                    DB::raw('SUM(COALESCE(amount, 0)) as current_fee'),
+                    DB::raw('SUM(COALESCE(amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as current_fee'),
                     DB::raw('SUM(COALESCE(arrears_amount, 0)) as arrears'),
                     DB::raw('SUM(COALESCE(amount, 0) + COALESCE(arrears_amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as expected'),
-                    DB::raw('SUM(COALESCE(paid_amount, 0)) as collected')
+                    DB::raw('SUM(COALESCE(balance_amount, 0)) as balance')
                 )
                 ->whereYear('due_date', now()->year)
                 ->groupBy(DB::raw('MONTH(due_date)'))
@@ -124,24 +124,25 @@ class DashboardController extends BaseController implements HasMiddleware
                 $currentFee = (float) ($monthlyFeesData->get($m)->current_fee ?? 0);
                 $arrears    = (float) ($monthlyFeesData->get($m)->arrears ?? 0);
                 $receivable = (float) ($monthlyFeesData->get($m)->expected ?? 0);
-                $received   = (float) ($monthlyFeesData->get($m)->collected ?? 0);
+                $balance    = (float) ($monthlyFeesData->get($m)->balance ?? 0);
+                $received   = max(0.00, $receivable - $balance);
                 return [
                     'name'        => $months[$m - 1],
                     'current_fee' => $currentFee,
                     'arrears'     => $arrears,
                     'receivable'  => $receivable,
                     'received'    => $received,
-                    'pending'     => max(0, $receivable - $received),
+                    'pending'     => $balance,
                 ];
             });
 
             // --- Semester-wise Fee Analytics ---
             $semesterFeesData = \App\Models\GeneratedVoucher::select(
                     'semester_number',
-                    DB::raw('SUM(COALESCE(amount, 0)) as current_fee'),
+                    DB::raw('SUM(COALESCE(amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as current_fee'),
                     DB::raw('SUM(COALESCE(arrears_amount, 0)) as arrears'),
                     DB::raw('SUM(COALESCE(amount, 0) + COALESCE(arrears_amount, 0) + COALESCE(fine_amount, 0) - COALESCE(discount_amount, 0)) as expected'),
-                    DB::raw('SUM(COALESCE(paid_amount, 0)) as collected')
+                    DB::raw('SUM(COALESCE(balance_amount, 0)) as balance')
                 )
                 ->whereNotNull('semester_number')
                 ->groupBy('semester_number')
@@ -151,14 +152,15 @@ class DashboardController extends BaseController implements HasMiddleware
                     $currentFee = (float) ($row->current_fee ?? 0);
                     $arrears    = (float) ($row->arrears ?? 0);
                     $receivable = (float) ($row->expected ?? 0);
-                    $received   = (float) ($row->collected ?? 0);
+                    $balance    = (float) ($row->balance ?? 0);
+                    $received   = max(0.00, $receivable - $balance);
                     return [
                         'name'        => 'Semester ' . $row->semester_number,
                         'current_fee' => $currentFee,
                         'arrears'     => $arrears,
                         'receivable'  => $receivable,
                         'received'    => $received,
-                        'pending'     => max(0, $receivable - $received),
+                        'pending'     => $balance,
                     ];
                 })->values();
 
