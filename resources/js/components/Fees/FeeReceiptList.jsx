@@ -142,10 +142,22 @@ const FeeReceiptList = () => {
                             onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
                         />
                     </div>
-                    <div>
-                        <Button type="submit" className="w-full py-3" disabled={loading}>
-                            Apply Filters
+                    <div className="flex gap-2">
+                        <Button type="submit" className="flex-1 py-3" disabled={loading}>
+                            Filter
                         </Button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFilters({ start_date: '', end_date: '', search: '' });
+                                setCurrentPage(1);
+                                fetchPayments(1);
+                            }}
+                            className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200"
+                            title="Reset Filters"
+                        >
+                            Reset
+                        </button>
                     </div>
                 </form>
             </Card>

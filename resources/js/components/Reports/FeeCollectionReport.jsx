@@ -252,10 +252,24 @@ const FeeCollectionReport = () => {
                             <option value="Check">Check</option>
                         </select>
                     </div>
-                    <div>
-                        <Button type="submit" loading={loading} className="w-full py-2.5 shadow-lg shadow-indigo-200">
-                            Apply Filters
+                    <div className="flex gap-2">
+                        <Button type="submit" loading={loading} className="flex-1 py-2.5 shadow-lg shadow-indigo-200">
+                            Filter
                         </Button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const range = getMonthDateRange();
+                                setFilters({
+                                    start_date: range.start,
+                                    end_date: range.end,
+                                    payment_method: ''
+                                });
+                            }}
+                            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
+                        >
+                            Reset
+                        </button>
                     </div>
                 </form>
             </Card>

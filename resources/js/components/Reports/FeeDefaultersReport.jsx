@@ -257,10 +257,21 @@ const FeeDefaultersReport = () => {
                             ))}
                         </select>
                     </div>
-                    <div>
-                        <Button type="submit" loading={loading} className="w-full py-2.5 shadow-lg shadow-indigo-200">
-                            Apply Filters
+                    <div className="flex gap-2">
+                        <Button type="submit" loading={loading} className="flex-1 py-2.5 shadow-lg shadow-indigo-200">
+                            Filter
                         </Button>
+                        <button
+                            type="button"
+                            onClick={() => setFilters({
+                                due_date_before: new Date().toLocaleDateString('sv-SE'),
+                                program_id: '',
+                                academic_batch_id: ''
+                            })}
+                            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
+                        >
+                            Reset
+                        </button>
                     </div>
                 </form>
             </Card>

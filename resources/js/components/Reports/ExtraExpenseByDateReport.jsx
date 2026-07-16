@@ -101,12 +101,13 @@ const ExtraExpenseByDateReport = () => {
     };
 
     const handleClearFilters = () => {
-        setFilters(prev => ({
-            ...prev,
-            status:   '',
-            supplier: '',
-            title:    '',
-        }));
+        setFilters({
+            start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('sv-SE'),
+            end_date:   new Date().toLocaleDateString('sv-SE'),
+            status:     '',
+            supplier:   '',
+            title:      '',
+        });
     };
 
     const columns = ["Sr No", "Date", "Title", "Category", "Qty", "Supplier", "Recorded By", "Status", "Amount"];
@@ -308,18 +309,16 @@ const ExtraExpenseByDateReport = () => {
                             />
                         </div>
                         <div className="flex gap-2 flex-none">
-                            {hasExtraFilters && (
-                                <button
-                                    type="button"
-                                    onClick={handleClearFilters}
-                                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 text-sm font-medium transition-colors"
-                                >
-                                    Clear
-                                </button>
-                            )}
                             <Button type="submit" loading={loading} className="px-8 shadow-lg shadow-indigo-200">
-                                Apply Filters
+                                Filter
                             </Button>
+                            <button
+                                type="button"
+                                onClick={handleClearFilters}
+                                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
+                            >
+                                Reset
+                            </button>
                         </div>
                     </div>
                 </form>

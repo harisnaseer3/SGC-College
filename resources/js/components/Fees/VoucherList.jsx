@@ -143,7 +143,7 @@ const VoucherList = () => {
             </div>
 
             <Card className="p-6 border-slate-200 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                     <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Search</label>
                         <input 
@@ -192,6 +192,15 @@ const VoucherList = () => {
                             <option value="unpaid">Unpaid</option>
                             <option value="partial">Partial</option>
                         </select>
+                    </div>
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => setFilters({ month: '', year: '', status: '', search: '' })}
+                            className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
+                        >
+                            Reset Filters
+                        </button>
                     </div>
                 </div>
             </Card>
