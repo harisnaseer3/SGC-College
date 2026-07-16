@@ -105,6 +105,20 @@ const StudentLedgerDetail = () => {
         }
     };
 
+    const handleRevertSplit = async (fee) => {
+        if (!window.confirm('Are you sure you want to delete these installments and merge them back into a single fee record?')) {
+            return;
+        }
+
+        try {
+            await axios.post(`/api/student-fees/revert-split/${fee.id}`);
+            showSuccess('Installments successfully merged back into a single fee');
+            fetchLedger();
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to revert installments');
+        }
+    };
+
     if (loading) return <div className="py-20 text-center animate-pulse text-slate-500 font-bold uppercase tracking-widest text-xs">Loading Ledger...</div>;
 
     return (
@@ -339,7 +353,7 @@ const StudentLedgerDetail = () => {
                                                 >
                                                     Adjust
                                                 </button>
-                                                {fee.status !== 'paid' && fee.fee_head?.name?.toLowerCase().includes('semester') && (
+                                                {fee.status !== 'paid' && !fee.remarks?.toLowerCase().includes('(installment') && fee.fee_head?.name?.toLowerCase().includes('semester') && (
                                                     <button 
                                                         onClick={() => {
                                                             setSplittingFee(fee);
@@ -351,6 +365,14 @@ const StudentLedgerDetail = () => {
                                                         className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 underline decoration-emerald-200 underline-offset-4"
                                                     >
                                                         Split
+                                                    </button>
+                                                )}
+                                                {fee.status !== 'paid' && fee.remarks?.toLowerCase().includes('(installment') && (
+                                                    <button 
+                                                        onClick={() => handleRevertSplit(fee)}
+                                                        className="text-[10px] font-bold text-rose-600 hover:text-rose-800 underline decoration-rose-200 underline-offset-4"
+                                                    >
+                                                        Delete Installments
                                                     </button>
                                                 )}
                                             </div>

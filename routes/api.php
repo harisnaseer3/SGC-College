@@ -70,6 +70,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/reports/admissions/by-date', [AdmissionReportController::class, 'byDate']);
     Route::get('/reports/extra-income/by-date', [\App\Http\Controllers\Api\Reports\ExtraIncomeReportController::class, 'byDate']);
     Route::get('/reports/extra-expense/by-date', [\App\Http\Controllers\Api\Reports\ExtraExpenseReportController::class, 'byDate']);
+    Route::get('/reports/fees/defaulters', [\App\Http\Controllers\Api\Reports\FeeReportController::class, 'defaulters']);
+    Route::get('/reports/fees/collection', [\App\Http\Controllers\Api\Reports\FeeReportController::class, 'collection']);
 
     // Fee Module Routes
     Route::apiResource('fee-heads', App\Http\Controllers\Api\FeeHeadController::class);
@@ -81,15 +83,18 @@ Route::middleware('auth:api')->group(function () {
     Route::get('student-fees/ledger/{student}', [StudentFeeController::class, 'studentLedger']);
     Route::put('student-fees/{studentFee}', [StudentFeeController::class, 'update']);
     Route::post('student-fees/split/{studentFee}', [StudentFeeController::class, 'split']);
+    Route::post('student-fees/revert-split/{studentFee}', [StudentFeeController::class, 'revertSplit']);
     Route::post('student-fees/assign/{student}', [StudentFeeController::class, 'manualAssign']);
     Route::get('student-fees/vouchers/bulk', [StudentFeeController::class, 'bulkVouchers']);
     Route::get('student-fees/vouchers-list', [StudentFeeController::class, 'vouchersList']);
     Route::post('student-fees/vouchers/generate', [StudentFeeController::class, 'generateVoucher']);
+    Route::delete('student-fees/vouchers', [StudentFeeController::class, 'bulkDestroyVouchers']);
     Route::delete('student-fees/vouchers/{voucher}', [StudentFeeController::class, 'destroyVoucher']);
     Route::get('student-fees/voucher/{student}', [StudentFeeController::class, 'voucher']);
     Route::post('student-fees/deposit', [StudentFeeController::class, 'deposit']);
     Route::get('student-fees/payments', [StudentFeeController::class, 'allPayments']);
     Route::get('student-fees/payments/{payment}', [StudentFeeController::class, 'showPayment']);
+    Route::delete('student-fees/payments', [StudentFeeController::class, 'bulkDestroyPayments']);
     Route::delete('student-fees/payments/{payment}', [StudentFeeController::class, 'destroyPayment']);
     Route::get('student-fees/voucher-lookup/{voucherNumber}', [StudentFeeController::class, 'findByVoucher']);
     

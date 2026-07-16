@@ -11,11 +11,18 @@ const FeeReceiptList = () => {
     const [totalReceived, setTotalReceived] = useState(0);
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedReceiptIds, setSelectedReceiptIds] = useState([]);
     const [filters, setFilters] = useState({
         start_date: '',
         end_date: '',
         search: ''
     });
+    
+    // Reset selection on filter or page change
+    useEffect(() => {
+        setSelectedReceiptIds([]);
+    }, [currentPage, filters.start_date, filters.end_date, filters.search]);
+
     const debounceTimer = useRef(null);
     const { showSuccess, showError } = useNotifications();
 
@@ -84,6 +91,21 @@ const FeeReceiptList = () => {
         }
     };
 
+    const handleBulkDeleteReceipts = async () => {
+        if (!window.confirm(`Are you sure you want to delete these ${selectedReceiptIds.length} selected receipts? This will reverse their payments and restore the student's unpaid fee balances.`)) {
+            return;
+        }
+
+        try {
+            await axios.delete('/api/student-fees/payments', { data: { ids: selectedReceiptIds } });
+            showSuccess('Selected receipts deleted and payments reversed successfully');
+            setSelectedReceiptIds([]);
+            fetchPayments(currentPage);
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to delete selected receipts');
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Filters Section */}
@@ -131,13 +153,40 @@ const FeeReceiptList = () => {
             {/* List Section */}
             <Card className="overflow-hidden border-slate-200 shadow-sm">
                 <div className="p-4 bg-emerald-50 border-b border-emerald-100 flex justify-between items-center">
-                    <div className="text-sm font-bold text-emerald-900 uppercase tracking-widest">Total Received (Filtered)</div>
+                    <div className="flex items-center gap-4">
+                        <div className="text-sm font-bold text-emerald-900 uppercase tracking-widest">Total Received (Filtered)</div>
+                        {selectedReceiptIds.length > 0 && (
+                            <button
+                                onClick={handleBulkDeleteReceipts}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-all animate-in fade-in slide-in-from-left-2 duration-300 animate-pulse"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                Delete Selected ({selectedReceiptIds.length})
+                            </button>
+                        )}
+                    </div>
                     <div className="text-xl font-black text-emerald-700">Rs. {Number(totalReceived).toLocaleString()}</div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
+                                <th className="px-6 py-4 text-center w-12">
+                                    <input 
+                                        type="checkbox"
+                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                        checked={payments.length > 0 && payments.every(payment => selectedReceiptIds.includes(payment.id))}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                const newSelections = [...new Set([...selectedReceiptIds, ...payments.map(p => p.id)])];
+                                                setSelectedReceiptIds(newSelections);
+                                            } else {
+                                                const pageIds = payments.map(p => p.id);
+                                                setSelectedReceiptIds(selectedReceiptIds.filter(id => !pageIds.includes(id)));
+                                            }
+                                        }}
+                                    />
+                                </th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Receipt #</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</th>
@@ -151,7 +200,7 @@ const FeeReceiptList = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="8" className="px-6 py-20 text-center">
+                                    <td colSpan="9" className="px-6 py-20 text-center">
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Receipts...</span>
@@ -161,6 +210,20 @@ const FeeReceiptList = () => {
                             ) : payments.length > 0 ? (
                                 payments.map((payment) => (
                                     <tr key={payment.id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="px-6 py-4 text-center">
+                                            <input 
+                                                type="checkbox"
+                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                                checked={selectedReceiptIds.includes(payment.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedReceiptIds([...selectedReceiptIds, payment.id]);
+                                                    } else {
+                                                        setSelectedReceiptIds(selectedReceiptIds.filter(id => id !== payment.id));
+                                                    }
+                                                }}
+                                            />
+                                        </td>
                                         <td className="px-6 py-4 font-black text-slate-900 text-sm">{payment.receipt_number}</td>
                                         <td className="px-6 py-4">
                                             <div className="font-bold text-slate-800 text-sm">{payment.student?.first_name} {payment.student?.last_name}</div>
@@ -199,7 +262,7 @@ const FeeReceiptList = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-20 text-center">
+                                    <td colSpan="9" className="px-6 py-20 text-center">
                                         <div className="text-slate-400 italic text-sm">No payment records found matching your filters.</div>
                                     </td>
                                 </tr>

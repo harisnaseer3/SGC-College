@@ -58,7 +58,9 @@ const Sidebar = () => {
             subItems: [
                 { name: 'Admissions By Date', path: '/reports/admissions-by-date' },
                 { name: 'Extra Income', path: '/reports/extra-income-by-date' },
-                { name: 'Extra Expense', path: '/reports/extra-expense-by-date' }
+                { name: 'Extra Expense', path: '/reports/extra-expense-by-date' },
+                { name: 'Fee Defaulters', path: '/reports/fee-defaulters' },
+                { name: 'Fee Collection', path: '/reports/fee-collection' }
             ]
         },
         { 

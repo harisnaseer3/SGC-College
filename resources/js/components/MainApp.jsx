@@ -14,6 +14,8 @@ import AcademicManagement from './Academic/AcademicManagement';
 import AdmissionByDateReport from './Reports/AdmissionByDateReport';
 import ExtraIncomeByDateReport from './Reports/ExtraIncomeByDateReport';
 import ExtraExpenseByDateReport from './Reports/ExtraExpenseByDateReport';
+import FeeDefaultersReport from './Reports/FeeDefaultersReport';
+import FeeCollectionReport from './Reports/FeeCollectionReport';
 import FeeManagement from './Fees/FeeManagement';
 import FeeVoucher from './Fees/FeeVoucher';
 import FeePaymentReceipt from './Fees/FeePaymentReceipt';
@@ -70,6 +72,8 @@ const AppContent = () => {
                             <Route path="/reports/admissions-by-date" element={<AdmissionByDateReport />} />
                             <Route path="/reports/extra-income-by-date" element={<ExtraIncomeByDateReport />} />
                             <Route path="/reports/extra-expense-by-date" element={<ExtraExpenseByDateReport />} />
+                            <Route path="/reports/fee-defaulters" element={<FeeDefaultersReport />} />
+                            <Route path="/reports/fee-collection" element={<FeeCollectionReport />} />
                             <Route path="/extra-income/*" element={<ExtraIncomeManagement />} />
                             <Route path="/extra-expense/*" element={<ExtraExpenseManagement />} />
                             <Route path="/profile" element={<ProfileView />} />

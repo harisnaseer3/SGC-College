@@ -17,12 +17,12 @@ class StudentFeeController extends BaseController implements HasMiddleware
         return [
             new Middleware('role_or_permission:super_admin|view_student_fees', only: ['index', 'studentLedger', 'voucher', 'bulkVouchers', 'findByVoucher', 'vouchersList']),
             new Middleware('role_or_permission:super_admin|create_student_fees', only: ['generate', 'manualAssign', 'generateVoucher']),
-            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['update', 'destroyVoucher']),
+            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['update', 'destroyVoucher', 'bulkDestroyVouchers']),
             new Middleware('role_or_permission:super_admin|pay_student_fees|create_fee_receipts|manage_fee_receipts', only: ['deposit']),
-            new Middleware('role_or_permission:super_admin|split_student_fees', only: ['split']),
+            new Middleware('role_or_permission:super_admin|split_student_fees', only: ['split', 'revertSplit']),
             new Middleware('role_or_permission:super_admin|apply_fines', only: ['applyFines']),
             new Middleware('role_or_permission:super_admin|view_student_fees', only: ['allPayments', 'showPayment']),
-            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['destroyPayment']),
+            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['destroyPayment', 'bulkDestroyPayments']),
         ];
     }
 
@@ -782,6 +782,143 @@ class StudentFeeController extends BaseController implements HasMiddleware
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollback();
             return $this->sendError('Failed to delete voucher.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function bulkDestroyVouchers(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:generated_vouchers,id',
+        ]);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $vouchers = \App\Models\GeneratedVoucher::whereIn('id', $request->ids)->get();
+
+            $deletedCount = 0;
+            foreach ($vouchers as $voucher) {
+                if ($voucher->status !== 'unpaid') {
+                    return $this->sendError("Only unpaid vouchers can be deleted. Voucher {$voucher->voucher_number} is {$voucher->status}.", [], 400);
+                }
+
+                StudentFee::withoutGlobalScopes()
+                    ->where('voucher_number', $voucher->voucher_number)
+                    ->update(['voucher_number' => null]);
+
+                $voucher->delete();
+                $deletedCount++;
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+            return $this->sendResponse([], "$deletedCount voucher(s) deleted successfully.");
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollback();
+            return $this->sendError('Failed to delete vouchers in bulk.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function bulkDestroyPayments(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:fee_payments,id',
+        ]);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $payments = \App\Models\FeePayment::whereIn('id', $request->ids)->get();
+
+            $deletedCount = 0;
+            foreach ($payments as $payment) {
+                $amountToReverse = $payment->amount;
+
+                // Reverse the payment distribution (LIFO based on updated_at)
+                $fees = \App\Models\StudentFee::where('student_id', $payment->student_id)
+                    ->where('paid_amount', '>', 0)
+                    ->orderBy('updated_at', 'desc')
+                    ->get();
+
+                foreach ($fees as $fee) {
+                    if ($amountToReverse <= 0) break;
+
+                    $amountToDeduct = min($amountToReverse, $fee->paid_amount);
+                    $fee->paid_amount -= $amountToDeduct;
+                    $fee->save(); // Recalculation handled by boot method
+
+                    $amountToReverse -= $amountToDeduct;
+                }
+
+                $payment->delete();
+                $deletedCount++;
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+            return $this->sendResponse([], "$deletedCount receipt(s) deleted and payment(s) reversed successfully.");
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollback();
+            \Illuminate\Support\Facades\Log::error('bulkDestroyPayments failed: ' . $e->getMessage());
+            return $this->sendError('Failed to delete receipts in bulk.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function revertSplit(\App\Models\StudentFee $studentFee)
+    {
+        try {
+            // Check if this fee is indeed an installment
+            if (!str_contains(strtolower($studentFee->remarks), '(installment')) {
+                return $this->sendError("This fee record is not part of an installment split.", [], 422);
+            }
+
+            // Find all companion installment records
+            $installments = \App\Models\StudentFee::where('student_id', $studentFee->student_id)
+                ->where('fee_head_id', $studentFee->fee_head_id)
+                ->where('semester_number', $studentFee->semester_number)
+                ->where('remarks', 'like', $studentFee->feeHead->name . ' (Installment %')
+                ->get();
+
+            // If any installment is paid or partial, we can't revert the split
+            foreach ($installments as $inst) {
+                if ($inst->paid_amount > 0 || $inst->status !== 'unpaid') {
+                    return $this->sendError("Cannot delete installments because one or more installments have payments recorded.", [], 422);
+                }
+            }
+
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            // Calculate total amount and find the earliest due date
+            $totalAmount = $installments->sum('amount');
+            $earliestDueDate = $installments->min('due_date');
+
+            // Reconstruct the undivided fee record
+            \App\Models\StudentFee::create([
+                'organization_id' => $studentFee->organization_id,
+                'campus_id' => $studentFee->campus_id,
+                'student_id' => $studentFee->student_id,
+                'fee_head_id' => $studentFee->fee_head_id,
+                'amount' => $totalAmount,
+                'discount_amount' => 0,
+                'fine_amount' => 0,
+                'paid_amount' => 0,
+                'balance_amount' => $totalAmount,
+                'due_date' => $earliestDueDate,
+                'status' => 'unpaid',
+                'voucher_number' => null,
+                'remarks' => null,
+                'semester_number' => $studentFee->semester_number,
+            ]);
+
+            // Delete all the installments
+            foreach ($installments as $inst) {
+                $inst->delete();
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return $this->sendResponse([], 'Installments successfully reverted back to a single fee.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollback();
+            return $this->sendError('Failed to revert installments.', ['error' => $e->getMessage()], 500);
         }
     }
 }

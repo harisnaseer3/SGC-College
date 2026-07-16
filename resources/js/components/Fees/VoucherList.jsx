@@ -15,6 +15,7 @@ const VoucherList = () => {
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedVoucherIds, setSelectedVoucherIds] = useState([]);
     
     // Parse initial filters from URL
     const [filters, setFilters] = useState({
@@ -23,6 +24,11 @@ const VoucherList = () => {
         status: searchParams.get('status') || '',
         search: ''
     });
+
+    // Reset selection on filter or page change
+    useEffect(() => {
+        setSelectedVoucherIds([]);
+    }, [currentPage, filters.month, filters.year, filters.status, filters.search]);
 
     const debounceTimer = useRef(null);
 
@@ -89,6 +95,21 @@ const VoucherList = () => {
         }
     };
 
+    const handleBulkDeleteVouchers = async () => {
+        if (!window.confirm(`Are you sure you want to delete these ${selectedVoucherIds.length} selected vouchers? This will dissociate their fees and return them to the ledger.`)) {
+            return;
+        }
+
+        try {
+            await axios.delete('/api/student-fees/vouchers', { data: { ids: selectedVoucherIds } });
+            showSuccess('Selected vouchers deleted successfully');
+            setSelectedVoucherIds([]);
+            fetchVouchers(currentPage);
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to delete selected vouchers');
+        }
+    };
+
     const getStatusColor = (status) => {
         switch (status?.toLowerCase()) {
             case 'paid': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -101,7 +122,18 @@ const VoucherList = () => {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Generated Vouchers</h1>
+                <div className="flex items-center gap-4">
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Generated Vouchers</h1>
+                    {selectedVoucherIds.length > 0 && (
+                        <button
+                            onClick={handleBulkDeleteVouchers}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-all animate-in fade-in slide-in-from-left-2 duration-300 animate-pulse"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            Delete Selected ({selectedVoucherIds.length})
+                        </button>
+                    )}
+                </div>
                 <button 
                     onClick={() => navigate('/dashboard')}
                     className="text-sm font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
@@ -169,6 +201,23 @@ const VoucherList = () => {
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
+                                <th className="px-6 py-4 text-center w-12">
+                                    <input 
+                                        type="checkbox"
+                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                        checked={vouchers.length > 0 && vouchers.filter(v => v.status === 'unpaid').every(v => selectedVoucherIds.includes(v.id))}
+                                        onChange={(e) => {
+                                            const unpaidVouchers = vouchers.filter(v => v.status === 'unpaid');
+                                            if (e.target.checked) {
+                                                const newSelections = [...new Set([...selectedVoucherIds, ...unpaidVouchers.map(v => v.id)])];
+                                                setSelectedVoucherIds(newSelections);
+                                            } else {
+                                                const unpaidIds = unpaidVouchers.map(v => v.id);
+                                                setSelectedVoucherIds(selectedVoucherIds.filter(id => !unpaidIds.includes(id)));
+                                            }
+                                        }}
+                                    />
+                                </th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sr #</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Voucher #</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student</th>
@@ -185,7 +234,7 @@ const VoucherList = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="11" className="px-6 py-20 text-center">
+                                    <td colSpan="12" className="px-6 py-20 text-center">
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Vouchers...</span>
@@ -203,6 +252,28 @@ const VoucherList = () => {
 
                                     return (
                                         <tr key={v.id} className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="px-6 py-4 text-center">
+                                                {v.status === 'unpaid' ? (
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                                        checked={selectedVoucherIds.includes(v.id)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedVoucherIds([...selectedVoucherIds, v.id]);
+                                                            } else {
+                                                                setSelectedVoucherIds(selectedVoucherIds.filter(id => id !== v.id));
+                                                            }
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="rounded border-slate-200 w-4 h-4 cursor-not-allowed opacity-30"
+                                                        disabled
+                                                    />
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 font-bold text-slate-500 text-sm">{srNo}</td>
                                             <td className="px-6 py-4 font-black text-slate-900 text-sm">{v.voucher_number}</td>
                                             <td className="px-6 py-4">
@@ -245,7 +316,7 @@ const VoucherList = () => {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="11" className="px-6 py-20 text-center">
+                                    <td colSpan="12" className="px-6 py-20 text-center">
                                         <div className="text-slate-400 italic text-sm">No vouchers found matching your criteria.</div>
                                     </td>
                                 </tr>
@@ -254,7 +325,7 @@ const VoucherList = () => {
                         {aggregates && (
                             <tfoot className="bg-emerald-50 border-t-2 border-emerald-200">
                                 <tr>
-                                    <td colSpan="4" className="px-6 py-4 text-right text-xs font-black text-emerald-900 uppercase tracking-widest">
+                                    <td colSpan="5" className="px-6 py-4 text-right text-xs font-black text-emerald-900 uppercase tracking-widest">
                                         Total Amounts for Current Filter
                                     </td>
                                     <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.expected.toLocaleString()}</td>
