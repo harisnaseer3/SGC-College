@@ -306,14 +306,15 @@ const StudentLedgerDetail = () => {
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                                                 fee.status === 'unpaid' ? 'bg-rose-100 text-rose-700' :
                                                 fee.status === 'partial' ? 'bg-amber-100 text-amber-700' :
+                                                fee.status === 'carried_forward' ? 'bg-orange-100 text-orange-750' :
                                                 'bg-emerald-100 text-emerald-700'
                                             }`}>
-                                                {fee.status}
+                                                {fee.status === 'carried_forward' ? 'carried fwd' : fee.status}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex flex-col gap-1">
-                                                {fee.status !== 'paid' && !fee.voucher_number && fee.remarks?.toLowerCase().includes('(installment') && (
+                                                {fee.status !== 'paid' && fee.status !== 'carried_forward' && !fee.voucher_number && fee.remarks?.toLowerCase().includes('(installment') && (
                                                     <button 
                                                         onClick={() => handleGenerateVoucher(fee.semester_number, [fee.id])}
                                                         className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
@@ -333,7 +334,7 @@ const StudentLedgerDetail = () => {
                                                     </div>
                                                 )}
                                                 <button 
-                                                    disabled={fee.status === 'paid'}
+                                                    disabled={fee.status === 'paid' || fee.status === 'carried_forward'}
                                                     onClick={() => {
                                                         setEditingFee(fee);
                                                         setAdjustment({ 
@@ -346,14 +347,14 @@ const StudentLedgerDetail = () => {
                                                         });
                                                     }}
                                                     className={`text-[10px] font-bold underline underline-offset-4 ${
-                                                        fee.status === 'paid' 
+                                                        (fee.status === 'paid' || fee.status === 'carried_forward')
                                                         ? 'text-slate-300 cursor-not-allowed decoration-slate-100' 
                                                         : 'text-indigo-600 hover:text-indigo-800 decoration-indigo-200'
                                                     }`}
                                                 >
                                                     Adjust
                                                 </button>
-                                                {fee.status !== 'paid' && !fee.remarks?.toLowerCase().includes('(installment') && fee.fee_head?.name?.toLowerCase().includes('semester') && (
+                                                {fee.status !== 'paid' && fee.status !== 'carried_forward' && !fee.remarks?.toLowerCase().includes('(installment') && fee.fee_head?.name?.toLowerCase().includes('semester') && (
                                                     <button 
                                                         onClick={() => {
                                                             setSplittingFee(fee);
@@ -367,7 +368,7 @@ const StudentLedgerDetail = () => {
                                                         Split
                                                     </button>
                                                 )}
-                                                {fee.status !== 'paid' && fee.remarks?.toLowerCase().includes('(installment') && (
+                                                {fee.status !== 'paid' && fee.status !== 'carried_forward' && fee.remarks?.toLowerCase().includes('(installment') && (
                                                     <button 
                                                         onClick={() => handleRevertSplit(fee)}
                                                         className="text-[10px] font-bold text-rose-600 hover:text-rose-800 underline decoration-rose-200 underline-offset-4"

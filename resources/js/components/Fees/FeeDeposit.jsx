@@ -262,19 +262,21 @@ const FeeDeposit = () => {
 
                             {voucherData && (() => {
                                 const isVoucherMode = searchMode === 'voucher';
-                                const currentFees = voucherData.fees.filter(fee => {
+                                const payableFees = voucherData.fees.filter(f => f.status !== 'carried_forward');
+
+                                const currentFees = payableFees.filter(fee => {
                                     if (isVoucherMode) {
                                         return fee.voucher_number === voucherNo;
                                     }
-                                    const maxSem = Math.max(...voucherData.fees.map(f => Number(f.semester_number) || 0), 1);
+                                    const maxSem = Math.max(...payableFees.map(f => Number(f.semester_number) || 0), 1);
                                     return (Number(fee.semester_number) || 0) === maxSem;
                                 });
                                 
-                                const arrearsFees = voucherData.fees.filter(fee => {
+                                const arrearsFees = payableFees.filter(fee => {
                                     if (isVoucherMode) {
                                         return fee.voucher_number !== voucherNo;
                                     }
-                                    const maxSem = Math.max(...voucherData.fees.map(f => Number(f.semester_number) || 0), 1);
+                                    const maxSem = Math.max(...payableFees.map(f => Number(f.semester_number) || 0), 1);
                                     return (Number(fee.semester_number) || 0) < maxSem;
                                 });
                                 

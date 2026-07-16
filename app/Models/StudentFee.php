@@ -22,15 +22,19 @@ class StudentFee extends Model
             $paid = $model->paid_amount ?? 0;
 
             $model->balance_amount = ($amount + $fine) - $discount - $paid;
+            if ($model->balance_amount < 0) {
+                $model->balance_amount = 0;
+            }
             
             // Adjust balance and status
-            if ($model->balance_amount <= 0) {
-                $model->status = 'paid';
-                $model->balance_amount = 0;
-            } elseif ($paid > 0) {
-                $model->status = 'partial';
-            } else {
-                $model->status = 'unpaid';
+            if ($model->status !== 'carried_forward') {
+                if ($model->balance_amount <= 0) {
+                    $model->status = 'paid';
+                } elseif ($paid > 0) {
+                    $model->status = 'partial';
+                } else {
+                    $model->status = 'unpaid';
+                }
             }
         });
 

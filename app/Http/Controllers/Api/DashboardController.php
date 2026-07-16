@@ -43,13 +43,15 @@ class DashboardController extends BaseController implements HasMiddleware
                 ->selectRaw('SUM(CASE WHEN status = "paid" THEN 1 ELSE 0 END) as paid')
                 ->selectRaw('SUM(CASE WHEN status = "partial" THEN 1 ELSE 0 END) as partial')
                 ->selectRaw('SUM(CASE WHEN status = "unpaid" THEN 1 ELSE 0 END) as unpaid')
-                ->selectRaw('SUM(CASE WHEN status != "paid" AND due_date < ? THEN 1 ELSE 0 END) as overdue', [now()->startOfDay()])
+                ->selectRaw('SUM(CASE WHEN status = "carried_forward" THEN 1 ELSE 0 END) as carried_forward')
+                ->selectRaw('SUM(CASE WHEN status != "paid" AND status != "carried_forward" AND due_date < ? THEN 1 ELSE 0 END) as overdue', [now()->startOfDay()])
                 ->first();
 
             $totalVouchers   = (int) ($stats->total ?? 0);
             $paidVouchers    = (int) ($stats->paid ?? 0);
             $partialVouchers = (int) ($stats->partial ?? 0);
             $unpaidVouchers  = (int) ($stats->unpaid ?? 0);
+            $carriedForwardVouchers = (int) ($stats->carried_forward ?? 0);
             $overdueVouchers = (int) ($stats->overdue ?? 0);
 
             // --- Gender breakdown ---
@@ -120,28 +122,17 @@ class DashboardController extends BaseController implements HasMiddleware
                 $totalReceived = 0.00;
                 $totalBalance = 0.00;
 
-                $vouchersByStudent = $monthVouchers->groupBy('student_id');
+                foreach ($monthVouchers as $v) {
+                    $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
+                    $currentArrears = (float)$v->arrears_amount;
+                    $currentReceivable = $currentExpected + $currentArrears;
+                    $currentBalance = (float)$v->balance_amount;
+                    $currentReceived = max(0.00, $currentReceivable - $currentBalance);
 
-                foreach ($vouchersByStudent as $studentId => $studentVouchers) {
-                    $sortedVouchers = $studentVouchers->sortBy('semester_number')->values();
-
-                    foreach ($sortedVouchers as $index => $v) {
-                        $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
-                        $currentReceived = (float)$v->paid_amount;
-                        $currentBalance = max(0.00, $currentExpected - $currentReceived);
-
-                        $totalExpected += $currentExpected;
-                        $totalReceived += $currentReceived;
-                        $totalBalance += $currentBalance;
-
-                        if ($index === 0) {
-                            $totalArrears += (float)$v->arrears_amount;
-                            $arrearsBalance = max(0.00, (float)$v->balance_amount - $currentBalance);
-                            $totalBalance += $arrearsBalance;
-                            $arrearsReceived = max(0.00, (float)$v->arrears_amount - $arrearsBalance);
-                            $totalReceived += $arrearsReceived;
-                        }
-                    }
+                    $totalExpected += $currentExpected;
+                    $totalArrears += $currentArrears;
+                    $totalReceived += $currentReceived;
+                    $totalBalance += $currentBalance;
                 }
 
                 return [
@@ -162,28 +153,17 @@ class DashboardController extends BaseController implements HasMiddleware
                     $totalReceived = 0.00;
                     $totalBalance = 0.00;
 
-                    $vouchersByStudent = $semVouchers->groupBy('student_id');
+                    foreach ($semVouchers as $v) {
+                        $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
+                        $currentArrears = (float)$v->arrears_amount;
+                        $currentReceivable = $currentExpected + $currentArrears;
+                        $currentBalance = (float)$v->balance_amount;
+                        $currentReceived = max(0.00, $currentReceivable - $currentBalance);
 
-                    foreach ($vouchersByStudent as $studentId => $studentVouchers) {
-                        $sortedVouchers = $studentVouchers->sortBy('semester_number')->values();
-
-                        foreach ($sortedVouchers as $index => $v) {
-                            $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
-                            $currentReceived = (float)$v->paid_amount;
-                            $currentBalance = max(0.00, $currentExpected - $currentReceived);
-
-                            $totalExpected += $currentExpected;
-                            $totalReceived += $currentReceived;
-                            $totalBalance += $currentBalance;
-
-                            if ($index === 0) {
-                                $totalArrears += (float)$v->arrears_amount;
-                                $arrearsBalance = max(0.00, (float)$v->balance_amount - $currentBalance);
-                                $totalBalance += $arrearsBalance;
-                                $arrearsReceived = max(0.00, (float)$v->arrears_amount - $arrearsBalance);
-                                $totalReceived += $arrearsReceived;
-                            }
-                        }
+                        $totalExpected += $currentExpected;
+                        $totalArrears += $currentArrears;
+                        $totalReceived += $currentReceived;
+                        $totalBalance += $currentBalance;
                     }
 
                     return [
@@ -211,7 +191,7 @@ class DashboardController extends BaseController implements HasMiddleware
                     'vouchers_total'   => $totalVouchers,
                     'vouchers_paid'    => $paidVouchers,
                     'vouchers_unpaid'  => $unpaidVouchers,
-                    'vouchers_partial' => $partialVouchers,
+                    'vouchers_carried_forward' => $carriedForwardVouchers,
                     'vouchers_overdue' => $overdueVouchers,
                 ],
                 'status_breakdown'    => $statusBreakdown,

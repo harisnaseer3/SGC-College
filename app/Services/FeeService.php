@@ -717,23 +717,11 @@ class FeeService
             if (isset($details['voucher_number']) && $details['voucher_number']) {
                 $vNum = $details['voucher_number'];
                 
-                $voucherFees = StudentFee::where('student_id', $studentId)
+                $pendingFees = StudentFee::where('student_id', $studentId)
                     ->where('voucher_number', $vNum)
                     ->whereIn('status', ['unpaid', 'partial'])
                     ->orderBy('due_date', 'asc')
                     ->get();
-                
-                $voucherRecord = \App\Models\GeneratedVoucher::where('voucher_number', $vNum)->first();
-                $arrearsFees = collect();
-                if ($voucherRecord) {
-                    $arrearsFees = StudentFee::where('student_id', $studentId)
-                        ->where('semester_number', '<', $voucherRecord->semester_number)
-                        ->whereIn('status', ['unpaid', 'partial'])
-                        ->orderBy('due_date', 'asc')
-                        ->get();
-                }
-                
-                $pendingFees = $voucherFees->concat($arrearsFees);
             } else {
                 $pendingFees = StudentFee::where('student_id', $studentId)
                     ->whereIn('status', ['unpaid', 'partial'])

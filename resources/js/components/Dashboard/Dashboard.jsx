@@ -183,12 +183,12 @@ export default function Dashboard() {
             onClick: () => navigate(`/fees/vouchers-list?month=${parseInt(voucherM)}&year=${voucherYear}&status=unpaid`)
         },
         {
-            label: 'Partial Vouchers',
-            value: fmt(counts.vouchers_partial),
-            sub: 'Partially paid by students',
+            label: 'Carried Fwd Vouchers',
+            value: fmt(counts.vouchers_carried_forward),
+            sub: 'Vouchers rolled over as arrears',
             gradient: 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-100',
             icon: 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z',
-            onClick: () => navigate(`/fees/vouchers-list?month=${parseInt(voucherM)}&year=${voucherYear}&status=partial`)
+            onClick: () => navigate(`/fees/vouchers-list?month=${parseInt(voucherM)}&year=${voucherYear}&status=carried_forward`)
         },
     ];
 

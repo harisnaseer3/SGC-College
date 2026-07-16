@@ -73,9 +73,15 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 });
             }
 
-            $students = $query->withSum('studentFees as total_amount', 'amount')
-                ->withSum('studentFees as total_paid', 'paid_amount')
-                ->withSum('studentFees as total_balance', 'balance_amount')
+            $students = $query->withSum(['studentFees as total_amount' => function($q) {
+                    $q->where('status', '!=', 'carried_forward');
+                }], 'amount')
+                ->withSum(['studentFees as total_paid' => function($q) {
+                    $q->where('status', '!=', 'carried_forward');
+                }], 'paid_amount')
+                ->withSum(['studentFees as total_balance' => function($q) {
+                    $q->where('status', '!=', 'carried_forward');
+                }], 'balance_amount')
                 ->orderBy('id', 'desc')
                 ->paginate(request('per_page', 10));
 
@@ -224,15 +230,15 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 ->get();
 
             // Split: unpaid/partial go to billing details; paid go to payment history
-            $unpaidFees = $allFees->whereIn('status', ['unpaid', 'partial'])->values();
+            $unpaidFees = $allFees->whereIn('status', ['unpaid', 'partial', 'carried_forward'])->values();
             $paidFees   = $allFees->where('status', 'paid')->values();
 
             $summary = [
-                'total_payable'   => $allFees->sum('amount'),
-                'total_fines'     => $allFees->sum('fine_amount'),
-                'total_discounts' => $allFees->sum('discount_amount'),
+                'total_payable'   => $allFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears')->sum('amount'),
+                'total_fines'     => $allFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears')->sum('fine_amount'),
+                'total_discounts' => $allFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears')->sum('discount_amount'),
                 'total_paid'      => $allFees->sum('paid_amount'),
-                'total_balance'   => $allFees->sum('balance_amount'),
+                'total_balance'   => $allFees->where('status', '!=', 'carried_forward')->sum('balance_amount'),
             ];
 
             $payments = \App\Models\FeePayment::where('student_id', $studentId)
@@ -456,6 +462,10 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 return $this->sendError('Active voucher not found or already paid.', [], 404);
             }
 
+            if ($voucherRecord->status === 'carried_forward') {
+                return $this->sendError('This voucher has been carried forward to a newer voucher and is no longer payable.', [], 400);
+            }
+
             // Get current fees directly associated with this voucher
             $voucherFees = StudentFee::with(['student.program', 'student.campus.bankAccounts', 'feeHead'])
                 ->where('voucher_number', $voucherNumber)
@@ -585,28 +595,17 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $totalReceived = 0.00;
             $totalBalance = 0.00;
 
-            $vouchersByStudent = $allVouchersForAggregates->groupBy('student_id');
+            foreach ($allVouchersForAggregates as $v) {
+                $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
+                $currentArrears = (float)$v->arrears_amount;
+                $currentReceivable = $currentExpected + $currentArrears;
+                $currentBalance = (float)$v->balance_amount;
+                $currentReceived = max(0.00, $currentReceivable - $currentBalance);
 
-            foreach ($vouchersByStudent as $studentId => $studentVouchers) {
-                $sortedVouchers = $studentVouchers->sortBy('semester_number')->values();
-
-                foreach ($sortedVouchers as $index => $v) {
-                    $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
-                    $currentReceived = (float)$v->paid_amount;
-                    $currentBalance = max(0.00, $currentExpected - $currentReceived);
-
-                    $totalExpected += $currentExpected;
-                    $totalReceived += $currentReceived;
-                    $totalBalance += $currentBalance;
-
-                    if ($index === 0) {
-                        $totalArrears += (float)$v->arrears_amount;
-                        $arrearsBalance = max(0.00, (float)$v->balance_amount - $currentBalance);
-                        $totalBalance += $arrearsBalance;
-                        $arrearsReceived = max(0.00, (float)$v->arrears_amount - $arrearsBalance);
-                        $totalReceived += $arrearsReceived;
-                    }
-                }
+                $totalExpected += $currentExpected;
+                $totalArrears += $currentArrears;
+                $totalReceived += $currentReceived;
+                $totalBalance += $currentBalance;
             }
 
             return $this->sendResponse([
@@ -717,15 +716,58 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 $maxSem = $groupFees->max('semester_number') ?: 1;
 
                 $arrears = collect();
+                $arrearsSum = 0.00;
                 if ($isFirstGroup) {
                     $arrears = StudentFee::where('student_id', $studentId)
                         ->whereIn('status', ['unpaid', 'partial'])
                         ->where('semester_number', '<', $maxSem)
                         ->get();
+                    $arrearsSum = $arrears->sum('balance_amount');
                 }
 
                 $voucherNumber = $this->feeService->generateNextVoucherNumber();
                 $dueDate = $request->due_date ?? ($groupFees->min('due_date') ?? now()->addDays(10));
+
+                if ($arrearsSum > 0) {
+                    // Update original arrears status to carried_forward
+                    foreach ($arrears as $arrFee) {
+                        $arrFee->update(['status' => 'carried_forward']);
+                    }
+
+                    // Update older vouchers to carried_forward status
+                    \App\Models\GeneratedVoucher::where('student_id', $studentId)
+                        ->where('semester_number', '<', $maxSem)
+                        ->whereIn('status', ['unpaid', 'partial'])
+                        ->update(['status' => 'carried_forward']);
+
+                    // Get or create Arrears Fee Head
+                    $arrearsHead = \App\Models\FeeHead::firstOrCreate(
+                        ['name' => 'Arrears', 'organization_id' => $student->organization_id],
+                        ['description' => 'Carried forward unpaid fees from previous semesters', 'campus_id' => $student->campus_id]
+                    );
+
+                    $arrearsDescription = "Arrears: " . $arrears->map(function($f) {
+                        return ($f->feeHead->name ?? 'Fee') . ' (Sem ' . $f->semester_number . ')';
+                    })->implode(', ');
+
+                    // Create Arrears fee record for the new voucher / semester
+                    StudentFee::create([
+                        'organization_id' => $student->organization_id,
+                        'campus_id' => $student->campus_id,
+                        'student_id' => $studentId,
+                        'fee_head_id' => $arrearsHead->id,
+                        'amount' => $arrearsSum,
+                        'discount_amount' => 0.00,
+                        'fine_amount' => 0.00,
+                        'paid_amount' => 0.00,
+                        'balance_amount' => $arrearsSum,
+                        'due_date' => $dueDate,
+                        'status' => 'unpaid',
+                        'remarks' => $arrearsDescription,
+                        'semester_number' => $maxSem,
+                        'voucher_number' => $voucherNumber,
+                    ]);
+                }
 
                 $voucher = \App\Models\GeneratedVoucher::create([
                     'organization_id' => $student->organization_id,
@@ -735,11 +777,11 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     'due_date' => $dueDate,
                     'semester_number' => $maxSem,
                     'amount' => $groupFees->sum('amount'),
-                    'arrears_amount' => $arrears->sum('balance_amount'),
+                    'arrears_amount' => $arrearsSum,
                     'fine_amount' => $groupFees->sum('fine_amount'),
                     'discount_amount' => $groupFees->sum('discount_amount'),
                     'paid_amount' => 0.00,
-                    'balance_amount' => $groupFees->sum('balance_amount') + $arrears->sum('balance_amount'),
+                    'balance_amount' => $groupFees->sum('balance_amount') + $arrearsSum,
                     'status' => 'unpaid',
                 ]);
 
@@ -771,9 +813,42 @@ class StudentFeeController extends BaseController implements HasMiddleware
 
             \Illuminate\Support\Facades\DB::beginTransaction();
 
+            // Delete any Arrears fees on this voucher
+            StudentFee::withoutGlobalScopes()
+                ->where('voucher_number', $voucher->voucher_number)
+                ->whereHas('feeHead', function($q) {
+                    $q->where('name', 'Arrears');
+                })
+                ->delete();
+
+            // Dissociate other fees
             StudentFee::withoutGlobalScopes()
                 ->where('voucher_number', $voucher->voucher_number)
                 ->update(['voucher_number' => null]);
+
+            // Restore older carried_forward fees of this student
+            $carriedForwardFees = StudentFee::withoutGlobalScopes()
+                ->where('student_id', $voucher->student_id)
+                ->where('semester_number', '<', $voucher->semester_number)
+                ->where('status', 'carried_forward')
+                ->get();
+
+            foreach ($carriedForwardFees as $cfFee) {
+                $cfFee->status = $cfFee->paid_amount > 0 ? 'partial' : 'unpaid';
+                $cfFee->save();
+            }
+
+            // Restore older carried_forward vouchers of this student
+            $carriedForwardVouchers = \App\Models\GeneratedVoucher::where('student_id', $voucher->student_id)
+                ->where('semester_number', '<', $voucher->semester_number)
+                ->where('status', 'carried_forward')
+                ->get();
+
+            foreach ($carriedForwardVouchers as $cfVoucher) {
+                $cfVoucher->status = 'unpaid';
+                $cfVoucher->save();
+                \App\Models\GeneratedVoucher::recalculateVoucher($cfVoucher->voucher_number);
+            }
 
             $voucher->delete();
 
@@ -802,9 +877,42 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     return $this->sendError("Only unpaid vouchers can be deleted. Voucher {$voucher->voucher_number} is {$voucher->status}.", [], 400);
                 }
 
+                // Delete any Arrears fees on this voucher
+                StudentFee::withoutGlobalScopes()
+                    ->where('voucher_number', $voucher->voucher_number)
+                    ->whereHas('feeHead', function($q) {
+                        $q->where('name', 'Arrears');
+                    })
+                    ->delete();
+
+                // Dissociate other fees
                 StudentFee::withoutGlobalScopes()
                     ->where('voucher_number', $voucher->voucher_number)
                     ->update(['voucher_number' => null]);
+
+                // Restore older carried_forward fees of this student
+                $carriedForwardFees = StudentFee::withoutGlobalScopes()
+                    ->where('student_id', $voucher->student_id)
+                    ->where('semester_number', '<', $voucher->semester_number)
+                    ->where('status', 'carried_forward')
+                    ->get();
+
+                foreach ($carriedForwardFees as $cfFee) {
+                    $cfFee->status = $cfFee->paid_amount > 0 ? 'partial' : 'unpaid';
+                    $cfFee->save();
+                }
+
+                // Restore older carried_forward vouchers of this student
+                $carriedForwardVouchers = \App\Models\GeneratedVoucher::where('student_id', $voucher->student_id)
+                    ->where('semester_number', '<', $voucher->semester_number)
+                    ->where('status', 'carried_forward')
+                    ->get();
+
+                foreach ($carriedForwardVouchers as $cfVoucher) {
+                    $cfVoucher->status = 'unpaid';
+                    $cfVoucher->save();
+                    \App\Models\GeneratedVoucher::recalculateVoucher($cfVoucher->voucher_number);
+                }
 
                 $voucher->delete();
                 $deletedCount++;

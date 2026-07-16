@@ -115,6 +115,9 @@ const VoucherList = () => {
             case 'paid': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
             case 'partial': return 'bg-amber-100 text-amber-700 border-amber-200';
             case 'unpaid': return 'bg-rose-100 text-rose-700 border-rose-200';
+            case 'carried_forward':
+            case 'carried fwd':
+                return 'bg-orange-100 text-orange-700 border-orange-200';
             default: return 'bg-slate-100 text-slate-700 border-slate-200';
         }
     };
@@ -191,6 +194,7 @@ const VoucherList = () => {
                             <option value="paid">Paid</option>
                             <option value="unpaid">Unpaid</option>
                             <option value="partial">Partial</option>
+                            <option value="carried_forward">Carried Forward</option>
                         </select>
                     </div>
                     <div>
@@ -299,7 +303,7 @@ const VoucherList = () => {
                                             <td className="px-6 py-4 text-rose-600 font-black text-right">Rs. {balance.toLocaleString()}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2.5 py-1 border rounded-md text-[10px] font-black uppercase tracking-wider ${getStatusColor(v.status)}`}>
-                                                    {v.status}
+                                                    {v.status === 'carried_forward' ? 'carried fwd' : v.status}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
