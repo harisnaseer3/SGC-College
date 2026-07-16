@@ -6,7 +6,7 @@ import Card from '../UI/Card';
 
 const FeeAnalyticsChart = ({ data }) => {
     const [viewMode, setViewMode] = useState('monthly'); // 'monthly' or 'semester'
-    const [selectedYear, setSelectedYear] = useState('All');
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
     if (!data) {
         return (
