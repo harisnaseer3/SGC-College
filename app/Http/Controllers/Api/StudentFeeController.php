@@ -577,22 +577,45 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $vouchers = $query->orderBy('due_date', 'desc')
                               ->paginate($request->get('per_page', 10));
 
-            // Calculate aggregates
-            $aggregatesQuery = clone $query;
-            $aggregates = $aggregatesQuery->selectRaw('
-                SUM(amount + fine_amount - discount_amount) as total_expected,
-                SUM(arrears_amount) as total_arrears,
-                SUM(paid_amount) as total_received,
-                SUM(balance_amount) as total_balance
-            ')->first();
+            // Calculate unique aggregates
+            $allVouchersForAggregates = (clone $query)->select('student_id', 'semester_number', 'amount', 'fine_amount', 'discount_amount', 'arrears_amount', 'paid_amount', 'balance_amount')->get();
+
+            $totalExpected = 0.00;
+            $totalArrears = 0.00;
+            $totalReceived = 0.00;
+            $totalBalance = 0.00;
+
+            $vouchersByStudent = $allVouchersForAggregates->groupBy('student_id');
+
+            foreach ($vouchersByStudent as $studentId => $studentVouchers) {
+                $sortedVouchers = $studentVouchers->sortBy('semester_number')->values();
+
+                foreach ($sortedVouchers as $index => $v) {
+                    $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
+                    $currentReceived = (float)$v->paid_amount;
+                    $currentBalance = max(0.00, $currentExpected - $currentReceived);
+
+                    $totalExpected += $currentExpected;
+                    $totalReceived += $currentReceived;
+                    $totalBalance += $currentBalance;
+
+                    if ($index === 0) {
+                        $totalArrears += (float)$v->arrears_amount;
+                        $arrearsBalance = max(0.00, (float)$v->balance_amount - $currentBalance);
+                        $totalBalance += $arrearsBalance;
+                        $arrearsReceived = max(0.00, (float)$v->arrears_amount - $arrearsBalance);
+                        $totalReceived += $arrearsReceived;
+                    }
+                }
+            }
 
             return $this->sendResponse([
                 'paginator' => $vouchers,
                 'aggregates' => [
-                    'expected' => (float) ($aggregates->total_expected ?? 0),
-                    'arrears'  => (float) ($aggregates->total_arrears ?? 0),
-                    'received' => (float) ($aggregates->total_received ?? 0),
-                    'balance'  => (float) ($aggregates->total_balance ?? 0)
+                    'expected' => $totalExpected,
+                    'arrears'  => $totalArrears,
+                    'received' => $totalReceived,
+                    'balance'  => $totalBalance
                 ]
             ], 'Vouchers retrieved successfully.');
         } catch (\Exception $e) {

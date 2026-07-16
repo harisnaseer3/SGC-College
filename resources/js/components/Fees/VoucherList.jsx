@@ -260,7 +260,7 @@ const VoucherList = () => {
                                     <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.expected.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-rose-800 font-black text-right">Rs. {aggregates.arrears.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {(aggregates.expected + aggregates.arrears).toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {((aggregates.expected + aggregates.arrears) - aggregates.balance).toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.received.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.balance.toLocaleString()}</td>
                                     <td colSpan="2"></td>
                                 </tr>
