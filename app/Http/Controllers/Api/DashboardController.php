@@ -109,42 +109,59 @@ class DashboardController extends BaseController implements HasMiddleware
                 ->pluck('total', 'status');
 
             // --- Monthly & Semester-wise Fee Analytics with Unique Calculation ---
-            $vouchersForYear = \App\Models\GeneratedVoucher::whereYear('due_date', now()->year)->get();
-            $vouchersWithSemester = \App\Models\GeneratedVoucher::whereNotNull('semester_number')->get();
-
-            $monthlyFeeAnalytics = collect(range(1, 12))->map(function($m) use ($months, $vouchersForYear) {
-                $monthVouchers = $vouchersForYear->filter(function($v) use ($m) {
-                    return \Carbon\Carbon::parse($v->due_date)->month === $m;
+            $minDate = \App\Models\GeneratedVoucher::min('due_date');
+            $maxDate = \App\Models\GeneratedVoucher::max('due_date');
+            
+            $monthlyFeeAnalytics = collect();
+            if ($minDate && $maxDate) {
+                $start = \Carbon\Carbon::parse($minDate)->startOfMonth();
+                $end = \Carbon\Carbon::parse($maxDate)->startOfMonth();
+                // Ensure at least the current month is shown if start/end are the same
+                if ($end->lt(now()->startOfMonth())) {
+                    $end = now()->startOfMonth();
+                }
+                
+                $allVouchers = \App\Models\GeneratedVoucher::get();
+                $vouchersByMonth = $allVouchers->groupBy(function($v) {
+                    return \Carbon\Carbon::parse($v->due_date)->format('M Y');
                 });
 
-                $totalExpected = 0.00;
-                $totalArrears = 0.00;
-                $totalReceived = 0.00;
-                $totalBalance = 0.00;
+                while ($start->lte($end)) {
+                    $monthName = $start->format('M Y');
+                    $monthVouchers = $vouchersByMonth->get($monthName, collect());
 
-                foreach ($monthVouchers as $v) {
-                    $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
-                    $currentArrears = (float)$v->arrears_amount;
-                    $currentReceivable = $currentExpected + $currentArrears;
-                    $currentBalance = (float)$v->balance_amount;
-                    $currentReceived = max(0.00, $currentReceivable - $currentBalance);
+                    $totalExpected = 0.00;
+                    $totalArrears = 0.00;
+                    $totalReceived = 0.00;
+                    $totalBalance = 0.00;
 
-                    $totalExpected += $currentExpected;
-                    $totalArrears += $currentArrears;
-                    $totalReceived += $currentReceived;
-                    $totalBalance += $currentBalance;
+                    foreach ($monthVouchers as $v) {
+                        $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
+                        $currentArrears = (float)$v->arrears_amount;
+                        $currentReceivable = $currentExpected + $currentArrears;
+                        $currentBalance = (float)$v->balance_amount;
+                        $currentReceived = max(0.00, $currentReceivable - $currentBalance);
+
+                        $totalExpected += $currentExpected;
+                        $totalArrears += $currentArrears;
+                        $totalReceived += $currentReceived;
+                        $totalBalance += $currentBalance;
+                    }
+
+                    $monthlyFeeAnalytics->push([
+                        'name'        => $monthName,
+                        'current_fee' => $totalExpected,
+                        'arrears'     => $totalArrears,
+                        'receivable'  => $totalExpected + $totalArrears,
+                        'received'    => $totalReceived,
+                        'pending'     => $totalBalance,
+                    ]);
+
+                    $start->addMonth();
                 }
+            }
 
-                return [
-                    'name'        => $months[$m - 1],
-                    'current_fee' => $totalExpected,
-                    'arrears'     => $totalArrears,
-                    'receivable'  => $totalExpected + $totalArrears,
-                    'received'    => $totalReceived,
-                    'pending'     => $totalBalance,
-                ];
-            });
-
+            $vouchersWithSemester = \App\Models\GeneratedVoucher::whereNotNull('semester_number')->get();
             $semesterFeesData = $vouchersWithSemester->groupBy('semester_number')
                 ->sortBy(fn($v, $key) => (int)$key)
                 ->map(function($semVouchers, $semNumber) {

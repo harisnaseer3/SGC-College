@@ -6,6 +6,7 @@ import Card from '../UI/Card';
 
 const FeeAnalyticsChart = ({ data }) => {
     const [viewMode, setViewMode] = useState('monthly'); // 'monthly' or 'semester'
+    const [selectedYear, setSelectedYear] = useState('All');
 
     if (!data) {
         return (
@@ -21,7 +22,15 @@ const FeeAnalyticsChart = ({ data }) => {
         );
     }
 
-    const chartData = viewMode === 'monthly' ? data.monthly : data.semester;
+    const availableYears = data.monthly 
+        ? [...new Set(data.monthly.map(item => item.name.split(' ')[1]))].filter(Boolean)
+        : [];
+
+    let chartData = viewMode === 'monthly' ? data.monthly : data.semester;
+
+    if (viewMode === 'monthly' && selectedYear !== 'All') {
+        chartData = chartData.filter(item => item.name.endsWith(selectedYear));
+    }
 
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
@@ -46,27 +55,41 @@ const FeeAnalyticsChart = ({ data }) => {
                     <span className="w-1.5 h-6 bg-fuchsia-600 rounded-full"></span>
                     Fee Collection Analytics
                 </h3>
-                <div className="flex bg-slate-100 p-1 rounded-lg">
-                    <button
-                        onClick={() => setViewMode('monthly')}
-                        className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
-                            viewMode === 'monthly'
-                                ? 'bg-white text-fuchsia-600 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        Monthly
-                    </button>
-                    <button
-                        onClick={() => setViewMode('semester')}
-                        className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
-                            viewMode === 'semester'
-                                ? 'bg-white text-fuchsia-600 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        Semester-wise
-                    </button>
+                <div className="flex items-center gap-3">
+                    {viewMode === 'monthly' && availableYears.length > 0 && (
+                        <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            className="px-3 py-1.5 text-sm font-bold text-slate-600 bg-white border-2 border-slate-100 rounded-lg outline-none focus:border-fuchsia-500 transition-colors"
+                        >
+                            <option value="All">All Years</option>
+                            {availableYears.map(year => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </select>
+                    )}
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <button
+                            onClick={() => setViewMode('monthly')}
+                            className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
+                                viewMode === 'monthly'
+                                    ? 'bg-white text-fuchsia-600 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                            Monthly
+                        </button>
+                        <button
+                            onClick={() => setViewMode('semester')}
+                            className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
+                                viewMode === 'semester'
+                                    ? 'bg-white text-fuchsia-600 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                            Semester-wise
+                        </button>
+                    </div>
                 </div>
             </div>
 
