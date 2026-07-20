@@ -106,6 +106,8 @@ const CampusList = ({ organization, campuses, loading, onAddNew, onBack, onEdit,
                     data={campuses}
                     loading={loading}
                     emptyMessage="No campuses found for this organization."
+                    pagination={pagination}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
                     renderRow={(campus) => (
                         <>
                             <td className="px-6 py-4">
@@ -174,14 +176,7 @@ const CampusList = ({ organization, campuses, loading, onAddNew, onBack, onEdit,
                     )}
                 />
 
-                {pagination?.total > 0 && (
-                    <Pagination 
-                        currentPage={pagination.current_page}
-                        totalItems={pagination.total}
-                        itemsPerPage={pagination.per_page}
-                        onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
-                    />
-                )}
+
             </div>
         </>
     );

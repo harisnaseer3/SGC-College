@@ -19,6 +19,8 @@ const OrganizationList = ({ organizations, loading, onAddNew, onEdit, onManageCa
                 data={organizations}
                 loading={loading}
                 emptyMessage="No organizations found. Click 'Add New' to get started."
+                pagination={pagination}
+                onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
                 renderRow={(org) => (
                     <>
                         <td className="px-6 py-4">
@@ -72,14 +74,7 @@ const OrganizationList = ({ organizations, loading, onAddNew, onEdit, onManageCa
                 )}
             />
 
-            {pagination?.total > 0 && (
-                <Pagination 
-                    currentPage={pagination.current_page}
-                    totalItems={pagination.total}
-                    itemsPerPage={pagination.per_page}
-                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
-                />
-            )}
+
         </div>
     );
 };

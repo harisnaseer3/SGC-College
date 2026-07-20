@@ -110,11 +110,18 @@ class DashboardController extends BaseController implements HasMiddleware
 
             // --- Monthly & Semester-wise Fee Analytics with Unique Calculation ---
             $intakeSession = request('fee_intake_session');
+            $batchId = request('fee_batch_id');
 
             $vouchersQuery = \App\Models\GeneratedVoucher::query();
-            if ($intakeSession) {
-                $vouchersQuery->whereHas('student', function ($query) use ($intakeSession) {
-                    $query->where('intake_session', $intakeSession);
+            
+            if ($intakeSession || $batchId) {
+                $vouchersQuery->whereHas('student', function ($query) use ($intakeSession, $batchId) {
+                    if ($intakeSession) {
+                        $query->where('intake_session', $intakeSession);
+                    }
+                    if ($batchId) {
+                        $query->where('academic_batch_id', $batchId);
+                    }
                 });
             }
 
@@ -202,6 +209,8 @@ class DashboardController extends BaseController implements HasMiddleware
                     ];
                 })->values();
 
+            $academicBatches = \App\Models\AcademicBatch::select('id', 'name')->orderBy('name', 'desc')->get();
+
             return $this->sendResponse([
                 'counts' => [
                     'students'  => $totalStudents,
@@ -227,6 +236,7 @@ class DashboardController extends BaseController implements HasMiddleware
                     'user_id' => auth()->id(),
                     'user_roles' => auth()->user()?->getRoleNames(),
                 ],
+                'academic_batches'    => $academicBatches,
                 'gender_breakdown'    => $genderBreakdown,
                 'intake_breakdown'    => $intakeBreakdown,
                 'students_by_program' => $studentsByProgram,

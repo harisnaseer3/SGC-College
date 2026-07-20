@@ -91,14 +91,15 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [voucherMonth, setVoucherMonth] = useState(() => new Date().toISOString().slice(0, 7));
     const [feeIntakeSession, setFeeIntakeSession] = useState('');
+    const [feeBatchId, setFeeBatchId] = useState('');
 
     useEffect(() => {
         setLoading(true);
-        axios.get('/api/dashboard/stats', { params: { voucher_month: voucherMonth, fee_intake_session: feeIntakeSession } })
+        axios.get('/api/dashboard/stats', { params: { voucher_month: voucherMonth, fee_intake_session: feeIntakeSession, fee_batch_id: feeBatchId } })
             .then(r => setData(r.data.data))
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, [selectedOrganization, selectedCampus, voucherMonth, feeIntakeSession]);
+    }, [selectedOrganization, selectedCampus, voucherMonth, feeIntakeSession, feeBatchId]);
 
     const counts   = data?.counts ?? {};
     const monthly  = data?.monthly_admissions ?? [];
@@ -260,6 +261,9 @@ export default function Dashboard() {
                     intakeSessions={Object.keys(intake)} 
                     feeIntakeSession={feeIntakeSession} 
                     setFeeIntakeSession={setFeeIntakeSession} 
+                    academicBatches={data?.academic_batches}
+                    feeBatchId={feeBatchId}
+                    setFeeBatchId={setFeeBatchId}
                 />
             </div>
 

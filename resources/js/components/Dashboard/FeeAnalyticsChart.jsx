@@ -4,7 +4,7 @@ import {
 } from 'recharts';
 import Card from '../UI/Card';
 
-const FeeAnalyticsChart = ({ data, intakeSessions = [], feeIntakeSession = '', setFeeIntakeSession = null }) => {
+const FeeAnalyticsChart = ({ data, intakeSessions = [], feeIntakeSession = '', setFeeIntakeSession = null, academicBatches = [], feeBatchId = '', setFeeBatchId = null }) => {
     const [viewMode, setViewMode] = useState('monthly'); // 'monthly' or 'semester'
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
@@ -50,12 +50,24 @@ const FeeAnalyticsChart = ({ data, intakeSessions = [], feeIntakeSession = '', s
 
     return (
         <Card className="p-8 min-h-[400px] flex flex-col">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                     <span className="w-1.5 h-6 bg-fuchsia-600 rounded-full"></span>
                     Fee Collection Analytics
                 </h3>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    {setFeeBatchId && academicBatches && academicBatches.length > 0 && (
+                        <select
+                            value={feeBatchId}
+                            onChange={(e) => setFeeBatchId(e.target.value)}
+                            className="px-3 py-1.5 text-sm font-bold text-slate-600 bg-white border-2 border-slate-100 rounded-lg outline-none focus:border-fuchsia-500 transition-colors"
+                        >
+                            <option value="">All Batches</option>
+                            {academicBatches.map(batch => (
+                                <option key={batch.id} value={batch.id}>{batch.name}</option>
+                            ))}
+                        </select>
+                    )}
                     {setFeeIntakeSession && intakeSessions.length > 0 && (
                         <select
                             value={feeIntakeSession}

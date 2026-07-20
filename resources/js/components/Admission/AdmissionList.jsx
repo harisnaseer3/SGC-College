@@ -402,6 +402,8 @@ const AdmissionList = () => {
                 data={filteredStudents}
                 loading={loading}
                 emptyMessage="No student records found."
+                pagination={pagination}
+                onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
                 renderRow={(student) => {
                     const pic = avatarSrc(student);
                     const isChecked = selectedIds.includes(student.id);
@@ -497,15 +499,6 @@ const AdmissionList = () => {
                     );
                 }}
             />
-
-            {pagination.total > 0 && (
-                <Pagination 
-                    currentPage={pagination.current_page}
-                    totalItems={pagination.total}
-                    itemsPerPage={pagination.per_page}
-                    onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
-                />
-            )}
 
             {/* ── Import Modal ── */}
             <ImportModal
