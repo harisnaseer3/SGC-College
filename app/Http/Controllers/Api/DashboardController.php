@@ -109,8 +109,17 @@ class DashboardController extends BaseController implements HasMiddleware
                 ->pluck('total', 'status');
 
             // --- Monthly & Semester-wise Fee Analytics with Unique Calculation ---
-            $minDate = \App\Models\GeneratedVoucher::min('due_date');
-            $maxDate = \App\Models\GeneratedVoucher::max('due_date');
+            $intakeSession = request('fee_intake_session');
+
+            $vouchersQuery = \App\Models\GeneratedVoucher::query();
+            if ($intakeSession) {
+                $vouchersQuery->whereHas('student', function ($query) use ($intakeSession) {
+                    $query->where('intake_session', $intakeSession);
+                });
+            }
+
+            $minDate = (clone $vouchersQuery)->min('due_date');
+            $maxDate = (clone $vouchersQuery)->max('due_date');
             
             $monthlyFeeAnalytics = collect();
             if ($minDate && $maxDate) {
@@ -121,7 +130,7 @@ class DashboardController extends BaseController implements HasMiddleware
                     $end = now()->startOfMonth();
                 }
                 
-                $allVouchers = \App\Models\GeneratedVoucher::get();
+                $allVouchers = (clone $vouchersQuery)->get();
                 $vouchersByMonth = $allVouchers->groupBy(function($v) {
                     return \Carbon\Carbon::parse($v->due_date)->format('M Y');
                 });
@@ -161,7 +170,7 @@ class DashboardController extends BaseController implements HasMiddleware
                 }
             }
 
-            $vouchersWithSemester = \App\Models\GeneratedVoucher::whereNotNull('semester_number')->get();
+            $vouchersWithSemester = (clone $vouchersQuery)->whereNotNull('semester_number')->get();
             $semesterFeesData = $vouchersWithSemester->groupBy('semester_number')
                 ->sortBy(fn($v, $key) => (int)$key)
                 ->map(function($semVouchers, $semNumber) {

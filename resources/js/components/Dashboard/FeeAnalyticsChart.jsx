@@ -4,7 +4,7 @@ import {
 } from 'recharts';
 import Card from '../UI/Card';
 
-const FeeAnalyticsChart = ({ data }) => {
+const FeeAnalyticsChart = ({ data, intakeSessions = [], feeIntakeSession = '', setFeeIntakeSession = null }) => {
     const [viewMode, setViewMode] = useState('monthly'); // 'monthly' or 'semester'
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
@@ -56,6 +56,18 @@ const FeeAnalyticsChart = ({ data }) => {
                     Fee Collection Analytics
                 </h3>
                 <div className="flex items-center gap-3">
+                    {setFeeIntakeSession && intakeSessions.length > 0 && (
+                        <select
+                            value={feeIntakeSession}
+                            onChange={(e) => setFeeIntakeSession(e.target.value)}
+                            className="px-3 py-1.5 text-sm font-bold text-slate-600 bg-white border-2 border-slate-100 rounded-lg outline-none focus:border-fuchsia-500 transition-colors"
+                        >
+                            <option value="">All Intakes</option>
+                            {intakeSessions.map(session => (
+                                <option key={session} value={session}>{session}</option>
+                            ))}
+                        </select>
+                    )}
                     {viewMode === 'monthly' && availableYears.length > 0 && (
                         <select
                             value={selectedYear}

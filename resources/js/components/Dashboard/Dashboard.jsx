@@ -90,14 +90,15 @@ export default function Dashboard() {
     const [data, setData]     = useState(null);
     const [loading, setLoading] = useState(true);
     const [voucherMonth, setVoucherMonth] = useState(() => new Date().toISOString().slice(0, 7));
+    const [feeIntakeSession, setFeeIntakeSession] = useState('');
 
     useEffect(() => {
         setLoading(true);
-        axios.get('/api/dashboard/stats', { params: { voucher_month: voucherMonth } })
+        axios.get('/api/dashboard/stats', { params: { voucher_month: voucherMonth, fee_intake_session: feeIntakeSession } })
             .then(r => setData(r.data.data))
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, [selectedOrganization, selectedCampus, voucherMonth]);
+    }, [selectedOrganization, selectedCampus, voucherMonth, feeIntakeSession]);
 
     const counts   = data?.counts ?? {};
     const monthly  = data?.monthly_admissions ?? [];
@@ -253,12 +254,13 @@ export default function Dashboard() {
             </div>
 
             {/* Fee Analytics Chart */}
-            <div className="mt-8 mb-8">
-                {loading ? (
-                    <div className="animate-pulse bg-slate-100 h-[400px] rounded-2xl w-full"></div>
-                ) : (
-                    <FeeAnalyticsChart data={data?.fee_analytics} />
-                )}
+            <div className={`mt-8 mb-8 transition-opacity duration-300 ${loading && data ? 'opacity-50 pointer-events-none' : ''}`}>
+                <FeeAnalyticsChart 
+                    data={data?.fee_analytics} 
+                    intakeSessions={Object.keys(intake)} 
+                    feeIntakeSession={feeIntakeSession} 
+                    setFeeIntakeSession={setFeeIntakeSession} 
+                />
             </div>
 
             {/* Row 2: Area Chart (Monthly) + Enrollment Radial */}
