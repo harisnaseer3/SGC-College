@@ -64,8 +64,11 @@ const AdmissionList = () => {
     }, []);
 
     useEffect(() => {
-        fetchStudents(pagination.current_page);
-    }, [pagination.current_page]);
+        const timeout = setTimeout(() => {
+            fetchStudents(pagination.current_page);
+        }, 300);
+        return () => clearTimeout(timeout);
+    }, [pagination.current_page, filters]);
 
     const fetchOptions = async () => {
         try {
@@ -78,7 +81,7 @@ const AdmissionList = () => {
 
     const fetchStudents = async (page = 1) => {
         try {
-            const response = await axios.get('/api/admissions', { params: { page } });
+            const response = await axios.get('/api/admissions', { params: { page, ...filters } });
             setStudents(response.data.data.data);
             setPagination({
                 current_page: response.data.data.current_page,
@@ -154,32 +157,12 @@ const AdmissionList = () => {
             ? `/storage/${student.student_picture}`
             : null;
 
-    const filteredStudents = students.filter(s => {
-        const matchesSearch = !filters.search || 
-            `${s.first_name} ${s.last_name} ${s.admission_number} ${s.email}`.toLowerCase()
-            .includes(filters.search.toLowerCase());
-        
-        const matchesProgram = !filters.program_id || s.program_id == filters.program_id;
-        const matchesCampus  = !filters.campus_id || s.campus_id == filters.campus_id;
-        const matchesBatch   = !filters.academic_batch_id || s.academic_batch_id == filters.academic_batch_id;
-        
-        let matchesStatus = true;
-        if (filters.status) {
-            if (filters.status === 'Losses') {
-                matchesStatus = ['Struck Off', 'Passed Out'].includes(s.status);
-            } else {
-                matchesStatus = s.status === filters.status;
-            }
-        }
-
-        const matchesIntake  = !filters.intake_session || s.intake_session == filters.intake_session;
-
-        return matchesSearch && matchesProgram && matchesCampus && matchesBatch && matchesStatus && matchesIntake;
-    });
+    const filteredStudents = students;
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
+        setPagination(prev => ({ ...prev, current_page: 1 }));
     };
 
     const clearFilters = () => {
@@ -191,6 +174,7 @@ const AdmissionList = () => {
             status: '',
             intake_session: ''
         });
+        setPagination(prev => ({ ...prev, current_page: 1 }));
     };
 
     const exportToCSV = () => {

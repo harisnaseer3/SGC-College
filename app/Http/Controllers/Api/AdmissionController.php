@@ -36,10 +36,47 @@ class AdmissionController extends BaseController implements HasMiddleware
         $this->feeService = $feeService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $students = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch'])->latest()->paginate(request('per_page', 10));
+            $query = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch']);
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%")
+                      ->orWhere('admission_number', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request->filled('program_id')) {
+                $query->where('program_id', $request->program_id);
+            }
+
+            if ($request->filled('campus_id')) {
+                $query->where('campus_id', $request->campus_id);
+            }
+
+            if ($request->filled('academic_batch_id')) {
+                $query->where('academic_batch_id', $request->academic_batch_id);
+            }
+
+            if ($request->filled('status')) {
+                if ($request->status === 'Losses') {
+                    $query->whereIn('status', ['Struck Off', 'Passed Out']);
+                } else {
+                    $query->where('status', $request->status);
+                }
+            }
+
+            if ($request->filled('intake_session')) {
+                $query->where('intake_session', $request->intake_session);
+            }
+
+            $students = $query->latest()->paginate($request->input('per_page', 10));
+
             return $this->sendResponse($students, 'Students retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve students.', ['error' => $e->getMessage()], 500);

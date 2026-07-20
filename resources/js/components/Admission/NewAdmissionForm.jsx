@@ -417,7 +417,17 @@ const NewAdmissionForm = () => {
                         {/* Attachments */}
                         <div className="space-y-2 sm:col-span-2 lg:col-span-3">
                             <label className={labelCls}>Additional Attachments (CNIC, Transcripts, etc.)</label>
-                            <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setAttachmentFiles(Array.from(e.target.files))} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
+                            <input 
+                                type="file" 
+                                multiple 
+                                accept=".pdf,.jpg,.jpeg,.png" 
+                                onChange={(e) => {
+                                    const newFiles = Array.from(e.target.files);
+                                    setAttachmentFiles(prev => [...prev, ...newFiles]);
+                                    e.target.value = null;
+                                }} 
+                                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" 
+                            />
                             
                             {(existingAttachments.length > 0 || attachmentFiles.length > 0) && (
                                 <div className="mt-4 flex flex-col gap-2">
@@ -434,8 +444,15 @@ const NewAdmissionForm = () => {
                                     ))}
                                     {attachmentFiles.map((file, idx) => (
                                         <div key={`new-${idx}`} className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
-                                            <span className="text-sm font-bold text-slate-700">{file.name}</span>
-                                            <span className="text-xs font-bold text-indigo-500 uppercase">New</span>
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <span className="text-sm font-bold text-slate-700 truncate">{file.name}</span>
+                                                <span className="text-xs font-bold text-indigo-500 uppercase shrink-0">New</span>
+                                            </div>
+                                            <button type="button" onClick={() => {
+                                                setAttachmentFiles(attachmentFiles.filter((_, i) => i !== idx));
+                                            }} className="text-red-500 hover:text-red-700 text-xs font-bold uppercase tracking-wider px-2 py-1 bg-red-50 rounded shrink-0">
+                                                Remove
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
