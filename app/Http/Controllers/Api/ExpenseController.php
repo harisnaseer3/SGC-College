@@ -130,6 +130,12 @@ class ExpenseController extends BaseController implements HasMiddleware
             }
             $path = $request->file('attachment')->store('expenses', 'public');
             $validated['attachment_url'] = Storage::url($path);
+        } elseif ($request->boolean('remove_attachment')) {
+            if ($expense->attachment_url) {
+                $oldPath = str_replace('/storage/', '', $expense->attachment_url);
+                Storage::disk('public')->delete($oldPath);
+            }
+            $validated['attachment_url'] = null;
         }
 
         $expense->update($validated);

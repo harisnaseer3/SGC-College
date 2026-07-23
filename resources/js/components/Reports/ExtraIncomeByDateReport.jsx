@@ -85,7 +85,7 @@ const ExtraIncomeByDateReport = () => {
         "Form No",
         "Category",
         "Program",
-        "Payment Method",
+        "Remarks",
         "Collected By",
         "Amount"
     ];
@@ -110,7 +110,7 @@ const ExtraIncomeByDateReport = () => {
                 {String(item?.program?.name || '—')}
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                {String(item?.payment_method || '—')}
+                {String(item?.remarks || '—')}
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                 {String(item?.collected_by?.name || '—')}
@@ -137,7 +137,7 @@ const ExtraIncomeByDateReport = () => {
             { width: 20 }, // Form No
             { width: 25 }, // Category
             { width: 25 }, // Program
-            { width: 20 }, // Payment Method
+            { width: 20 }, // Remarks
             { width: 25 }, // Collected By
             { width: 15 }  // Amount
         ];
@@ -158,7 +158,7 @@ const ExtraIncomeByDateReport = () => {
         addMergedHeader(`Generated: ${new Date().toLocaleDateString()}`, 10, false);
         worksheet.addRow([]); // Empty row
 
-        const headerRow = worksheet.addRow(["Sr No", "Date", "Form No", "Category", "Program", "Payment Method", "Collected By", "Amount"]);
+        const headerRow = worksheet.addRow(["Sr No", "Date", "Form No", "Category", "Program", "Remarks", "Collected By", "Amount"]);
         headerRow.font = { bold: true };
         headerRow.eachCell(cell => {
             cell.alignment = { horizontal: 'center' };
@@ -172,7 +172,7 @@ const ExtraIncomeByDateReport = () => {
                 item.form_number || '',
                 item.income_category?.name || '',
                 item.program?.name || '',
-                item.payment_method || '',
+                item.remarks || '',
                 item.collected_by?.name || '',
                 Number(item.amount || 0)
             ]);

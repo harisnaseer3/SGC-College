@@ -31,8 +31,10 @@ const ExtraExpenses = () => {
         supplier: '',
         expense_date: '',
         description: '',
-        attachment: null
+        attachment: null,
+        remove_attachment: false
     });
+    const [fileInputKey, setFileInputKey] = useState(Date.now());
     const [submitting, setSubmitting] = useState(false);
 
     // Filters
@@ -109,7 +111,8 @@ const ExtraExpenses = () => {
                 supplier: expense.supplier || '',
                 expense_date: expense.expense_date.substring(0, 10),
                 description: expense.description || '',
-                attachment: null
+                attachment: null,
+                remove_attachment: false
             });
         } else {
             setEditingExpense(null);
@@ -121,9 +124,11 @@ const ExtraExpenses = () => {
                 supplier: '',
                 expense_date: new Date().toISOString().substring(0, 10),
                 description: '',
-                attachment: null
+                attachment: null,
+                remove_attachment: false
             });
         }
+        setFileInputKey(Date.now());
         setIsModalOpen(true);
     };
 
@@ -133,10 +138,14 @@ const ExtraExpenses = () => {
         
         const data = new FormData();
         Object.keys(formData).forEach(key => {
-            if (formData[key] !== null && formData[key] !== '') {
+            if (formData[key] !== null && formData[key] !== '' && key !== 'remove_attachment') {
                 data.append(key, formData[key]);
             }
         });
+
+        if (formData.remove_attachment) {
+            data.append('remove_attachment', '1');
+        }
 
         if (editingExpense) {
             data.append('_method', 'PUT');
@@ -608,12 +617,43 @@ const ExtraExpenses = () => {
 
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Attachment (Receipt/Invoice)</label>
-                                <input
-                                    type="file"
-                                    accept=".jpg,.jpeg,.png,.pdf"
-                                    onChange={(e) => setFormData({...formData, attachment: e.target.files[0]})}
-                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                />
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1">
+                                        <input
+                                            type="file"
+                                            key={fileInputKey}
+                                            accept=".jpg,.jpeg,.png,.pdf"
+                                            onChange={(e) => setFormData({...formData, attachment: e.target.files[0], remove_attachment: false})}
+                                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                        />
+                                    </div>
+                                    {(formData.attachment || (editingExpense?.attachment_url && !formData.remove_attachment)) && (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                setFormData({...formData, attachment: null, remove_attachment: true});
+                                                setFileInputKey(Date.now());
+                                            }}
+                                            className="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors bg-white shrink-0"
+                                            title="Remove Attachment"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
+                                {editingExpense?.attachment_url && !formData.attachment && !formData.remove_attachment && (
+                                    <div className="mt-2 text-sm text-indigo-600 flex items-center gap-1 font-semibold">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                        Current attachment will be kept
+                                    </div>
+                                )}
+                                {formData.remove_attachment && editingExpense?.attachment_url && (
+                                    <div className="mt-2 text-sm text-rose-500 flex items-center gap-1 font-semibold">
+                                        Current attachment will be removed on save
+                                    </div>
+                                )}
                             </div>
 
                             <div className="pt-4 flex gap-3">
