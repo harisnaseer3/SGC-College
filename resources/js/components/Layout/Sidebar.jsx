@@ -3,7 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import SidebarItem from './SidebarItem';
 import { useAuth } from '../../contexts/AuthContext';
 
-const Sidebar = () => {
+const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
     const { logout, user } = useAuth();
     const location = useLocation();
     const [openSubmenu, setOpenSubmenu] = useState(null);
@@ -82,6 +82,10 @@ const Sidebar = () => {
         if (activeSubmenu) {
             setOpenSubmenu(activeSubmenu.path);
         }
+        // Auto-close sidebar on mobile after navigation
+        if (setIsMobileOpen) {
+            setIsMobileOpen(false);
+        }
     }, [location.pathname]);
 
     const handleToggleSubmenu = (path) => {
@@ -89,15 +93,26 @@ const Sidebar = () => {
     };
 
     return (
-        <aside className={`bg-white h-screen flex flex-col border-r border-slate-200 shrink-0 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-72'} print:hidden`}>
-            <Link to="/dashboard" className={`p-6 border-b border-slate-100 flex items-center hover:bg-slate-50 transition-colors cursor-pointer ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
-                <img 
-                    src="/assets/images/logo.png" 
-                    alt="Logo" 
-                    className="w-10 h-10 object-contain shrink-0"
-                />
-                {!isCollapsed && <span className="text-slate-900 font-bold text-xl tracking-tight whitespace-nowrap">SGC Education</span>}
-            </Link>
+        <aside className={`bg-white h-screen flex flex-col border-r border-slate-200 shrink-0 transition-all duration-300 ${isCollapsed ? 'md:w-20' : 'md:w-72'} w-72 print:hidden fixed md:static inset-y-0 left-0 z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:transform-none`}>
+            <div className="flex items-center justify-between border-b border-slate-100 pr-4 md:pr-0">
+                <Link to="/dashboard" className={`p-6 flex items-center hover:bg-slate-50 transition-colors cursor-pointer flex-1 ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
+                    <img 
+                        src="/assets/images/logo.png" 
+                        alt="Logo" 
+                        className="w-10 h-10 object-contain shrink-0"
+                    />
+                    {!isCollapsed && <span className="text-slate-900 font-bold text-xl tracking-tight whitespace-nowrap">SGC Education</span>}
+                </Link>
+                {/* Mobile close button */}
+                <button 
+                    onClick={() => setIsMobileOpen(false)}
+                    className="md:hidden p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-xl"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
             
             <nav className={`flex-1 overflow-y-auto space-y-2 ${isCollapsed ? 'p-4' : 'p-6'}`}>
                 {menuItems.map((item) => (

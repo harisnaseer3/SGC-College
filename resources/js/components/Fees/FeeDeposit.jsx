@@ -336,10 +336,11 @@ const FeeDeposit = () => {
                                     <input 
                                         type="number"
                                         required
-                                        className="w-full p-6 pl-16 bg-slate-50 border-2 border-slate-100 rounded-3xl focus:border-indigo-500 focus:bg-white focus:ring-8 focus:ring-indigo-500/5 outline-none transition-all font-black text-3xl text-indigo-600"
+                                        className="w-full p-6 pl-16 bg-slate-50 border-2 border-slate-100 rounded-3xl focus:border-indigo-500 focus:bg-white focus:ring-8 focus:ring-indigo-500/5 outline-none transition-all font-black text-3xl text-indigo-600 cursor-not-allowed"
                                         value={formData.amount}
                                         onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                                         placeholder="0.00"
+                                        readOnly // Temporarily readOnly as per user request; change to editable later
                                     />
                                 </div>
                             </div>
