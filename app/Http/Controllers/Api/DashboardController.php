@@ -137,77 +137,60 @@ class DashboardController extends BaseController implements HasMiddleware
                     $end = now()->startOfMonth();
                 }
                 
-                $allVouchers = (clone $vouchersQuery)->get();
-                $vouchersByMonth = $allVouchers->groupBy(function($v) {
-                    return \Carbon\Carbon::parse($v->due_date)->format('M Y');
-                });
+                $monthlyFeeData = (clone $vouchersQuery)
+                    ->select(
+                        DB::raw("DATE_FORMAT(due_date, '%Y-%m') as month_key"),
+                        DB::raw("DATE_FORMAT(due_date, '%b %Y') as month_name"),
+                        DB::raw("SUM(amount + fine_amount - discount_amount) as total_expected"),
+                        DB::raw("SUM(arrears_amount) as total_arrears"),
+                        DB::raw("SUM(balance_amount) as total_balance"),
+                        DB::raw("SUM(CASE WHEN (amount + fine_amount - discount_amount + arrears_amount - balance_amount) > 0 
+                                     THEN (amount + fine_amount - discount_amount + arrears_amount - balance_amount) 
+                                     ELSE 0 END) as total_received")
+                    )
+                    ->groupBy(DB::raw("DATE_FORMAT(due_date, '%Y-%m')"), DB::raw("DATE_FORMAT(due_date, '%b %Y')"))
+                    ->get()
+                    ->keyBy('month_name');
 
                 while ($start->lte($end)) {
                     $monthName = $start->format('M Y');
-                    $monthVouchers = $vouchersByMonth->get($monthName, collect());
-
-                    $totalExpected = 0.00;
-                    $totalArrears = 0.00;
-                    $totalReceived = 0.00;
-                    $totalBalance = 0.00;
-
-                    foreach ($monthVouchers as $v) {
-                        $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
-                        $currentArrears = (float)$v->arrears_amount;
-                        $currentReceivable = $currentExpected + $currentArrears;
-                        $currentBalance = (float)$v->balance_amount;
-                        $currentReceived = max(0.00, $currentReceivable - $currentBalance);
-
-                        $totalExpected += $currentExpected;
-                        $totalArrears += $currentArrears;
-                        $totalReceived += $currentReceived;
-                        $totalBalance += $currentBalance;
-                    }
+                    $data = $monthlyFeeData->get($monthName);
 
                     $monthlyFeeAnalytics->push([
                         'name'        => $monthName,
-                        'current_fee' => $totalExpected,
-                        'arrears'     => $totalArrears,
-                        'receivable'  => $totalExpected + $totalArrears,
-                        'received'    => $totalReceived,
-                        'pending'     => $totalBalance,
+                        'current_fee' => (float)($data->total_expected ?? 0.00),
+                        'arrears'     => (float)($data->total_arrears ?? 0.00),
+                        'receivable'  => (float)(($data->total_expected ?? 0.00) + ($data->total_arrears ?? 0.00)),
+                        'received'    => (float)($data->total_received ?? 0.00),
+                        'pending'     => (float)($data->total_balance ?? 0.00),
                     ]);
 
                     $start->addMonth();
                 }
             }
 
-            $vouchersWithSemester = (clone $vouchersQuery)->whereNotNull('semester_number')->get();
-            $semesterFeesData = $vouchersWithSemester->groupBy('semester_number')
-                ->sortBy(fn($v, $key) => (int)$key)
-                ->map(function($semVouchers, $semNumber) {
-                    $totalExpected = 0.00;
-                    $totalArrears = 0.00;
-                    $totalReceived = 0.00;
-                    $totalBalance = 0.00;
-
-                    foreach ($semVouchers as $v) {
-                        $currentExpected = (float)$v->amount + (float)$v->fine_amount - (float)$v->discount_amount;
-                        $currentArrears = (float)$v->arrears_amount;
-                        $currentReceivable = $currentExpected + $currentArrears;
-                        $currentBalance = (float)$v->balance_amount;
-                        $currentReceived = max(0.00, $currentReceivable - $currentBalance);
-
-                        $totalExpected += $currentExpected;
-                        $totalArrears += $currentArrears;
-                        $totalReceived += $currentReceived;
-                        $totalBalance += $currentBalance;
-                    }
-
-                    return [
-                        'name'        => 'Semester ' . $semNumber,
-                        'current_fee' => $totalExpected,
-                        'arrears'     => $totalArrears,
-                        'receivable'  => $totalExpected + $totalArrears,
-                        'received'    => $totalReceived,
-                        'pending'     => $totalBalance,
-                    ];
-                })->values();
+            $semesterFeesData = (clone $vouchersQuery)
+                ->whereNotNull('semester_number')
+                ->select(
+                    'semester_number',
+                    DB::raw("SUM(amount + fine_amount - discount_amount) as total_expected"),
+                    DB::raw("SUM(arrears_amount) as total_arrears"),
+                    DB::raw("SUM(balance_amount) as total_balance"),
+                    DB::raw("SUM(CASE WHEN (amount + fine_amount - discount_amount + arrears_amount - balance_amount) > 0 
+                                 THEN (amount + fine_amount - discount_amount + arrears_amount - balance_amount) 
+                                 ELSE 0 END) as total_received")
+                )
+                ->groupBy('semester_number')
+                ->orderBy(DB::raw('CAST(semester_number AS UNSIGNED)'))
+                ->get()
+                ->map(fn($sem) => [
+                    'name'        => 'Semester ' . $sem->semester_number,
+                    'current_fee' => (float)$sem->total_expected,
+                    'arrears'     => (float)$sem->total_arrears,
+                    'receivable'  => (float)($sem->total_expected + $sem->total_arrears),
+                    'received'    => (float)$sem->total_received,
+                    'pending'     => (float)$sem->total_balance,
+                ]);
 
             $academicBatches = \App\Models\AcademicBatch::select('id', 'name')->orderBy('name', 'desc')->get();
 
