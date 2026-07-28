@@ -19,6 +19,7 @@ class FeePayment extends Model
         'transaction_id',
         'payment_date',
         'receipt_number',
+        'voucher_number',
         'received_by',
     ];
 

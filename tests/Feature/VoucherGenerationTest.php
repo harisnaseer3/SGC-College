@@ -325,6 +325,11 @@ class VoucherGenerationTest extends TestCase
 
         $response->assertStatus(200);
 
+        // Assert payment record was saved with voucher_number
+        $payment = \App\Models\FeePayment::where('student_id', $student->id)->latest()->first();
+        $this->assertNotNull($payment);
+        $this->assertEquals($v2->voucher_number, $payment->voucher_number);
+
         // Assert that payment was ONLY applied to Voucher 2 fees
         $v1Admission->refresh();
         $v1Semester->refresh();
@@ -337,5 +342,178 @@ class VoucherGenerationTest extends TestCase
         // Voucher 2 fees must receive the payment
         $this->assertEquals(50000.00, $v2Semester->paid_amount);
         $this->assertEquals(40000.00, $v2Semester->balance_amount);
+    }
+
+    public function test_voucher_list_filtering(): void
+    {
+        $this->seed(\Database\Seeders\PermissionsSeeder::class);
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+
+        $org = Organization::create(['name' => 'Test Org', 'slug' => 'test-org']);
+        $campus = Campus::create(['organization_id' => $org->id, 'name' => 'Test Campus', 'code' => 'TC']);
+        
+        $program1 = \App\Models\Program::create(['organization_id' => $org->id, 'campus_id' => $campus->id, 'name' => 'Program A', 'total_semesters' => 4]);
+        $program2 = \App\Models\Program::create(['organization_id' => $org->id, 'campus_id' => $campus->id, 'name' => 'Program B', 'total_semesters' => 4]);
+        
+        $class1 = \App\Models\AcademicClass::create(['organization_id' => $org->id, 'name' => 'Class X', 'code' => 'CX']);
+        $class2 = \App\Models\AcademicClass::create(['organization_id' => $org->id, 'name' => 'Class Y', 'code' => 'CY']);
+
+        $student1 = Student::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'first_name' => 'Student',
+            'last_name' => 'A',
+            'admission_number' => 'ADM-001',
+            'roll_number' => '1001',
+            'status' => 'Enrolled',
+            'gender' => 'male',
+            'admission_date' => '2026-07-15',
+            'program_id' => $program1->id,
+            'academic_class_id' => $class1->id,
+        ]);
+
+        $student2 = Student::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'first_name' => 'Student',
+            'last_name' => 'B',
+            'admission_number' => 'ADM-002',
+            'roll_number' => '1002',
+            'status' => 'Enrolled',
+            'gender' => 'male',
+            'admission_date' => '2026-07-15',
+            'program_id' => $program2->id,
+            'academic_class_id' => $class2->id,
+        ]);
+
+        $voucher1 = GeneratedVoucher::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'student_id' => $student1->id,
+            'voucher_number' => 'VOU-001',
+            'due_date' => now()->addDays(10),
+            'semester_number' => 1,
+            'amount' => 1000.00,
+            'status' => 'unpaid',
+        ]);
+
+        $voucher2 = GeneratedVoucher::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'student_id' => $student2->id,
+            'voucher_number' => 'VOU-002',
+            'due_date' => now()->addDays(10),
+            'semester_number' => 1,
+            'amount' => 2000.00,
+            'status' => 'unpaid',
+        ]);
+
+        $user = User::create([
+            'name' => 'Admin User',
+            'email' => 'admin@test.com',
+            'password' => bcrypt('password'),
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+        ]);
+        $user->assignRole('super_admin');
+
+        // Test filtering by program_id
+        $response = $this->actingAs($user, 'api')
+            ->withHeaders(['X-Organization-ID' => $org->id])
+            ->getJson("/api/student-fees/vouchers-list?program_id={$program1->id}");
+        $response->assertStatus(200);
+        $vouchers = $response->json('data.paginator.data');
+        $this->assertCount(1, $vouchers);
+        $this->assertEquals('VOU-001', $vouchers[0]['voucher_number']);
+
+        // Test filtering by class_id
+        $response = $this->actingAs($user, 'api')
+            ->withHeaders(['X-Organization-ID' => $org->id])
+            ->getJson("/api/student-fees/vouchers-list?class_id={$class2->id}");
+        $response->assertStatus(200);
+        $vouchers = $response->json('data.paginator.data');
+        $this->assertCount(1, $vouchers);
+        $this->assertEquals('VOU-002', $vouchers[0]['voucher_number']);
+    }
+
+    public function test_receipt_list_filtering_by_program(): void
+    {
+        $this->seed(\Database\Seeders\PermissionsSeeder::class);
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+
+        $org = Organization::create(['name' => 'Test Org', 'slug' => 'test-org']);
+        $campus = Campus::create(['organization_id' => $org->id, 'name' => 'Test Campus', 'code' => 'TC']);
+        
+        $program1 = \App\Models\Program::create(['organization_id' => $org->id, 'campus_id' => $campus->id, 'name' => 'Program X', 'total_semesters' => 4]);
+        $program2 = \App\Models\Program::create(['organization_id' => $org->id, 'campus_id' => $campus->id, 'name' => 'Program Y', 'total_semesters' => 4]);
+
+        $student1 = Student::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'first_name' => 'Student',
+            'last_name' => 'X',
+            'admission_number' => 'ADM-001',
+            'roll_number' => '1001',
+            'status' => 'Enrolled',
+            'gender' => 'male',
+            'admission_date' => '2026-07-15',
+            'program_id' => $program1->id,
+        ]);
+
+        $student2 = Student::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'first_name' => 'Student',
+            'last_name' => 'Y',
+            'admission_number' => 'ADM-002',
+            'roll_number' => '1002',
+            'status' => 'Enrolled',
+            'gender' => 'male',
+            'admission_date' => '2026-07-15',
+            'program_id' => $program2->id,
+        ]);
+
+        $user = User::create([
+            'name' => 'Admin User',
+            'email' => 'admin@test.com',
+            'password' => bcrypt('password'),
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+        ]);
+        $user->assignRole('super_admin');
+
+        // Create payments
+        $payment1 = \App\Models\FeePayment::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'student_id' => $student1->id,
+            'receipt_number' => 'REC-001',
+            'payment_date' => '2026-07-15',
+            'payment_method' => 'cash',
+            'amount' => 1000.00,
+            'status' => 'success',
+            'received_by' => $user->id,
+        ]);
+
+        $payment2 = \App\Models\FeePayment::create([
+            'organization_id' => $org->id,
+            'campus_id' => $campus->id,
+            'student_id' => $student2->id,
+            'receipt_number' => 'REC-002',
+            'payment_date' => '2026-07-15',
+            'payment_method' => 'cash',
+            'amount' => 2000.00,
+            'status' => 'success',
+            'received_by' => $user->id,
+        ]);
+
+        // Test filtering by program_id
+        $response = $this->actingAs($user, 'api')
+            ->withHeaders(['X-Organization-ID' => $org->id])
+            ->getJson("/api/student-fees/payments?program_id={$program1->id}");
+        $response->assertStatus(200);
+        $payments = $response->json('data.paginator.data');
+        $this->assertCount(1, $payments);
+        $this->assertEquals('REC-001', $payments[0]['receipt_number']);
     }
 }

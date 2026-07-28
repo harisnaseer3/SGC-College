@@ -12,16 +12,31 @@ const FeeReceiptList = () => {
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedReceiptIds, setSelectedReceiptIds] = useState([]);
+    const [programs, setPrograms] = useState([]);
     const [filters, setFilters] = useState({
         start_date: '',
         end_date: '',
-        search: ''
+        search: '',
+        program_id: ''
     });
     
+    // Fetch programs metadata on mount
+    useEffect(() => {
+        const fetchMetadata = async () => {
+            try {
+                const response = await axios.get('/api/programs?all=1');
+                setPrograms(response.data.data || []);
+            } catch (err) {
+                console.error('Failed to fetch programs metadata:', err);
+            }
+        };
+        fetchMetadata();
+    }, []);
+
     // Reset selection on filter or page change
     useEffect(() => {
         setSelectedReceiptIds([]);
-    }, [currentPage, filters.start_date, filters.end_date, filters.search]);
+    }, [currentPage, filters.start_date, filters.end_date, filters.search, filters.program_id]);
 
     const debounceTimer = useRef(null);
     const { showSuccess, showError } = useNotifications();
@@ -36,11 +51,11 @@ const FeeReceiptList = () => {
         return () => clearTimeout(debounceTimer.current);
     }, [filters.search]);
 
-    // Instant fetch on date changes
+    // Instant fetch on date or program changes
     useEffect(() => {
         setCurrentPage(1);
         fetchPayments(1);
-    }, [filters.start_date, filters.end_date]);
+    }, [filters.start_date, filters.end_date, filters.program_id]);
 
     // Fetch on page change
     useEffect(() => {
@@ -55,7 +70,8 @@ const FeeReceiptList = () => {
                 page: pageNum,
                 start_date: filters.start_date,
                 end_date: filters.end_date,
-                search: filters.search
+                search: filters.search,
+                program_id: filters.program_id
             };
             const response = await axios.get('/api/student-fees/payments', { params });
             const data = response.data.data;
@@ -108,9 +124,8 @@ const FeeReceiptList = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Filters Section */}
             <Card className="p-6 border-slate-200 shadow-sm">
-                <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                     <div className="md:col-span-1">
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Search Receipts</label>
                         <div className="relative">
@@ -123,6 +138,19 @@ const FeeReceiptList = () => {
                             />
                             <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Program</label>
+                        <select 
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                            value={filters.program_id}
+                            onChange={(e) => setFilters({ ...filters, program_id: e.target.value })}
+                        >
+                            <option value="">All Programs</option>
+                            {programs.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">From Date</label>
@@ -142,21 +170,18 @@ const FeeReceiptList = () => {
                             onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
                         />
                     </div>
-                    <div className="flex gap-2">
-                        <Button type="submit" className="flex-1 py-3" disabled={loading}>
-                            Filter
-                        </Button>
+                    <div>
                         <button
                             type="button"
                             onClick={() => {
-                                setFilters({ start_date: '', end_date: '', search: '' });
+                                setFilters({ start_date: '', end_date: '', search: '', program_id: '' });
                                 setCurrentPage(1);
                                 fetchPayments(1);
                             }}
-                            className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200"
+                            className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
                             title="Reset Filters"
                         >
-                            Reset
+                            Reset Filters
                         </button>
                     </div>
                 </form>
@@ -203,7 +228,7 @@ const FeeReceiptList = () => {
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Method</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reference</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Voucher No.</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Deposited By</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Amount</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Actions</th>
@@ -249,7 +274,7 @@ const FeeReceiptList = () => {
                                                 {payment.payment_method}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-slate-500 text-xs italic">{payment.transaction_id || 'N/A'}</td>
+                                        <td className="px-6 py-4 text-slate-500 text-xs italic">{payment.voucher_number || 'N/A'}</td>
                                         <td className="px-6 py-4 font-medium text-slate-700 text-sm">{payment.receiver?.name || '-'}</td>
                                         <td className="px-6 py-4 text-emerald-600 font-black text-right">Rs. {Number(payment.amount).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-center">

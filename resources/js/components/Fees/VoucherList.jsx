@@ -16,19 +16,34 @@ const VoucherList = () => {
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedVoucherIds, setSelectedVoucherIds] = useState([]);
+    const [programs, setPrograms] = useState([]);
     
     // Parse initial filters from URL
     const [filters, setFilters] = useState({
         month: searchParams.get('month') || '',
         year: searchParams.get('year') || '',
         status: searchParams.get('status') || '',
-        search: ''
+        search: '',
+        program_id: ''
     });
+
+    // Fetch filter metadata on mount
+    useEffect(() => {
+        const fetchFiltersMetadata = async () => {
+            try {
+                const response = await axios.get('/api/programs?all=1');
+                setPrograms(response.data.data || []);
+            } catch (error) {
+                console.error('Failed to fetch filter metadata:', error);
+            }
+        };
+        fetchFiltersMetadata();
+    }, []);
 
     // Reset selection on filter or page change
     useEffect(() => {
         setSelectedVoucherIds([]);
-    }, [currentPage, filters.month, filters.year, filters.status, filters.search]);
+    }, [currentPage, filters.month, filters.year, filters.status, filters.search, filters.program_id]);
 
     const debounceTimer = useRef(null);
 
@@ -46,7 +61,7 @@ const VoucherList = () => {
     useEffect(() => {
         setCurrentPage(1);
         fetchVouchers(1);
-    }, [filters.month, filters.year, filters.status]);
+    }, [filters.month, filters.year, filters.status, filters.program_id]);
 
     // Fetch on page change
     useEffect(() => {
@@ -62,7 +77,8 @@ const VoucherList = () => {
                 month: filters.month,
                 year: filters.year,
                 status: filters.status,
-                search: filters.search
+                search: filters.search,
+                program_id: filters.program_id
             };
             const response = await axios.get('/api/student-fees/vouchers-list', { params });
             const payload = response.data.data;
@@ -146,7 +162,7 @@ const VoucherList = () => {
             </div>
 
             <Card className="p-6 border-slate-200 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                     <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Search</label>
                         <input 
@@ -156,6 +172,19 @@ const VoucherList = () => {
                             value={filters.search}
                             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                         />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Program</label>
+                        <select 
+                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"
+                            value={filters.program_id}
+                            onChange={(e) => setFilters({ ...filters, program_id: e.target.value })}
+                        >
+                            <option value="">All Programs</option>
+                            {programs.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Month</label>
@@ -200,7 +229,7 @@ const VoucherList = () => {
                     <div>
                         <button
                             type="button"
-                            onClick={() => setFilters({ month: '', year: '', status: '', search: '' })}
+                            onClick={() => setFilters({ month: '', year: '', status: '', search: '', program_id: '' })}
                             className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
                         >
                             Reset Filters

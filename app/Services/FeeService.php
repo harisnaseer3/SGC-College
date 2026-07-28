@@ -705,6 +705,7 @@ class FeeService
                 'amount' => $amount,
                 'payment_method' => $details['payment_method'] ?? 'Cash',
                 'transaction_id' => $details['transaction_id'] ?? null,
+                'voucher_number' => $details['voucher_number'] ?? null,
                 'payment_date' => $details['payment_date'] ?? now(),
                 'receipt_number' => $receiptNumber,
                 'received_by' => auth('api')->check() ? auth('api')->id() : (auth()->check() ? auth()->id() : 1),

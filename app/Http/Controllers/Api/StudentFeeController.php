@@ -514,6 +514,11 @@ class StudentFeeController extends BaseController implements HasMiddleware
             if ($request->filled('end_date')) {
                 $query->whereDate('payment_date', '<=', $request->end_date);
             }
+            if ($request->filled('program_id')) {
+                $query->whereHas('student', function($q) use ($request) {
+                    $q->where('program_id', $request->program_id);
+                });
+            }
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function($q) use ($search) {
@@ -524,6 +529,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
                           ->orWhere('admission_number', 'like', "%$search%");
                     })
                     ->orWhere('receipt_number', 'like', "%$search%")
+                    ->orWhere('voucher_number', 'like', "%$search%")
                     ->orWhere('transaction_id', 'like', "%$search%");
                 });
             }
@@ -570,6 +576,18 @@ class StudentFeeController extends BaseController implements HasMiddleware
 
             if ($request->filled('status')) {
                 $query->where('status', $request->status);
+            }
+
+            if ($request->filled('program_id')) {
+                $query->whereHas('student', function($q) use ($request) {
+                    $q->where('program_id', $request->program_id);
+                });
+            }
+
+            if ($request->filled('class_id')) {
+                $query->whereHas('student', function($q) use ($request) {
+                    $q->where('academic_class_id', $request->class_id);
+                });
             }
 
             if ($request->filled('search')) {
