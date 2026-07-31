@@ -64,12 +64,28 @@ class StudentFeeController extends BaseController implements HasMiddleware
             }
 
             if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $search = trim($request->search);
+                $terms = array_filter(explode(' ', preg_replace('/\s+/', ' ', $search)));
+
+                $query->where(function($q) use ($search, $terms) {
                     $q->where('first_name', 'like', "%$search%")
                       ->orWhere('last_name', 'like', "%$search%")
                       ->orWhere('roll_number', 'like', "%$search%")
-                      ->orWhere('admission_number', 'like', "%$search%");
+                      ->orWhere('admission_number', 'like', "%$search%")
+                      ->orWhere(DB::raw("CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))"), 'like', "%$search%");
+
+                    if (count($terms) > 1) {
+                        $q->orWhere(function($subQ) use ($terms) {
+                            foreach ($terms as $term) {
+                                $subQ->where(function($termQ) use ($term) {
+                                    $termQ->where('first_name', 'like', "%$term%")
+                                          ->orWhere('last_name', 'like', "%$term%")
+                                          ->orWhere('roll_number', 'like', "%$term%")
+                                          ->orWhere('admission_number', 'like', "%$term%");
+                                });
+                            }
+                        });
+                    }
                 });
             }
 
@@ -454,6 +470,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function findByVoucher($voucherNumber)
     {
         try {
+            $voucherNumber = trim($voucherNumber);
             $voucherRecord = \App\Models\GeneratedVoucher::with('student.program', 'student.campus.bankAccounts')
                 ->where('voucher_number', $voucherNumber)
                 ->first();
@@ -520,13 +537,29 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 });
             }
             if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
-                    $q->whereHas('student', function($sq) use ($search) {
+                $search = trim($request->search);
+                $terms = array_filter(explode(' ', preg_replace('/\s+/', ' ', $search)));
+
+                $query->where(function($q) use ($search, $terms) {
+                    $q->whereHas('student', function($sq) use ($search, $terms) {
                         $sq->where('first_name', 'like', "%$search%")
                           ->orWhere('last_name', 'like', "%$search%")
                           ->orWhere('roll_number', 'like', "%$search%")
-                          ->orWhere('admission_number', 'like', "%$search%");
+                          ->orWhere('admission_number', 'like', "%$search%")
+                          ->orWhere(DB::raw("CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))"), 'like', "%$search%");
+
+                        if (count($terms) > 1) {
+                            $sq->orWhere(function($subQ) use ($terms) {
+                                foreach ($terms as $term) {
+                                    $subQ->where(function($termQ) use ($term) {
+                                        $termQ->where('first_name', 'like', "%$term%")
+                                              ->orWhere('last_name', 'like', "%$term%")
+                                              ->orWhere('roll_number', 'like', "%$term%")
+                                              ->orWhere('admission_number', 'like', "%$term%");
+                                    });
+                                }
+                            });
+                        }
                     })
                     ->orWhere('receipt_number', 'like', "%$search%")
                     ->orWhere('voucher_number', 'like', "%$search%")
@@ -607,13 +640,28 @@ class StudentFeeController extends BaseController implements HasMiddleware
             }
 
             if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $search = trim($request->search);
+                $terms = array_filter(explode(' ', preg_replace('/\s+/', ' ', $search)));
+
+                $query->where(function($q) use ($search, $terms) {
                     $q->where('voucher_number', 'like', "%$search%")
-                      ->orWhereHas('student', function($sq) use ($search) {
+                      ->orWhereHas('student', function($sq) use ($search, $terms) {
                           $sq->where('first_name', 'like', "%$search%")
                              ->orWhere('last_name', 'like', "%$search%")
-                             ->orWhere('roll_number', 'like', "%$search%");
+                             ->orWhere('roll_number', 'like', "%$search%")
+                             ->orWhere(DB::raw("CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))"), 'like', "%$search%");
+
+                          if (count($terms) > 1) {
+                              $sq->orWhere(function($subQ) use ($terms) {
+                                  foreach ($terms as $term) {
+                                      $subQ->where(function($termQ) use ($term) {
+                                          $termQ->where('first_name', 'like', "%$term%")
+                                                ->orWhere('last_name', 'like', "%$term%")
+                                                ->orWhere('roll_number', 'like', "%$term%");
+                                      });
+                                  }
+                              });
+                          }
                       });
                 });
             }
@@ -731,12 +779,12 @@ class StudentFeeController extends BaseController implements HasMiddleware
             })->first();
 
             $firstGroupKey = $firstInstallment 
-                ? $firstInstallment->due_date->format('Y-m') 
+                ? \Carbon\Carbon::parse($firstInstallment->due_date)->format('Y-m') 
                 : ($fees->min('due_date') ? \Carbon\Carbon::parse($fees->min('due_date'))->format('Y-m') : now()->format('Y-m'));
 
             $groupedFees = $fees->groupBy(function($fee) use ($firstGroupKey) {
                 if (str_contains($fee->remarks ?? '', '(Installment')) {
-                    return $fee->due_date->format('Y-m');
+                    return \Carbon\Carbon::parse($fee->due_date)->format('Y-m');
                 }
                 return $firstGroupKey;
             })->sortBy(function($fees, $key) {

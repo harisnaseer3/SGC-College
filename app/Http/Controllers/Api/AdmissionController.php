@@ -42,12 +42,28 @@ class AdmissionController extends BaseController implements HasMiddleware
             $query = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch']);
 
             if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
+                $search = trim($request->search);
+                $terms = array_filter(explode(' ', preg_replace('/\s+/', ' ', $search)));
+
+                $query->where(function ($q) use ($search, $terms) {
                     $q->where('first_name', 'like', "%{$search}%")
                       ->orWhere('last_name', 'like', "%{$search}%")
                       ->orWhere('admission_number', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere(\Illuminate\Support\Facades\DB::raw("CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,''))"), 'like', "%{$search}%");
+
+                    if (count($terms) > 1) {
+                        $q->orWhere(function($subQ) use ($terms) {
+                            foreach ($terms as $term) {
+                                $subQ->where(function($termQ) use ($term) {
+                                    $termQ->where('first_name', 'like', "%{$term}%")
+                                          ->orWhere('last_name', 'like', "%{$term}%")
+                                          ->orWhere('admission_number', 'like', "%{$term}%")
+                                          ->orWhere('email', 'like', "%{$term}%");
+                                });
+                            }
+                        });
+                    }
                 });
             }
 
