@@ -19,11 +19,11 @@ const TopBar = ({ onMenuClick }) => {
     }, []);
 
     return (
-        <header className="h-24 bg-indigo-100 border-b border-slate-200 px-8 flex items-center justify-between md:justify-end sticky top-0 z-40 print:hidden">
+        <header className="h-24 bg-slate-900 border-b border-slate-800 px-8 flex items-center justify-between md:justify-end sticky top-0 z-40 print:hidden">
             {/* Hamburger Menu Button for Mobile */}
             <button
                 onClick={onMenuClick}
-                className="md:hidden p-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-200/50 rounded-xl transition-colors"
+                className="md:hidden p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
                 aria-label="Toggle Menu"
             >
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,16 +34,16 @@ const TopBar = ({ onMenuClick }) => {
             <div className="flex items-center gap-6">
                 <CampusSwitcher />
                 
-                <div className="relative pl-6 border-l border-slate-100" ref={dropdownRef}>
+                <div className="relative pl-6 border-l border-slate-800" ref={dropdownRef}>
                     <button 
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
                         className="flex items-center gap-4 text-left focus:outline-none"
                     >
                         <div className="text-right hidden sm:block">
-                            <p className="text-sm font-bold text-slate-900 leading-none">{user?.name}</p>
+                            <p className="text-sm font-bold text-white leading-none">{user?.name}</p>
                             <p className="text-xs font-medium text-slate-400 mt-1">{user?.organization?.name || 'Administrator'}</p>
                         </div>
-                        <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold text-lg ring-4 ring-slate-50 transition-all hover:ring-indigo-100">
+                        <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center text-indigo-400 font-bold text-lg ring-4 ring-slate-800 transition-all hover:ring-slate-700">
                             {user?.name ? user.name[0].toUpperCase() : 'U'}
                         </div>
                     </button>

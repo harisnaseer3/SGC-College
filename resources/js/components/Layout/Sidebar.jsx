@@ -93,8 +93,8 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
     };
 
     return (
-        <aside className={`bg-indigo-100 h-screen flex flex-col border-r border-slate-200 shrink-0 transition-all duration-300 ${isCollapsed ? 'md:w-20' : 'md:w-72'} w-72 print:hidden fixed md:static inset-y-0 left-0 z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:transform-none`}>
-            <div className={`flex items-center border-b border-slate-200/80 ${isCollapsed ? 'p-3 flex-col gap-3 justify-center' : 'px-4 py-4 justify-between'}`}>
+        <aside className={`bg-slate-100 h-screen flex flex-col border-r border-slate-200 shrink-0 transition-all duration-300 ${isCollapsed ? 'md:w-20' : 'md:w-72'} w-72 print:hidden fixed md:static inset-y-0 left-0 z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:transform-none`}>
+            <div className={`flex items-center border-b border-slate-200 ${isCollapsed ? 'p-3 flex-col gap-3 justify-center' : 'px-4 py-4 justify-between'}`}>
                 <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                     <img 
                         src="/assets/images/logo.png" 
@@ -108,7 +108,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                     {/* Desktop Collapse Toggle Button (Icon Only) */}
                     <button 
                         onClick={() => setIsCollapsed(!isCollapsed)} 
-                        className="hidden md:flex p-2 text-slate-500 hover:text-indigo-700 hover:bg-indigo-200/60 rounded-xl transition-all"
+                        className="hidden md:flex p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-200/60 rounded-xl transition-all"
                         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
                         <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +123,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                     {/* Mobile Close Button */}
                     <button 
                         onClick={() => setIsMobileOpen(false)}
-                        className="md:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-indigo-200/60 rounded-xl"
+                        className="md:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 rounded-xl"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />

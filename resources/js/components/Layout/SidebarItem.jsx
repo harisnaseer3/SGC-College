@@ -24,8 +24,8 @@ const SidebarItem = ({ name, icon, path, subItems, isOpen, isCollapsed, onToggle
                     ${isActive && !hasSubItems
                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-semibold' 
                         : (location.pathname.startsWith(path) && hasSubItems 
-                            ? 'bg-indigo-200/70 text-indigo-800 font-semibold' 
-                            : 'text-slate-700 hover:text-indigo-700 hover:bg-indigo-200/50')}`
+                            ? 'bg-slate-200/80 text-indigo-700 font-semibold' 
+                            : 'text-slate-700 hover:text-indigo-600 hover:bg-slate-200/50')}`
                 }
                 title={isCollapsed ? name : undefined}
             >
@@ -52,14 +52,14 @@ const SidebarItem = ({ name, icon, path, subItems, isOpen, isCollapsed, onToggle
             </NavLink>
 
             {hasSubItems && isOpen && !isCollapsed && (
-                <div className="ml-10 space-y-1 py-1 border-l-2 border-indigo-200 pl-4">
+                <div className="ml-10 space-y-1 py-1 border-l-2 border-slate-300 pl-4">
                     {subItems.map((sub) => (
                         <NavLink
                             key={sub.path}
                             to={sub.path}
                             className={({ isActive }) => 
                                 `block py-2 text-sm font-medium transition-colors duration-200
-                                ${isActive ? 'text-indigo-700 font-bold' : 'text-slate-600 hover:text-indigo-700'}`
+                                ${isActive ? 'text-indigo-600 font-bold' : 'text-slate-600 hover:text-indigo-600'}`
                             }
                         >
                             {sub.name}
