@@ -93,28 +93,46 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
     };
 
     return (
-        <aside className={`bg-white h-screen flex flex-col border-r border-slate-200 shrink-0 transition-all duration-300 ${isCollapsed ? 'md:w-20' : 'md:w-72'} w-72 print:hidden fixed md:static inset-y-0 left-0 z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:transform-none`}>
-            <div className="flex items-center justify-between border-b border-slate-100 pr-4 md:pr-0">
-                <Link to="/dashboard" className={`p-6 flex items-center hover:bg-slate-50 transition-colors cursor-pointer flex-1 ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
+        <aside className={`bg-indigo-100 h-screen flex flex-col border-r border-slate-200 shrink-0 transition-all duration-300 ${isCollapsed ? 'md:w-20' : 'md:w-72'} w-72 print:hidden fixed md:static inset-y-0 left-0 z-50 transform ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:transform-none`}>
+            <div className={`flex items-center border-b border-slate-200/80 ${isCollapsed ? 'p-3 flex-col gap-3 justify-center' : 'px-4 py-4 justify-between'}`}>
+                <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                     <img 
                         src="/assets/images/logo.png" 
                         alt="Logo" 
-                        className="w-10 h-10 object-contain shrink-0"
+                        className="w-9 h-9 object-contain shrink-0"
                     />
-                    {!isCollapsed && <span className="text-slate-900 font-bold text-xl tracking-tight whitespace-nowrap">SGC Education</span>}
+                    {!isCollapsed && <span className="text-slate-900 font-bold text-lg tracking-tight whitespace-nowrap">SGC Education</span>}
                 </Link>
-                {/* Mobile close button */}
-                <button 
-                    onClick={() => setIsMobileOpen(false)}
-                    className="md:hidden p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-xl"
-                >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                
+                <div className="flex items-center gap-1">
+                    {/* Desktop Collapse Toggle Button (Icon Only) */}
+                    <button 
+                        onClick={() => setIsCollapsed(!isCollapsed)} 
+                        className="hidden md:flex p-2 text-slate-500 hover:text-indigo-700 hover:bg-indigo-200/60 rounded-xl transition-all"
+                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            {isCollapsed ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                            )}
+                        </svg>
+                    </button>
+
+                    {/* Mobile Close Button */}
+                    <button 
+                        onClick={() => setIsMobileOpen(false)}
+                        className="md:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-indigo-200/60 rounded-xl"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
             
-            <nav className={`flex-1 overflow-y-auto space-y-2 ${isCollapsed ? 'p-4' : 'p-6'}`}>
+            <nav className={`flex-1 overflow-y-auto space-y-2 ${isCollapsed ? 'p-2' : 'p-4'}`}>
                 {menuItems.map((item) => (
                     <SidebarItem 
                         key={item.path} 
@@ -128,23 +146,6 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                     />
                 ))}
             </nav>
-            
-            <div className="p-4 border-t border-slate-100 mt-auto">
-                <button 
-                    onClick={() => setIsCollapsed(!isCollapsed)} 
-                    className={`flex items-center text-slate-500 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all ${isCollapsed ? 'w-12 h-12 justify-center mx-auto' : 'w-full p-3 justify-start gap-4'}`}
-                    title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                >
-                    <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {isCollapsed ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                        ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                        )}
-                    </svg>
-                    {!isCollapsed && <span className="font-medium whitespace-nowrap">Collapse</span>}
-                </button>
-            </div>
         </aside>
     );
 };

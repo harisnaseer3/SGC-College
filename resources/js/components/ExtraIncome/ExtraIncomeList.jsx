@@ -216,26 +216,6 @@ const ExtraIncomeList = () => {
                                             <div className="flex items-center justify-end gap-1">
                                                 <button
                                                     type="button"
-                                                    onClick={() => window.open(`/extra-income/receipt/${income.id}`, '_blank')}
-                                                    title="Print Receipt"
-                                                    className="p-2 text-slate-400 hover:text-indigo-600 transition-all rounded-xl hover:bg-indigo-50 border border-transparent hover:border-indigo-100"
-                                                >
-                                                    <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                                    </svg>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => window.open(`/extra-income/receipt/${income.id}?download=1`, '_blank')}
-                                                    title="Download Receipt"
-                                                    className="p-2 text-slate-400 hover:text-emerald-600 transition-all rounded-xl hover:bg-emerald-50 border border-transparent hover:border-emerald-100"
-                                                >
-                                                    <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                    </svg>
-                                                </button>
-                                                <button
-                                                    type="button"
                                                     onClick={() => {
                                                         setEditingIncome(income);
                                                         setIsViewOnly(true);

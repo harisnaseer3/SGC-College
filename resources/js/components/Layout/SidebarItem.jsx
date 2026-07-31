@@ -22,8 +22,10 @@ const SidebarItem = ({ name, icon, path, subItems, isOpen, isCollapsed, onToggle
                     `flex items-center rounded-xl transition-all duration-300 group
                     ${isCollapsed ? 'justify-center p-3 mx-auto w-12 h-12' : 'w-full gap-4 px-4 py-3.5'}
                     ${isActive && !hasSubItems
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
-                        : (location.pathname.startsWith(path) && hasSubItems ? 'bg-slate-50 text-indigo-600' : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50')}`
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-semibold' 
+                        : (location.pathname.startsWith(path) && hasSubItems 
+                            ? 'bg-indigo-200/70 text-indigo-800 font-semibold' 
+                            : 'text-slate-700 hover:text-indigo-700 hover:bg-indigo-200/50')}`
                 }
                 title={isCollapsed ? name : undefined}
             >
@@ -50,14 +52,14 @@ const SidebarItem = ({ name, icon, path, subItems, isOpen, isCollapsed, onToggle
             </NavLink>
 
             {hasSubItems && isOpen && !isCollapsed && (
-                <div className="ml-10 space-y-1 py-1 border-l-2 border-slate-100 pl-4">
+                <div className="ml-10 space-y-1 py-1 border-l-2 border-indigo-200 pl-4">
                     {subItems.map((sub) => (
                         <NavLink
                             key={sub.path}
                             to={sub.path}
                             className={({ isActive }) => 
                                 `block py-2 text-sm font-medium transition-colors duration-200
-                                ${isActive ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`
+                                ${isActive ? 'text-indigo-700 font-bold' : 'text-slate-600 hover:text-indigo-700'}`
                             }
                         >
                             {sub.name}

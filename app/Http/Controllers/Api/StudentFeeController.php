@@ -552,8 +552,24 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function showPayment($id)
     {
         try {
-            $payment = \App\Models\FeePayment::with(['student.program', 'student.academicBatch', 'student.campus', 'receiver', 'campus'])->findOrFail($id);
+            $payment = \App\Models\FeePayment::with([
+                'student.program', 
+                'student.academicBatch', 
+                'student.academicClass', 
+                'student.section', 
+                'student.programSemester', 
+                'student.campus', 
+                'receiver', 
+                'campus'
+            ])->findOrFail($id);
+
             $payment->organization = \App\Models\Organization::find($payment->organization_id);
+
+            // Calculate current remaining balance for the student
+            $payment->remaining_balance = \App\Models\StudentFee::where('student_id', $payment->student_id)
+                ->where('status', '!=', 'carried_forward')
+                ->sum('balance_amount');
+
             return $this->sendResponse($payment, 'Payment retrieved successfully.');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('showPayment failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
