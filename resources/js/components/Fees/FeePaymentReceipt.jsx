@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 const FeePaymentReceipt = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { selectedOrganization } = useAuth();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -30,6 +31,26 @@ const FeePaymentReceipt = () => {
         window.print();
     };
 
+    const handleDownload = () => {
+        const originalTitle = document.title;
+        if (data?.receipt_number) {
+            document.title = `Fee_Receipt_${data.receipt_number}`;
+        } else {
+            document.title = `Fee_Receipt_${id}`;
+        }
+        window.print();
+        document.title = originalTitle;
+    };
+
+    useEffect(() => {
+        if (data && searchParams.get('download') === '1') {
+            const timer = setTimeout(() => {
+                handleDownload();
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [data, searchParams]);
+
     if (loading) return <div className="p-8 text-center">Loading receipt...</div>;
     if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
     if (!data) return null;
@@ -46,15 +67,26 @@ const FeePaymentReceipt = () => {
                     </button>
                     <h1 className="font-bold">Fee Receipt</h1>
                 </div>
-                <button 
-                    onClick={handlePrint}
-                    className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-lg font-bold transition-all shadow-lg flex items-center gap-2"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    Print Receipt
-                </button>
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={handlePrint}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg font-bold transition-all shadow flex items-center gap-2 text-sm"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Print Receipt
+                    </button>
+                    <button 
+                        onClick={handleDownload}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg font-bold transition-all shadow flex items-center gap-2 text-sm"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download Receipt
+                    </button>
+                </div>
             </div>
 
             <div className="max-w-2xl mx-auto mt-8 p-8 bg-white border border-slate-200 shadow-sm print:shadow-none print:border-0 rounded-xl print:rounded-none" id="receipt-content">
@@ -108,6 +140,10 @@ const FeePaymentReceipt = () => {
                         <div>
                             <span className="text-slate-500 block">Program:</span>
                             <span className="font-bold text-slate-900">{data.student?.program?.name || '-'}</span>
+                        </div>
+                        <div>
+                            <span className="text-slate-500 block">Batch / Session:</span>
+                            <span className="font-bold text-slate-900">{data.student?.academic_batch?.name || data.student?.intake_session || '-'}</span>
                         </div>
                     </div>
                 </div>

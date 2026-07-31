@@ -228,13 +228,39 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
 
                     <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
                         {isViewOnly ? (
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-                            >
-                                Close
-                            </button>
+                            <>
+                                {income && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => window.open(`/extra-income/receipt/${income.id}`, '_blank')}
+                                            className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
+                                        >
+                                            <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                            </svg>
+                                            Print Receipt
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => window.open(`/extra-income/receipt/${income.id}?download=1`, '_blank')}
+                                            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-1.5"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                            Download Receipt
+                                        </button>
+                                    </>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </>
                         ) : (
                             <>
                                 <button

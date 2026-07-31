@@ -552,7 +552,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function showPayment($id)
     {
         try {
-            $payment = \App\Models\FeePayment::with(['student.program', 'student.campus', 'receiver', 'campus'])->findOrFail($id);
+            $payment = \App\Models\FeePayment::with(['student.program', 'student.academicBatch', 'student.campus', 'receiver', 'campus'])->findOrFail($id);
             $payment->organization = \App\Models\Organization::find($payment->organization_id);
             return $this->sendResponse($payment, 'Payment retrieved successfully.');
         } catch (\Exception $e) {
