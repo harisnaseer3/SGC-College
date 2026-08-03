@@ -29,6 +29,8 @@ const ExtraExpenses = () => {
         amount: '',
         quantity: '',
         supplier: '',
+        purchased_by: '',
+        purchased_for: '',
         expense_date: '',
         description: '',
         attachment: null,
@@ -109,6 +111,8 @@ const ExtraExpenses = () => {
                 amount: expense.amount,
                 quantity: expense.quantity || '',
                 supplier: expense.supplier || '',
+                purchased_by: expense.purchased_by || '',
+                purchased_for: expense.purchased_for || '',
                 expense_date: expense.expense_date.substring(0, 10),
                 description: expense.description || '',
                 attachment: null,
@@ -122,6 +126,8 @@ const ExtraExpenses = () => {
                 amount: '',
                 quantity: '',
                 supplier: '',
+                purchased_by: '',
+                purchased_for: '',
                 expense_date: new Date().toISOString().substring(0, 10),
                 description: '',
                 attachment: null,
@@ -392,6 +398,9 @@ const ExtraExpenses = () => {
                                 {renderSortableHeader('Title / Category', 'title')}
                                 {renderSortableHeader('Qty', 'quantity')}
                                 {renderSortableHeader('Supplier', 'supplier')}
+                                {renderSortableHeader('Purchased By', 'purchased_by')}
+                                {renderSortableHeader('Purchased For', 'purchased_for')}
+                                {renderSortableHeader('Description', 'description')}
                                 {renderSortableHeader('Amount', 'amount')}
                                 {renderSortableHeader('Status', 'status')}
                                 <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Attachment</th>
@@ -439,6 +448,9 @@ const ExtraExpenses = () => {
                                         </td>
                                         <td className="p-4 text-sm text-slate-600 font-medium">{exp.quantity || <span className="text-slate-300">—</span>}</td>
                                         <td className="p-4 text-sm text-slate-600">{exp.supplier || <span className="text-slate-300">—</span>}</td>
+                                        <td className="p-4 text-sm text-slate-600">{exp.purchased_by || <span className="text-slate-300">—</span>}</td>
+                                        <td className="p-4 text-sm text-slate-600">{exp.purchased_for || <span className="text-slate-300">—</span>}</td>
+                                        <td className="p-4 text-sm text-slate-600 max-w-[200px] truncate" title={exp.description || ''}>{exp.description || <span className="text-slate-300">—</span>}</td>
                                         <td className="p-4 font-bold text-slate-900">Rs. {Number(exp.amount).toLocaleString()}</td>
                                         <td className="p-4">
                                             {canChangeStatus ? (
@@ -582,7 +594,7 @@ const ExtraExpenses = () => {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Quantity</label>
                                     <input
@@ -601,6 +613,29 @@ const ExtraExpenses = () => {
                                         onChange={(e) => setFormData({...formData, supplier: e.target.value})}
                                         className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
                                         placeholder="e.g. Al-Noor Store"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Purchased By</label>
+                                    <input
+                                        type="text"
+                                        value={formData.purchased_by}
+                                        onChange={(e) => setFormData({...formData, purchased_by: e.target.value})}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                                        placeholder="e.g. John Doe / Admin"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Purchased For</label>
+                                    <input
+                                        type="text"
+                                        value={formData.purchased_for}
+                                        onChange={(e) => setFormData({...formData, purchased_for: e.target.value})}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                                        placeholder="e.g. Computer Lab / Office"
                                     />
                                 </div>
                             </div>
@@ -720,6 +755,14 @@ const ExtraExpenses = () => {
                                 <div>
                                     <div className="text-xs font-bold text-slate-400 uppercase">Supplier</div>
                                     <div className="font-semibold text-slate-800">{viewingExpense.supplier || 'N/A'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Purchased By</div>
+                                    <div className="font-semibold text-slate-800">{viewingExpense.purchased_by || 'N/A'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase">Purchased For</div>
+                                    <div className="font-semibold text-slate-800">{viewingExpense.purchased_for || 'N/A'}</div>
                                 </div>
                             </div>
                             {viewingExpense.description && (

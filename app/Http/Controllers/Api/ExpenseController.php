@@ -47,6 +47,8 @@ class ExpenseController extends BaseController implements HasMiddleware
                 $q->where('title', 'like', "%{$search}%")
                   ->orWhere('bill_no', 'like', "%{$search}%")
                   ->orWhere('supplier', 'like', "%{$search}%")
+                  ->orWhere('purchased_by', 'like', "%{$search}%")
+                  ->orWhere('purchased_for', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
             });
         }
@@ -81,6 +83,8 @@ class ExpenseController extends BaseController implements HasMiddleware
             'amount'              => 'required|numeric|min:0.01',
             'quantity'            => 'nullable|string|max:100',
             'supplier'            => 'nullable|string|max:255',
+            'purchased_by'        => 'nullable|string|max:255',
+            'purchased_for'       => 'nullable|string|max:255',
             'expense_date'        => 'required|date',
             'title'               => 'required|string|max:255',
             'description'         => 'nullable|string',
@@ -90,8 +94,9 @@ class ExpenseController extends BaseController implements HasMiddleware
         $validated['recorded_by'] = auth()->id();
         $validated['status'] = 'pending';
 
-        $latest = Expense::latest('id')->first();
-        $validated['bill_no'] = $latest && $latest->bill_no ? str_pad(((int)$latest->bill_no + 1), 3, '0', STR_PAD_LEFT) : '001';
+        $maxBillNo = Expense::withoutGlobalScopes()->max(\DB::raw('CAST(bill_no AS UNSIGNED)'));
+        $nextBillNo = ($maxBillNo ? (int)$maxBillNo + 1 : 1);
+        $validated['bill_no'] = str_pad((string)$nextBillNo, 3, '0', STR_PAD_LEFT);
 
         if ($request->hasFile('attachment')) {
             $path = $request->file('attachment')->store('expenses', 'public');
@@ -117,6 +122,8 @@ class ExpenseController extends BaseController implements HasMiddleware
             'amount'              => 'required|numeric|min:0.01',
             'quantity'            => 'nullable|string|max:100',
             'supplier'            => 'nullable|string|max:255',
+            'purchased_by'        => 'nullable|string|max:255',
+            'purchased_for'       => 'nullable|string|max:255',
             'expense_date'        => 'required|date',
             'title'               => 'required|string|max:255',
             'description'         => 'nullable|string',

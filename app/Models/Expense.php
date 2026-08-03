@@ -19,6 +19,8 @@ class Expense extends Model
         'amount',
         'quantity',
         'supplier',
+        'purchased_by',
+        'purchased_for',
         'expense_date',
         'title',
         'description',
