@@ -270,10 +270,10 @@ const StudentFeeSummaryReport = () => {
                     <p className="text-xs text-amber-500 mt-1">Concessions granted</p>
                 </Card>
 
-                <Card className="p-5 border-emerald-100 bg-emerald-50/20" hover={false}>
-                    <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider block mb-1">Total Paid Fee</span>
-                    <h2 className="text-2xl font-black text-emerald-700">Rs. {Number(summary.grand_paid_fee).toLocaleString()}</h2>
-                    <p className="text-xs text-emerald-500 mt-1">Collected revenue</p>
+                <Card className="p-5 border-fuchsia-100 bg-fuchsia-50/20" hover={false}>
+                    <span className="text-[11px] font-bold text-fuchsia-500 uppercase tracking-wider block mb-1">Total Paid Fee</span>
+                    <h2 className="text-2xl font-black text-fuchsia-700">Rs. {Number(summary.grand_paid_fee).toLocaleString()}</h2>
+                    <p className="text-xs text-fuchsia-500 mt-1">Collected revenue</p>
                 </Card>
 
                 <Card className="p-5 border-rose-100 bg-rose-50/20" hover={false}>

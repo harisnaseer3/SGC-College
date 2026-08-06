@@ -199,17 +199,17 @@ const StudentLedgerDetail = () => {
                     <div className="text-xs font-bold text-slate-500 uppercase">Total Payable</div>
                     <div className="text-2xl font-bold text-slate-900">Rs. {Number(ledger.summary.total_payable).toLocaleString()}</div>
                 </Card>
+                <Card className="p-6 bg-amber-50 border-amber-100">
+                    <div className="text-xs font-bold text-amber-500 uppercase">Total Discounts</div>
+                    <div className="text-2xl font-bold text-amber-700">Rs. {Number(ledger.summary.total_discounts).toLocaleString()}</div>
+                </Card>
+                <Card className="p-6 bg-fuchsia-50 border-fuchsia-100">
+                    <div className="text-xs font-bold text-fuchsia-500 uppercase">Total Paid</div>
+                    <div className="text-2xl font-bold text-fuchsia-700">Rs. {Number(ledger.summary.total_paid).toLocaleString()}</div>
+                </Card>
                 <Card className="p-6 bg-rose-50 border-rose-100">
-                    <div className="text-xs font-bold text-rose-500 uppercase">Total Discounts</div>
-                    <div className="text-2xl font-bold text-rose-700">Rs. {Number(ledger.summary.total_discounts).toLocaleString()}</div>
-                </Card>
-                <Card className="p-6 bg-emerald-50 border-emerald-100">
-                    <div className="text-xs font-bold text-emerald-500 uppercase">Total Paid</div>
-                    <div className="text-2xl font-bold text-emerald-700">Rs. {Number(ledger.summary.total_paid).toLocaleString()}</div>
-                </Card>
-                <Card className="p-6 bg-indigo-50 border-indigo-100">
-                    <div className="text-xs font-bold text-indigo-500 uppercase">Net Balance</div>
-                    <div className="text-2xl font-bold text-indigo-700">Rs. {Number(ledger.summary.total_balance).toLocaleString()}</div>
+                    <div className="text-xs font-bold text-rose-500 uppercase">Net Balance</div>
+                    <div className="text-2xl font-bold text-rose-700">Rs. {Number(ledger.summary.total_balance).toLocaleString()}</div>
                 </Card>
             </div>
 
@@ -300,14 +300,14 @@ const StudentLedgerDetail = () => {
                                         <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">Rs. {Number(fee.amount).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-sm font-bold text-rose-600 text-right">Rs. {Number(fee.fine_amount || 0).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-sm font-bold text-amber-600 text-right">Rs. {Number(fee.discount_amount || 0).toLocaleString()}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-emerald-600 text-right">Rs. {Number(fee.paid_amount || 0).toLocaleString()}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-indigo-600 text-right">Rs. {Number(fee.balance_amount).toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-sm font-bold text-fuchsia-600 text-right">Rs. {Number(fee.paid_amount || 0).toLocaleString()}</td>
+                                        <td className="px-6 py-4 text-sm font-bold text-rose-600 text-right">Rs. {Number(fee.balance_amount).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                                                fee.status === 'unpaid' ? 'bg-rose-100 text-rose-700' :
-                                                fee.status === 'partial' ? 'bg-amber-100 text-amber-700' :
-                                                fee.status === 'carried_forward' ? 'bg-orange-100 text-orange-750' :
-                                                'bg-emerald-100 text-emerald-700'
+                                                fee.status === 'unpaid' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                                fee.status === 'partial' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                                                fee.status === 'carried_forward' ? 'bg-slate-100 text-slate-700 border border-slate-200' :
+                                                'bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-200'
                                             }`}>
                                                 {fee.status === 'carried_forward' ? 'carried fwd' : fee.status}
                                             </span>

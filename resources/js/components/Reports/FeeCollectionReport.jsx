@@ -182,10 +182,10 @@ const FeeCollectionReport = () => {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 no-print">
-                <Card className="p-6 border-indigo-100 bg-indigo-50/20" hover={false}>
+                <Card className="p-6 border-indigo-100 bg-indigo-50/30" hover={false}>
                     <div className="flex justify-between items-center">
                         <div>
-                            <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Total Collections</span>
+                            <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Total Collections</span>
                             <h2 className="text-3xl font-black text-indigo-700 mt-1">Rs. {Number(totalAmount).toLocaleString()}</h2>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
@@ -193,25 +193,39 @@ const FeeCollectionReport = () => {
                         </div>
                     </div>
                 </Card>
-                <Card className="p-6 border-emerald-100 bg-emerald-50/20" hover={false}>
+                <Card className="p-6 border-teal-100 bg-teal-50/30" hover={false}>
                     <div className="flex justify-between items-center">
                         <div>
-                            <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Cash Received</span>
-                            <h2 className="text-3xl font-black text-emerald-700 mt-1">Rs. {Number(byMethod['Cash'] || 0).toLocaleString()}</h2>
+                            <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">Bank Deposit / Transfer</span>
+                            <h2 className="text-3xl font-black text-teal-700 mt-1">
+                                Rs. {Number(
+                                    Object.entries(byMethod).reduce((sum, [method, amount]) => {
+                                        if (method.toLowerCase().includes('bank')) return sum + Number(amount);
+                                        return sum;
+                                    }, 0)
+                                ).toLocaleString()}
+                            </h2>
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center text-teal-600">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-6 border-slate-100 bg-slate-50/50" hover={false}>
+                <Card className="p-6 border-fuchsia-100 bg-fuchsia-50/30" hover={false}>
                     <div className="flex justify-between items-center">
                         <div>
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Bank/Online Received</span>
-                            <h2 className="text-3xl font-black text-slate-850 mt-1">Rs. {Number((byMethod['Bank'] || 0) + (byMethod['Online'] || 0)).toLocaleString()}</h2>
+                            <span className="text-xs font-bold text-fuchsia-600 uppercase tracking-widest">Online Received</span>
+                            <h2 className="text-3xl font-black text-fuchsia-700 mt-1">
+                                Rs. {Number(
+                                    Object.entries(byMethod).reduce((sum, [method, amount]) => {
+                                        if (method.toLowerCase().includes('online')) return sum + Number(amount);
+                                        return sum;
+                                    }, 0)
+                                ).toLocaleString()}
+                            </h2>
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        <div className="w-12 h-12 rounded-xl bg-fuchsia-100 flex items-center justify-center text-fuchsia-600">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                         </div>
                     </div>
                 </Card>
@@ -246,10 +260,8 @@ const FeeCollectionReport = () => {
                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all bg-slate-50/50 text-sm font-semibold"
                         >
                             <option value="">All Methods</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Bank">Bank</option>
-                            <option value="Online">Online</option>
-                            <option value="Check">Check</option>
+                            <option value="Bank Transfer">Bank Deposit / Transfer</option>
+                            <option value="Online">Online Payment</option>
                         </select>
                     </div>
                     <div className="flex gap-2">
@@ -329,7 +341,11 @@ const FeeCollectionReport = () => {
                                             {item.payment_date}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                                                item.payment_method?.toLowerCase().includes('bank') ? 'bg-teal-100 text-teal-800 border border-teal-200' :
+                                                item.payment_method?.toLowerCase().includes('online') ? 'bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-200' :
+                                                'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                            }`}>
                                                 {item.payment_method}
                                             </span>
                                         </td>

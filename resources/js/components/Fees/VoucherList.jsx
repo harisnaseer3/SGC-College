@@ -128,40 +128,34 @@ const VoucherList = () => {
 
     const getStatusColor = (status) => {
         switch (status?.toLowerCase()) {
-            case 'paid': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-            case 'partial': return 'bg-amber-100 text-amber-700 border-amber-200';
-            case 'unpaid': return 'bg-rose-100 text-rose-700 border-rose-200';
+            case 'paid': return 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200';
+            case 'partial': return 'bg-amber-100 text-amber-800 border-amber-200';
+            case 'unpaid': return 'bg-rose-100 text-rose-800 border-rose-200';
             case 'carried_forward':
             case 'carried fwd':
-                return 'bg-orange-100 text-orange-700 border-orange-200';
+                return 'bg-slate-100 text-slate-700 border-slate-200';
             default: return 'bg-slate-100 text-slate-700 border-slate-200';
         }
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Generated Vouchers</h1>
-                    {selectedVoucherIds.length > 0 && (
-                        <button
-                            onClick={handleBulkDeleteVouchers}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition-all animate-in fade-in slide-in-from-left-2 duration-300 animate-pulse"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            Delete Selected ({selectedVoucherIds.length})
-                        </button>
-                    )}
+        <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Generated Vouchers</h1>
+                    <p className="text-sm font-medium text-slate-500 mt-1">Manage and view all student fee vouchers</p>
                 </div>
                 <button 
-                    onClick={() => navigate('/dashboard')}
-                    className="text-sm font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
+                    onClick={() => navigate('/fees')} 
+                    className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all text-sm flex items-center gap-2"
                 >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                     Back to Dashboard
                 </button>
             </div>
 
-            {/* Summary Cards */}
+            {/* Summary Cards matching Fee Analytics Chart colors */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card className="p-5 border-slate-100 bg-white" hover={false}>
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Vouchers</span>
@@ -169,16 +163,16 @@ const VoucherList = () => {
                     <p className="text-xs text-slate-400 mt-1">Matching current filters</p>
                 </Card>
 
-                <Card className="p-5 border-indigo-100 bg-indigo-50/20" hover={false}>
-                    <span className="text-[11px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Total Receivable</span>
-                    <h2 className="text-2xl font-black text-indigo-700">Rs. {aggregates ? ((aggregates.expected || 0) + (aggregates.arrears || 0)).toLocaleString() : '0'}</h2>
-                    <p className="text-xs text-indigo-400 mt-1">Expected revenue commitment</p>
+                <Card className="p-5 border-teal-100 bg-teal-50/20" hover={false}>
+                    <span className="text-[11px] font-bold text-teal-500 uppercase tracking-wider block mb-1">Total Receivable</span>
+                    <h2 className="text-2xl font-black text-teal-700">Rs. {aggregates ? ((aggregates.expected || 0) + (aggregates.arrears || 0)).toLocaleString() : '0'}</h2>
+                    <p className="text-xs text-teal-400 mt-1">Expected revenue commitment</p>
                 </Card>
 
-                <Card className="p-5 border-emerald-100 bg-emerald-50/20" hover={false}>
-                    <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider block mb-1">Total Received</span>
-                    <h2 className="text-2xl font-black text-emerald-700">Rs. {aggregates ? (aggregates.received || 0).toLocaleString() : '0'}</h2>
-                    <p className="text-xs text-emerald-500 mt-1">Collected revenue</p>
+                <Card className="p-5 border-fuchsia-100 bg-fuchsia-50/20" hover={false}>
+                    <span className="text-[11px] font-bold text-fuchsia-500 uppercase tracking-wider block mb-1">Total Received</span>
+                    <h2 className="text-2xl font-black text-fuchsia-700">Rs. {aggregates ? (aggregates.received || 0).toLocaleString() : '0'}</h2>
+                    <p className="text-xs text-fuchsia-500 mt-1">Collected revenue</p>
                 </Card>
 
                 <Card className="p-5 border-rose-100 bg-rose-50/20" hover={false}>

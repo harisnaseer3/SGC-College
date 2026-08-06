@@ -352,14 +352,14 @@ const StudentLedgerList = () => {
                             <div className="text-[10px] text-slate-400">{fee.student?.academic_class?.name}</div>
                         </td>
                         <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">Rs. {Number(fee.total_amount).toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-emerald-600 text-right">Rs. {Number(fee.total_paid).toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-indigo-600 text-right">Rs. {Number(fee.total_balance).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-fuchsia-600 text-right">Rs. {Number(fee.total_paid).toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-rose-600 text-right">Rs. {Number(fee.total_balance).toLocaleString()}</td>
                         <td className="px-6 py-4 text-center">
                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                                 fee.aggregated_status === 'no fees' ? 'bg-slate-100 text-slate-600' :
-                                fee.aggregated_status === 'unpaid' ? 'bg-rose-100 text-rose-700' :
-                                fee.aggregated_status === 'partial' ? 'bg-amber-100 text-amber-700' :
-                                'bg-emerald-100 text-emerald-700'
+                                fee.aggregated_status === 'unpaid' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                fee.aggregated_status === 'partial' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                                'bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-200'
                             }`}>
                                 {fee.aggregated_status}
                             </span>

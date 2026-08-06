@@ -179,7 +179,9 @@ const FeeDefaultersReport = () => {
             <div className="flex items-center justify-between no-print">
                 <div>
                     <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Fee Defaulters Report</h1>
-                    <p className="text-slate-500 text-sm mt-1 font-medium font-sans">View and track students with outstanding fee balances.</p>
+                    <p className="text-slate-500 text-sm mt-1 font-medium font-sans">
+                        Track students with overdue fee balances whose payment due date has passed.
+                    </p>
                 </div>
                 <div className="flex gap-3">
                     <Button variant="secondary" onClick={handleExportExcel} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-800">
@@ -195,24 +197,26 @@ const FeeDefaultersReport = () => {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
-                <Card className="p-6 border-rose-100 bg-rose-50/20" hover={false}>
+                <Card className="p-6 border-rose-100 bg-rose-50/30" hover={false}>
                     <div className="flex justify-between items-center">
                         <div>
-                            <span className="text-xs font-bold text-rose-500 uppercase tracking-widest">Total Defaulters</span>
+                            <span className="text-xs font-bold text-rose-600 uppercase tracking-widest">Total Defaulter Students</span>
                             <h2 className="text-3xl font-black text-rose-700 mt-1">{data.length} Students</h2>
+                            <p className="text-[11px] font-semibold text-rose-500 mt-1">Students with fees past due date</p>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-6 border-slate-100 bg-slate-50/50" hover={false}>
+                <Card className="p-6 border-amber-100 bg-amber-50/30" hover={false}>
                     <div className="flex justify-between items-center">
                         <div>
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Overdue Outstanding</span>
-                            <h2 className="text-3xl font-black text-slate-800 mt-1">Rs. {Number(totalOverdueSum).toLocaleString()}</h2>
+                            <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Total Overdue Outstanding</span>
+                            <h2 className="text-3xl font-black text-amber-700 mt-1">Rs. {Number(totalOverdueSum).toLocaleString()}</h2>
+                            <p className="text-[11px] font-semibold text-amber-600 mt-1">Total amount past assigned due date</p>
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                        <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16V5" /></svg>
                         </div>
                     </div>
@@ -363,12 +367,12 @@ const FeeDefaultersReport = () => {
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-slate-100">
-                                                                {item.fees.map((fee, idx) => (
+                                                                 {item.fees.map((fee, idx) => (
                                                                     <tr key={idx} className="text-slate-600">
                                                                         <td className="py-2 font-semibold text-slate-800">{fee.fee_head}</td>
                                                                         <td className="py-2">{fee.due_date}</td>
                                                                         <td className="py-2 text-right">Rs. {fee.amount.toLocaleString()}</td>
-                                                                        <td className="py-2 text-right text-emerald-600">Rs. {fee.paid_amount.toLocaleString()}</td>
+                                                                        <td className="py-2 text-right text-fuchsia-600 font-bold">Rs. {fee.paid_amount.toLocaleString()}</td>
                                                                         <td className="py-2 text-right font-bold text-rose-600">Rs. {fee.balance_amount.toLocaleString()}</td>
                                                                     </tr>
                                                                 ))}
