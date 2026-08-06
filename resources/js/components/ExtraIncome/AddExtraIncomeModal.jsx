@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotifications } from '../../contexts/NotificationContext';
+import Modal from '../UI/Modal';
 
 const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isViewOnly = false }) => {
     const [categories, setCategories] = useState([]);
@@ -85,32 +86,28 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}></div>
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-                    <h3 className="text-lg font-bold text-slate-800">
-                        {isViewOnly ? 'View Income Record' : income ? 'Edit Income Record' : 'Record New Income'}
-                    </h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
+    const inputClasses = (hasError) => 
+        `w-full rounded-xl border ${hasError ? 'border-red-300' : 'border-slate-200'} px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-white transition-all shadow-sm`;
 
-                <form onSubmit={handleSubmit} className="p-6 flex-1 overflow-y-auto">
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={isViewOnly ? 'View Income Record' : income ? 'Edit Income Record' : 'Record New Income'}
+            size="lg"
+        >
+            <form onSubmit={handleSubmit}>
+                <div className="p-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="col-span-1 md:col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">
                                 Income Category <span className="text-red-500">*</span>
                             </label>
                             <select
                                 name="income_category_id"
                                 value={formData.income_category_id}
                                 onChange={handleChange}
-                                className={`w-full rounded-lg border ${errors.income_category_id ? 'border-red-300' : 'border-slate-300'} px-4 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-white`}
+                                className={inputClasses(errors.income_category_id)}
                                 required
                                 disabled={isViewOnly}
                             >
@@ -119,11 +116,11 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
-                            {errors.income_category_id && <p className="text-red-500 text-xs mt-1">{errors.income_category_id[0]}</p>}
+                            {errors.income_category_id && <p className="text-red-500 text-xs mt-1 font-medium">{errors.income_category_id[0]}</p>}
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">
                                 Amount <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -133,15 +130,15 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
                                 onChange={handleChange}
                                 step="0.01"
                                 min="0"
-                                className={`w-full rounded-lg border ${errors.amount ? 'border-red-300' : 'border-slate-300'} px-4 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none`}
+                                className={inputClasses(errors.amount)}
                                 required
                                 disabled={isViewOnly}
                             />
-                            {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount[0]}</p>}
+                            {errors.amount && <p className="text-red-500 text-xs mt-1 font-medium">{errors.amount[0]}</p>}
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">
                                 Date <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -149,22 +146,22 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
                                 name="date"
                                 value={formData.date}
                                 onChange={handleChange}
-                                className={`w-full rounded-lg border ${errors.date ? 'border-red-300' : 'border-slate-300'} px-4 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none`}
+                                className={inputClasses(errors.date)}
                                 required
                                 disabled={isViewOnly}
                             />
-                            {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date[0]}</p>}
+                            {errors.date && <p className="text-red-500 text-xs mt-1 font-medium">{errors.date[0]}</p>}
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">
                                 Payment Method <span className="text-red-500">*</span>
                             </label>
                             <select
                                 name="payment_method"
                                 value={formData.payment_method}
                                 onChange={handleChange}
-                                className={`w-full rounded-lg border ${errors.payment_method ? 'border-red-300' : 'border-slate-300'} px-4 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-white`}
+                                className={inputClasses(errors.payment_method)}
                                 required
                                 disabled={isViewOnly}
                             >
@@ -173,18 +170,18 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
                                 <option value="Cheque">Cheque</option>
                                 <option value="Online">Online</option>
                             </select>
-                            {errors.payment_method && <p className="text-red-500 text-xs mt-1">{errors.payment_method[0]}</p>}
+                            {errors.payment_method && <p className="text-red-500 text-xs mt-1 font-medium">{errors.payment_method[0]}</p>}
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">
                                 Program / Class <span className="text-red-500">*</span>
                             </label>
                             <select
                                 name="program_id"
                                 value={formData.program_id}
                                 onChange={handleChange}
-                                className={`w-full rounded-lg border ${errors.program_id ? 'border-red-300' : 'border-slate-300'} px-4 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-white`}
+                                className={inputClasses(errors.program_id)}
                                 required
                                 disabled={isViewOnly}
                             >
@@ -193,11 +190,11 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
                                     <option key={p.id} value={p.id}>{p.name}</option>
                                 ))}
                             </select>
-                            {errors.program_id && <p className="text-red-500 text-xs mt-1">{errors.program_id[0]}</p>}
+                            {errors.program_id && <p className="text-red-500 text-xs mt-1 font-medium">{errors.program_id[0]}</p>}
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">
                                 Form Number
                             </label>
                             <input
@@ -205,13 +202,13 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
                                 name="form_number"
                                 value={formData.form_number}
                                 readOnly
-                                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-slate-500 outline-none"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500 outline-none shadow-sm"
                                 placeholder={income ? formData.form_number : "Auto-generated on save"}
                             />
                         </div>
 
                         <div className="col-span-1 md:col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">
                                 Remarks
                             </label>
                             <textarea
@@ -219,70 +216,70 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
                                 value={formData.remarks}
                                 onChange={handleChange}
                                 rows="2"
-                                className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                                className={inputClasses(false)}
                                 placeholder="Optional remarks..."
                                 disabled={isViewOnly}
                             ></textarea>
                         </div>
                     </div>
+                </div>
 
-                    <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
-                        {isViewOnly ? (
-                            <>
-                                {income && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => window.open(`/extra-income/receipt/${income.id}`, '_blank')}
-                                            className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
-                                        >
-                                            <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                            </svg>
-                                            Print Receipt
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => window.open(`/extra-income/receipt/${income.id}?download=1`, '_blank')}
-                                            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-1.5"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                            </svg>
-                                            Download Receipt
-                                        </button>
-                                    </>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={onClose}
-                                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-                                >
-                                    Close
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={onClose}
-                                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isViewOnly || isSubmitting}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                                >
-                                    {isSubmitting ? 'Saving...' : 'Save Record'}
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </form>
-            </div>
-        </div>
+                <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 rounded-b-2xl">
+                    {isViewOnly ? (
+                        <>
+                            {income && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => window.open(`/extra-income/receipt/${income.id}`, '_blank')}
+                                        className="px-5 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2 shadow-sm"
+                                    >
+                                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                        Print Receipt
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => window.open(`/extra-income/receipt/${income.id}?download=1`, '_blank')}
+                                        className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        Download Receipt
+                                    </button>
+                                </>
+                            )}
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                                Close
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isViewOnly || isSubmitting}
+                                className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                            >
+                                {isSubmitting ? 'Saving...' : 'Save Record'}
+                            </button>
+                        </>
+                    )}
+                </div>
+            </form>
+        </Modal>
     );
 };
 
