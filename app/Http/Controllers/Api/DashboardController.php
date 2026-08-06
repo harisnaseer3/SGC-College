@@ -19,7 +19,7 @@ class DashboardController extends BaseController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:view_stats', only: ['stats']),
+            new Middleware('permission:view_stats|view_dashboard|view_admissions', only: ['stats']),
         ];
     }
 

@@ -36,7 +36,7 @@ class PermissionController extends BaseController implements HasMiddleware
                     // special handling if needed, they'll just group under 'student_fees' which is fine
                 }
                 
-                // Map 'pay_student_fees' etc correctly
+                // Map specific permissions to appropriate module groups
                 if ($permission->name === 'pay_student_fees') $module = 'student_fees';
                 if ($permission->name === 'split_student_fees') $module = 'student_fees';
                 if ($permission->name === 'apply_fines') $module = 'student_fees';
@@ -44,6 +44,7 @@ class PermissionController extends BaseController implements HasMiddleware
                 if ($permission->name === 'change_admission_status') $module = 'admissions';
                 if ($permission->name === 'import_admissions') $module = 'admissions';
                 if ($permission->name === 'view_stats') $module = 'dashboard';
+                if ($permission->name === 'change_expense_status') $module = 'expenses';
 
                 if (!isset($grouped[$module])) {
                     $grouped[$module] = [];
