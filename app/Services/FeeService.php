@@ -709,6 +709,7 @@ class FeeService
                 'payment_date' => $details['payment_date'] ?? now(),
                 'receipt_number' => $receiptNumber,
                 'received_by' => auth('api')->check() ? auth('api')->id() : (auth()->check() ? auth()->id() : 1),
+                'attachment' => $details['attachment'] ?? null,
             ]);
 
             // 2. Distribute among pending fees

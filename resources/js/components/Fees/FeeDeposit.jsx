@@ -21,7 +21,8 @@ const FeeDeposit = () => {
         payment_method: 'Bank Transfer',
         reference_no: '',
         remarks: '',
-        selected_bank_account_id: ''
+        selected_bank_account_id: '',
+        attachment: null
     });
 
     // Fetch students based on search
@@ -114,11 +115,20 @@ const FeeDeposit = () => {
         }
 
         try {
-            const response = await axios.post('/api/student-fees/deposit', {
-                student_id: selectedStudent.student_id,
-                voucher_number: searchMode === 'voucher' ? voucherNo : null,
-                ...formData,
-                remarks: finalRemarks
+            const data = new FormData();
+            data.append('student_id', selectedStudent.student_id);
+            if (searchMode === 'voucher' && voucherNo) {
+                data.append('voucher_number', voucherNo);
+            }
+            data.append('amount', formData.amount);
+            data.append('payment_date', formData.payment_date);
+            data.append('payment_method', formData.payment_method);
+            if (formData.reference_no) data.append('reference_no', formData.reference_no);
+            if (finalRemarks) data.append('remarks', finalRemarks);
+            if (formData.attachment) data.append('attachment', formData.attachment);
+
+            const response = await axios.post('/api/student-fees/deposit', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
             showSuccess(`Payment of Rs. ${Number(formData.amount).toLocaleString()} recorded successfully. Receipt: ${response.data.data.receipt_number}`);
             resetForm();
@@ -140,7 +150,8 @@ const FeeDeposit = () => {
             payment_method: 'Bank Transfer',
             reference_no: '',
             remarks: '',
-            selected_bank_account_id: ''
+            selected_bank_account_id: '',
+            attachment: null
         });
     };
 
@@ -514,6 +525,76 @@ const FeeDeposit = () => {
                                 ></textarea>
                             </div>
 
+                            {/* Audit Fee Receipt Attachment Upload */}
+                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                        </svg>
+                                        Audit Receipt Attachment <span className="text-rose-600 font-extrabold">*</span>
+                                    </label>
+                                    <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100 uppercase">Required</span>
+                                </div>
+
+                                <div className="relative">
+                                    <input 
+                                        type="file"
+                                        id="fee-receipt-attachment"
+                                        accept="image/jpeg,image/png,image/jpg,application/pdf"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                if (file.size > 5 * 1024 * 1024) {
+                                                    showError('File size exceeds 5MB limit.');
+                                                    return;
+                                                }
+                                                setFormData({ ...formData, attachment: file });
+                                            }
+                                        }}
+                                    />
+                                    
+                                    {formData.attachment ? (
+                                        <div className="flex items-center justify-between p-3.5 bg-emerald-50/70 border border-emerald-300 rounded-xl text-xs">
+                                            <div className="flex items-center gap-3 truncate">
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
+                                                    {formData.attachment.name.endsWith('.pdf') ? 'PDF' : 'IMG'}
+                                                </div>
+                                                <div className="truncate">
+                                                    <p className="font-bold text-slate-900 truncate">{formData.attachment.name}</p>
+                                                    <p className="text-[10px] font-medium text-slate-500">{(formData.attachment.size / 1024).toFixed(1)} KB</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setFormData({ ...formData, attachment: null });
+                                                    const input = document.getElementById('fee-receipt-attachment');
+                                                    if (input) input.value = '';
+                                                }}
+                                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                title="Remove File"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <label 
+                                            htmlFor="fee-receipt-attachment"
+                                            className="flex items-center justify-center gap-2 p-3.5 border-2 border-dashed border-rose-300 hover:border-indigo-500 bg-white hover:bg-indigo-50/30 rounded-xl cursor-pointer transition-all text-xs font-bold text-slate-700 hover:text-indigo-600"
+                                        >
+                                            <svg className="w-4 h-4 text-rose-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                            Upload Scanned Fee Receipt / Bank Slip (Mandatory)
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+
                             {/* Summary Box */}
                             {selectedStudent && formData.amount && (
                                 <div className="p-4 bg-slate-900 text-white rounded-2xl flex items-center justify-between text-xs">
@@ -532,7 +613,7 @@ const FeeDeposit = () => {
                             <button 
                                 type="submit" 
                                 className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-base rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2"
-                                disabled={submitting || !selectedStudent || !formData.amount}
+                                disabled={submitting || !selectedStudent || !formData.amount || !formData.attachment}
                             >
                                 {submitting ? (
                                     <>

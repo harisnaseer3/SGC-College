@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 
 class OrganizationController extends BaseController implements HasMiddleware
 {
+    use \App\Traits\CompressesImages;
 
     public static function middleware(): array
     {
@@ -47,7 +48,7 @@ class OrganizationController extends BaseController implements HasMiddleware
             $data = $request->validated();
 
             if ($request->hasFile('logo')) {
-                $path = $request->file('logo')->store('logos/organizations', 'public');
+                $path = $this->compressAndStoreFile($request->file('logo'), 'logos/organizations');
                 $data['logo_url'] = '/storage/' . $path;
             }
 
@@ -83,7 +84,7 @@ class OrganizationController extends BaseController implements HasMiddleware
                     Storage::disk('public')->delete($oldPath);
                 }
 
-                $path = $request->file('logo')->store('logos/organizations', 'public');
+                $path = $this->compressAndStoreFile($request->file('logo'), 'logos/organizations');
                 $data['logo_url'] = '/storage/' . $path;
             }
 

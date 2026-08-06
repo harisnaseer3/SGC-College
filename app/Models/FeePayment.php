@@ -21,7 +21,17 @@ class FeePayment extends Model
         'receipt_number',
         'voucher_number',
         'received_by',
+        'attachment',
     ];
+
+    protected $appends = [
+        'attachment_url',
+    ];
+
+    public function getAttachmentUrlAttribute()
+    {
+        return $this->attachment ? asset('storage/' . $this->attachment) : null;
+    }
 
     protected $casts = [
         'payment_date' => 'date',

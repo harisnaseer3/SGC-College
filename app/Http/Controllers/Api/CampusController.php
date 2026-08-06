@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 
 class CampusController extends BaseController implements HasMiddleware
 {
+    use \App\Traits\CompressesImages;
 
     public static function middleware(): array
     {
@@ -66,7 +67,7 @@ class CampusController extends BaseController implements HasMiddleware
             $data = $request->validated();
 
             if ($request->hasFile('logo')) {
-                $path = $request->file('logo')->store('logos/campuses', 'public');
+                $path = $this->compressAndStoreFile($request->file('logo'), 'logos/campuses');
                 $data['logo_url'] = '/storage/' . $path;
             }
 
@@ -116,7 +117,7 @@ class CampusController extends BaseController implements HasMiddleware
                     Storage::disk('public')->delete($oldPath);
                 }
 
-                $path = $request->file('logo')->store('logos/campuses', 'public');
+                $path = $this->compressAndStoreFile($request->file('logo'), 'logos/campuses');
                 $data['logo_url'] = '/storage/' . $path;
             }
 

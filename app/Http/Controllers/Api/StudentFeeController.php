@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class StudentFeeController extends BaseController implements HasMiddleware
 {
+    use \App\Traits\CompressesImages;
 
     public static function middleware(): array
     {
@@ -443,7 +444,17 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 'payment_method' => 'required|string',
                 'reference_no' => 'nullable|string',
                 'remarks' => 'nullable|string',
+                'attachment' => 'required|file|mimes:jpeg,jpg,png,pdf|max:5120',
+            ], [
+                'attachment.required' => 'Audit receipt attachment is required for fee deposit.',
+                'attachment.mimes' => 'Receipt attachment must be a JPEG, PNG, or PDF file.',
+                'attachment.max' => 'Receipt attachment file size must not exceed 5MB.',
             ]);
+
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $attachmentPath = $this->compressAndStoreFile($request->file('attachment'), 'receipts');
+            }
 
             $receiptNumber = $this->feeService->recordPayment(
                 $request->student_id, 
@@ -453,7 +464,8 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     'payment_method' => $request->payment_method,
                     'transaction_id' => $request->reference_no,
                     'remarks' => $request->remarks,
-                    'voucher_number' => $request->voucher_number
+                    'voucher_number' => $request->voucher_number,
+                    'attachment' => $attachmentPath,
                 ]
             );
 

@@ -57,37 +57,39 @@ const FeePaymentReceipt = () => {
 
     return (
         <div className="bg-white min-h-screen">
-            <div className="print:hidden p-4 bg-slate-800 text-white flex justify-between items-center sticky top-0 z-50">
-                <div className="flex items-center gap-4">
-                    <button 
-                        onClick={() => navigate(-1)}
-                        className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                    >
-                        ← Back
-                    </button>
-                    <h1 className="font-bold">Fee Receipt</h1>
+            {searchParams.get('embed') !== '1' && (
+                <div className="print:hidden p-4 bg-slate-800 text-white flex justify-between items-center sticky top-0 z-50">
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={() => navigate(-1)}
+                            className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                        >
+                            ← Back
+                        </button>
+                        <h1 className="font-bold">Fee Receipt</h1>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={handlePrint}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg font-bold transition-all shadow flex items-center gap-2 text-sm"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            Print Receipt
+                        </button>
+                        <button 
+                            onClick={handleDownload}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg font-bold transition-all shadow flex items-center gap-2 text-sm"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download Receipt
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={handlePrint}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg font-bold transition-all shadow flex items-center gap-2 text-sm"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                        </svg>
-                        Print Receipt
-                    </button>
-                    <button 
-                        onClick={handleDownload}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg font-bold transition-all shadow flex items-center gap-2 text-sm"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Download Receipt
-                    </button>
-                </div>
-            </div>
+            )}
 
             <div className="max-w-2xl mx-auto my-4 p-6 bg-white border border-slate-200 shadow-sm print:shadow-none print:border-0 rounded-xl print:rounded-none print:m-0 print:p-2" id="receipt-content">
                 <div className="text-center mb-4 pb-4 border-b border-slate-200">

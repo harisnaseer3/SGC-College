@@ -13,6 +13,9 @@ const FeeReceiptList = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedReceiptIds, setSelectedReceiptIds] = useState([]);
     const [programs, setPrograms] = useState([]);
+    const [previewAttachment, setPreviewAttachment] = useState(null);
+    const [previewPrintReceipt, setPreviewPrintReceipt] = useState(null);
+    const printIframeRef = useRef(null);
     const [filters, setFilters] = useState({
         start_date: '',
         end_date: '',
@@ -32,6 +35,18 @@ const FeeReceiptList = () => {
         };
         fetchMetadata();
     }, []);
+
+    const handleDirectDownload = (id) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = `/fees/receipt/${id}?download=1&embed=1`;
+        document.body.appendChild(iframe);
+        setTimeout(() => {
+            if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+        }, 3000);
+    };
 
     // Reset selection on filter or page change
     useEffect(() => {
@@ -279,17 +294,28 @@ const FeeReceiptList = () => {
                                         <td className="px-6 py-4 text-emerald-600 font-black text-right">Rs. {Number(payment.amount).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex items-center justify-center gap-2">
+                                                {payment.attachment_url && (
+                                                    <button 
+                                                        onClick={() => setPreviewAttachment(payment)}
+                                                        className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-all" 
+                                                        title="View Uploaded Audit Receipt Attachment (Modal)"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                                        </svg>
+                                                    </button>
+                                                )}
                                                 <button 
-                                                    onClick={() => window.open(`/fees/receipt/${payment.id}`, '_blank')}
+                                                    onClick={() => setPreviewPrintReceipt({ id: payment.id, receiptNumber: payment.receipt_number })}
                                                     className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 
-                                                    title="Print Receipt"
+                                                    title="Print Fee Receipt (Modal Preview)"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                                 </button>
                                                 <button 
-                                                    onClick={() => window.open(`/fees/receipt/${payment.id}?download=1`, '_blank')}
+                                                    onClick={() => handleDirectDownload(payment.id)}
                                                     className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" 
-                                                    title="Download Receipt"
+                                                    title="Direct Download Fee Receipt"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                                 </button>
@@ -325,6 +351,151 @@ const FeeReceiptList = () => {
                     />
                 )}
             </Card>
+
+            {/* Attachment Preview Modal */}
+            {previewAttachment && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shadow-md">
+                                    📎
+                                </div>
+                                <div>
+                                    <h3 className="font-extrabold text-sm text-white">Audit Receipt Attachment</h3>
+                                    <p className="text-xs text-slate-300">
+                                        Receipt #{previewAttachment.receipt_number} &bull; {previewAttachment.student?.first_name} {previewAttachment.student?.last_name}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <a 
+                                    href={previewAttachment.attachment_url} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    download
+                                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 rounded-xl transition-all flex items-center gap-1.5"
+                                >
+                                    <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Download File
+                                </a>
+                                <button 
+                                    onClick={() => setPreviewAttachment(null)}
+                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                                    title="Close Modal"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 bg-slate-100 flex-1 overflow-auto flex items-center justify-center min-h-[400px]">
+                            {previewAttachment.attachment_url?.endsWith('.pdf') ? (
+                                <iframe 
+                                    src={previewAttachment.attachment_url} 
+                                    className="w-full h-[65vh] rounded-2xl border border-slate-300 shadow-inner bg-white"
+                                    title="PDF Receipt Attachment"
+                                />
+                            ) : (
+                                <div className="max-h-[65vh] flex items-center justify-center overflow-auto p-2">
+                                    <img 
+                                        src={previewAttachment.attachment_url} 
+                                        alt={`Audit receipt for ${previewAttachment.receipt_number}`}
+                                        className="max-h-[65vh] max-w-full object-contain rounded-2xl shadow-xl border border-slate-200 bg-white"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+                            <span>Amount: <strong className="text-emerald-600 font-extrabold text-sm">Rs. {Number(previewAttachment.amount).toLocaleString()}</strong></span>
+                            <span>Payment Date: <strong>{new Date(previewAttachment.payment_date).toLocaleDateString('en-GB')}</strong></span>
+                            <button 
+                                onClick={() => setPreviewAttachment(null)}
+                                className="px-4 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Receipt Print & Download Modal */}
+            {previewPrintReceipt && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shadow-md">
+                                    🖨️
+                                </div>
+                                <div>
+                                    <h3 className="font-extrabold text-sm text-white">Fee Receipt Preview</h3>
+                                    <p className="text-xs text-slate-300">
+                                        Receipt #{previewPrintReceipt.receiptNumber || previewPrintReceipt.id}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => {
+                                        if (printIframeRef.current) {
+                                            printIframeRef.current.contentWindow.print();
+                                        }
+                                    }}
+                                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-xl transition-all shadow flex items-center gap-1.5"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print Receipt
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        if (printIframeRef.current) {
+                                            printIframeRef.current.contentWindow.print();
+                                        }
+                                    }}
+                                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white rounded-xl transition-all shadow flex items-center gap-1.5"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Download PDF
+                                </button>
+                                <button 
+                                    onClick={() => setPreviewPrintReceipt(null)}
+                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all ml-2"
+                                    title="Close Modal"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Body (Iframe of Receipt) */}
+                        <div className="p-4 bg-slate-100 flex-1 overflow-hidden">
+                            <iframe 
+                                ref={printIframeRef}
+                                src={`/fees/receipt/${previewPrintReceipt.id}?embed=1`}
+                                className="w-full h-[70vh] rounded-2xl border border-slate-200 shadow-lg bg-white"
+                                title="Official Fee Receipt"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
