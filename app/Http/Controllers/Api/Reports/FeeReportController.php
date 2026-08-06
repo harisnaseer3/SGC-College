@@ -15,7 +15,7 @@ class FeeReportController extends BaseController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:view_fee_reports', only: ['defaulters', 'collection', 'studentSummary']),
+            (new Middleware('permission:view_fee_reports'))->only(['defaulters', 'collection', 'studentSummary']),
         ];
     }
 
@@ -200,8 +200,11 @@ class FeeReportController extends BaseController implements HasMiddleware
             }
 
             $students = $query->get()->map(function($student) {
-                $fees = $student->studentFees;
-                $totalFee = $fees->sum('amount');
+                // Exclude carried_forward fees to prevent double-counting with consolidated Arrears
+                $fees = $student->studentFees->filter(fn($f) => $f->status !== 'carried_forward');
+
+                // Total Fee is Net Payable = (Base Amount + Fine) - Discount
+                $totalFee = $fees->sum(fn($f) => ($f->amount + $f->fine_amount) - $f->discount_amount);
                 $paidFee = $fees->sum('paid_amount');
                 $remainingFee = $fees->sum('balance_amount');
 
@@ -232,11 +235,11 @@ class FeeReportController extends BaseController implements HasMiddleware
                     'fees' => $fees->map(fn($f) => [
                         'fee_head' => $f->feeHead->name ?? 'N/A',
                         'due_date' => $f->due_date ? $f->due_date->format('d M Y') : 'N/A',
-                        'amount' => (float)$f->amount,
+                        'amount' => (float)(($f->amount + $f->fine_amount) - $f->discount_amount),
                         'paid_amount' => (float)$f->paid_amount,
                         'balance_amount' => (float)$f->balance_amount,
                         'status' => $f->status
-                    ])
+                    ])->values()
                 ];
             });
 
