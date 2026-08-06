@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
+import Pagination from '../UI/Pagination';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
@@ -10,6 +11,8 @@ const FeeCollectionReport = () => {
     const { selectedCampus, selectedOrganization } = useAuth();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage, setPerPage] = useState(() => Number(localStorage.getItem('per_page')) || 25);
     const [totalAmount, setTotalAmount] = useState(0);
     const [byMethod, setByMethod] = useState({});
     
@@ -43,6 +46,7 @@ const FeeCollectionReport = () => {
                 setData(response.data.data.payments || []);
                 setTotalAmount(response.data.data.total_amount || 0);
                 setByMethod(response.data.data.by_method || {});
+                setCurrentPage(1);
             }
         } catch (err) {
             console.error('Failed to fetch collection report:', err);
@@ -328,7 +332,7 @@ const FeeCollectionReport = () => {
                                     </td>
                                 </tr>
                             ) : data.length > 0 ? (
-                                data.map((item) => (
+                                data.slice((currentPage - 1) * perPage, currentPage * perPage).map((item) => (
                                     <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 py-4 font-black text-slate-900 text-sm">
                                             {item.receipt_number}
@@ -355,7 +359,7 @@ const FeeCollectionReport = () => {
                                         <td className="px-6 py-4 text-slate-700 text-sm font-medium">
                                             {item.received_by}
                                         </td>
-                                        <td className="px-6 py-4 text-emerald-600 font-black text-right text-sm">
+                                         <td className="px-6 py-4 text-fuchsia-600 font-black text-right text-sm">
                                             Rs. {Number(item.amount).toLocaleString()}
                                         </td>
                                     </tr>
@@ -369,12 +373,12 @@ const FeeCollectionReport = () => {
                             )}
                         </tbody>
                         {data.length > 0 && (
-                            <tfoot className="bg-slate-50 border-t-2 border-emerald-200">
+                            <tfoot className="bg-slate-50 border-t-2 border-fuchsia-200">
                                 <tr>
                                     <td colSpan="6" className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">
                                         Total Collection Amount
                                     </td>
-                                    <td className="px-6 py-4 text-emerald-700 font-black text-right text-sm">
+                                    <td className="px-6 py-4 text-fuchsia-700 font-black text-right text-sm">
                                         Rs. {Number(totalAmount).toLocaleString()}
                                     </td>
                                 </tr>
@@ -382,6 +386,21 @@ const FeeCollectionReport = () => {
                         )}
                     </table>
                 </div>
+
+                {data.length > 0 && (
+                    <div className="no-print">
+                        <Pagination 
+                            currentPage={currentPage}
+                            totalItems={data.length}
+                            itemsPerPage={perPage}
+                            onPageChange={(page) => setCurrentPage(page)}
+                            onPerPageChange={(newPerPage) => {
+                                setPerPage(newPerPage);
+                                setCurrentPage(1);
+                            }}
+                        />
+                    </div>
+                )}
             </Card>
 
             {/* Print Footer */}

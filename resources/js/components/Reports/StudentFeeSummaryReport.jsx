@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
+import Pagination from '../UI/Pagination';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
@@ -10,6 +11,8 @@ const StudentFeeSummaryReport = () => {
     const { selectedCampus, selectedOrganization } = useAuth();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage, setPerPage] = useState(() => Number(localStorage.getItem('per_page')) || 25);
     const [summary, setSummary] = useState({
         total_students: 0,
         grand_total_fee: 0,
@@ -58,9 +61,11 @@ const StudentFeeSummaryReport = () => {
                 setSummary(response.data.data.summary || {
                     total_students: 0,
                     grand_total_fee: 0,
+                    grand_discount_fee: 0,
                     grand_paid_fee: 0,
                     grand_remaining_fee: 0
                 });
+                setCurrentPage(1);
             }
         } catch (err) {
             console.error('Failed to fetch student fee summary report:', err);
@@ -382,7 +387,7 @@ const StudentFeeSummaryReport = () => {
                                     </td>
                                 </tr>
                             ) : data.length > 0 ? (
-                                data.map((item) => (
+                                data.slice((currentPage - 1) * perPage, currentPage * perPage).map((item) => (
                                     <React.Fragment key={item.id}>
                                         <tr className="hover:bg-slate-50/50 transition-colors">
                                             <td className="px-5 py-3.5">
@@ -397,13 +402,13 @@ const StudentFeeSummaryReport = () => {
                                                 <div className="text-sm font-semibold text-slate-800">{item.program}</div>
                                                 <div className="text-[10px] text-slate-400 font-bold uppercase">{item.batch} • {item.class_semester}</div>
                                             </td>
-                                            <td className="px-5 py-3.5 text-right font-bold text-slate-900 text-sm">
+                                            <td className="px-5 py-3.5 text-right font-bold text-indigo-700 text-sm">
                                                 Rs. {Number(item.total_fee).toLocaleString()}
                                             </td>
                                             <td className="px-5 py-3.5 text-right font-bold text-amber-600 text-sm">
                                                 Rs. {Number(item.discount_fee || 0).toLocaleString()}
                                             </td>
-                                            <td className="px-5 py-3.5 text-right font-bold text-emerald-600 text-sm">
+                                            <td className="px-5 py-3.5 text-right font-bold text-fuchsia-600 text-sm">
                                                 Rs. {Number(item.paid_fee).toLocaleString()}
                                             </td>
                                             <td className="px-5 py-3.5 text-right font-bold text-rose-600 text-sm">
@@ -411,7 +416,7 @@ const StudentFeeSummaryReport = () => {
                                             </td>
                                             <td className="px-5 py-3.5 text-center">
                                                 {item.status === 'paid' && (
-                                                    <span className="px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wider">
+                                                    <span className="px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-fuchsia-100 text-fuchsia-800 uppercase tracking-wider">
                                                         Paid
                                                     </span>
                                                 )}
@@ -466,11 +471,11 @@ const StudentFeeSummaryReport = () => {
                                                                         <td className="py-1.5">{fee.due_date}</td>
                                                                         <td className="py-1.5 text-right font-bold text-slate-800">Rs. {fee.amount.toLocaleString()}</td>
                                                                         <td className="py-1.5 text-right text-amber-600 font-semibold">Rs. {(fee.discount_amount || 0).toLocaleString()}</td>
-                                                                        <td className="py-1.5 text-right text-emerald-600">Rs. {fee.paid_amount.toLocaleString()}</td>
+                                                                        <td className="py-1.5 text-right text-fuchsia-600 font-bold">Rs. {fee.paid_amount.toLocaleString()}</td>
                                                                         <td className="py-1.5 text-right font-bold text-rose-600">Rs. {fee.balance_amount.toLocaleString()}</td>
                                                                         <td className="py-1.5 text-center">
                                                                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                                                                                fee.status === 'paid' ? 'bg-emerald-50 text-emerald-700' :
+                                                                                fee.status === 'paid' ? 'bg-fuchsia-50 text-fuchsia-700' :
                                                                                 fee.status === 'partial' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
                                                                             }`}>
                                                                                 {fee.status}
@@ -488,7 +493,7 @@ const StudentFeeSummaryReport = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="8" className="px-6 py-20 text-center">
+                                    <td colSpan="9" className="px-6 py-20 text-center">
                                         <div className="text-slate-400 italic text-sm">No student fee records found matching your filters.</div>
                                     </td>
                                 </tr>
@@ -503,7 +508,10 @@ const StudentFeeSummaryReport = () => {
                                     <td className="px-5 py-4 text-right font-black text-indigo-700 text-sm">
                                         Rs. {Number(summary.grand_total_fee).toLocaleString()}
                                     </td>
-                                    <td className="px-5 py-4 text-right font-black text-emerald-700 text-sm">
+                                    <td className="px-5 py-4 text-right font-black text-amber-700 text-sm">
+                                        Rs. {Number(summary.grand_discount_fee || 0).toLocaleString()}
+                                    </td>
+                                    <td className="px-5 py-4 text-right font-black text-fuchsia-700 text-sm">
                                         Rs. {Number(summary.grand_paid_fee).toLocaleString()}
                                     </td>
                                     <td className="px-5 py-4 text-right font-black text-rose-700 text-sm">
@@ -515,6 +523,21 @@ const StudentFeeSummaryReport = () => {
                         )}
                     </table>
                 </div>
+
+                {data.length > 0 && (
+                    <div className="no-print">
+                        <Pagination 
+                            currentPage={currentPage}
+                            totalItems={data.length}
+                            itemsPerPage={perPage}
+                            onPageChange={(page) => setCurrentPage(page)}
+                            onPerPageChange={(newPerPage) => {
+                                setPerPage(newPerPage);
+                                setCurrentPage(1);
+                            }}
+                        />
+                    </div>
+                )}
             </Card>
 
             {/* Printable Footer */}

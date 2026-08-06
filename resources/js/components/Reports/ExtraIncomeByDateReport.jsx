@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import DataTable from '../UI/DataTable';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
+import Pagination from '../UI/Pagination';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
@@ -11,6 +12,8 @@ const ExtraIncomeByDateReport = () => {
     const { selectedCampus, selectedOrganization } = useAuth();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage, setPerPage] = useState(() => Number(localStorage.getItem('per_page')) || 25);
     const [total, setTotal] = useState(0);
     const [campusDetails, setCampusDetails] = useState(null);
     const [orgDetails, setOrgDetails] = useState(null);
@@ -30,6 +33,7 @@ const ExtraIncomeByDateReport = () => {
             if (response.data.success) {
                 setData(response.data.data.incomes || []);
                 setTotal(response.data.data.total || 0);
+                setCurrentPage(1);
             }
         } catch (err) {
             console.error('Failed to fetch report:', err);
@@ -115,8 +119,8 @@ const ExtraIncomeByDateReport = () => {
             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                 {String(item?.collected_by?.name || '—')}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">
-                {Number(item?.amount || 0).toLocaleString()}
+            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-fuchsia-600 text-right">
+                Rs. {Number(item?.amount || 0).toLocaleString()}
             </td>
         </React.Fragment>
     );
@@ -299,16 +303,16 @@ const ExtraIncomeByDateReport = () => {
                                 </tr>
                             ) : (
                                 <>
-                                    {data.map((item, index) => (
+                                    {data.slice((currentPage - 1) * perPage, currentPage * perPage).map((item, index) => (
                                         <tr key={item.id || index} className="hover:bg-slate-50/50 transition-colors">
-                                            {renderRow(item, index)}
+                                            {renderRow(item, (currentPage - 1) * perPage + index)}
                                         </tr>
                                     ))}
                                     <tr className="bg-slate-50 print:bg-transparent border-t-2 border-slate-300">
                                         <td colSpan={columns.length - 1} className="py-4 px-6 text-right font-bold text-slate-900 text-sm uppercase">
                                             Total Income
                                         </td>
-                                        <td className="py-4 px-6 text-right font-black text-indigo-700 text-lg">
+                                        <td className="py-4 px-6 text-right font-black text-fuchsia-700 text-lg">
                                             Rs. {Number(total).toLocaleString()}
                                         </td>
                                     </tr>
@@ -317,6 +321,21 @@ const ExtraIncomeByDateReport = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {data.length > 0 && (
+                    <div className="no-print">
+                        <Pagination 
+                            currentPage={currentPage}
+                            totalItems={data.length}
+                            itemsPerPage={perPage}
+                            onPageChange={(page) => setCurrentPage(page)}
+                            onPerPageChange={(newPerPage) => {
+                                setPerPage(newPerPage);
+                                setCurrentPage(1);
+                            }}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Print Footer */}

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
+import Pagination from '../UI/Pagination';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
@@ -10,6 +11,8 @@ const FeeDefaultersReport = () => {
     const { selectedCampus, selectedOrganization } = useAuth();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [perPage, setPerPage] = useState(() => Number(localStorage.getItem('per_page')) || 25);
     const [totalOverdueSum, setTotalOverdueSum] = useState(0);
     
     const [programs, setPrograms] = useState([]);
@@ -49,6 +52,7 @@ const FeeDefaultersReport = () => {
             if (response.data.success) {
                 setData(response.data.data.defaulters || []);
                 setTotalOverdueSum(response.data.data.total_overdue_sum || 0);
+                setCurrentPage(1);
             }
         } catch (err) {
             console.error('Failed to fetch defaulters report:', err);
@@ -321,7 +325,7 @@ const FeeDefaultersReport = () => {
                                     </td>
                                 </tr>
                             ) : data.length > 0 ? (
-                                data.map((item) => (
+                                data.slice((currentPage - 1) * perPage, currentPage * perPage).map((item) => (
                                     <React.Fragment key={item.id}>
                                         <tr className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-6 py-4">
@@ -407,6 +411,21 @@ const FeeDefaultersReport = () => {
                         )}
                     </table>
                 </div>
+
+                {data.length > 0 && (
+                    <div className="no-print">
+                        <Pagination 
+                            currentPage={currentPage}
+                            totalItems={data.length}
+                            itemsPerPage={perPage}
+                            onPageChange={(page) => setCurrentPage(page)}
+                            onPerPageChange={(newPerPage) => {
+                                setPerPage(newPerPage);
+                                setCurrentPage(1);
+                            }}
+                        />
+                    </div>
+                )}
             </Card>
 
             {/* Print Footer */}

@@ -347,9 +347,9 @@ const VoucherList = () => {
                                                 {new Date(v.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </td>
                                             <td className="px-6 py-4 text-slate-600 font-black text-right">Rs. {voucherAmount.toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-rose-500 font-black text-right">Rs. {arrears.toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-indigo-600 font-black text-right">Rs. {receivable.toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-emerald-600 font-black text-right">Rs. {received.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-amber-600 font-black text-right">Rs. {arrears.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-teal-600 font-black text-right">Rs. {receivable.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-fuchsia-600 font-black text-right">Rs. {received.toLocaleString()}</td>
                                             <td className="px-6 py-4 text-rose-600 font-black text-right">Rs. {balance.toLocaleString()}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2.5 py-1 border rounded-md text-[10px] font-black uppercase tracking-wider ${getStatusColor(v.status)}`}>
@@ -386,16 +386,16 @@ const VoucherList = () => {
                             )}
                         </tbody>
                         {aggregates && (
-                            <tfoot className="bg-emerald-50 border-t-2 border-emerald-200">
+                            <tfoot className="bg-slate-50 border-t-2 border-slate-200">
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-4 text-right text-xs font-black text-emerald-900 uppercase tracking-widest">
+                                    <td colSpan="5" className="px-6 py-4 text-right text-xs font-black text-slate-600 uppercase tracking-widest">
                                         Total Amounts for Current Filter
                                     </td>
-                                    <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.expected.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-rose-800 font-black text-right">Rs. {aggregates.arrears.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {(aggregates.expected + aggregates.arrears).toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.received.toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-emerald-800 font-black text-right">Rs. {aggregates.balance.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-slate-800 font-black text-right">Rs. {aggregates.expected.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-amber-600 font-black text-right">Rs. {aggregates.arrears.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-teal-600 font-black text-right">Rs. {(aggregates.expected + aggregates.arrears).toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-fuchsia-600 font-black text-right">Rs. {aggregates.received.toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-rose-600 font-black text-right">Rs. {aggregates.balance.toLocaleString()}</td>
                                     <td colSpan="2"></td>
                                 </tr>
                             </tfoot>

@@ -4,11 +4,12 @@ const Pagination = ({
     currentPage, 
     totalItems, 
     itemsPerPage, 
-    onPageChange 
+    onPageChange,
+    onPerPageChange
 }) => {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
-    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
     const getPageNumbers = () => {
@@ -48,10 +49,13 @@ const Pagination = ({
                     Showing <span className="text-slate-900">{startItem}</span> to <span className="text-slate-900">{endItem}</span> of <span className="text-slate-900">{totalItems}</span> results
                 </div>
                 <select 
-                    value={localStorage.getItem('per_page') || itemsPerPage} 
+                    value={itemsPerPage} 
                     onChange={(e) => {
-                        localStorage.setItem('per_page', e.target.value);
-                        window.location.reload();
+                        const val = Number(e.target.value);
+                        localStorage.setItem('per_page', val);
+                        if (onPerPageChange) {
+                            onPerPageChange(val);
+                        }
                     }}
                     className="text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-400 cursor-pointer"
                 >
