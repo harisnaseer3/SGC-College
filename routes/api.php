@@ -72,6 +72,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/reports/extra-expense/by-date', [\App\Http\Controllers\Api\Reports\ExtraExpenseReportController::class, 'byDate']);
     Route::get('/reports/fees/defaulters', [\App\Http\Controllers\Api\Reports\FeeReportController::class, 'defaulters']);
     Route::get('/reports/fees/collection', [\App\Http\Controllers\Api\Reports\FeeReportController::class, 'collection']);
+    Route::get('/reports/fees/student-summary', [\App\Http\Controllers\Api\Reports\FeeReportController::class, 'studentSummary']);
 
     // Fee Module Routes
     Route::apiResource('fee-heads', App\Http\Controllers\Api\FeeHeadController::class);

@@ -15,7 +15,7 @@ class FeeReportController extends BaseController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:view_fee_reports', only: ['defaulters', 'collection']),
+            new Middleware('permission:view_fee_reports', only: ['defaulters', 'collection', 'studentSummary']),
         ];
     }
 
@@ -156,6 +156,124 @@ class FeeReportController extends BaseController implements HasMiddleware
 
         } catch (\Exception $e) {
             return $this->sendError('Failed to generate collection report.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Student Fee Summary Report: Get overall fee position (Total Fee, Paid Fee, Remaining Balance) per student.
+     */
+    public function studentSummary(Request $request)
+    {
+        try {
+            $campusId        = $request->input('campus_id');
+            $programId       = $request->input('program_id');
+            $batchId         = $request->input('academic_batch_id');
+            $statusFilter    = $request->input('status'); // 'all', 'paid', 'defaulter', 'partial'
+            $search          = trim($request->input('search', ''));
+
+            $query = Student::with([
+                'program:id,name',
+                'campus:id,name',
+                'academicBatch:id,name',
+                'academicClass:id,name',
+                'programSemester:id,name',
+                'studentFees.feeHead'
+            ]);
+
+            if ($campusId && !$request->hasHeader('X-Campus-ID')) {
+                $query->where('campus_id', $campusId);
+            }
+            if ($programId) {
+                $query->where('program_id', $programId);
+            }
+            if ($batchId) {
+                $query->where('academic_batch_id', $batchId);
+            }
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('first_name', 'LIKE', "%{$search}%")
+                      ->orWhere('last_name', 'LIKE', "%{$search}%")
+                      ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                      ->orWhere('roll_number', 'LIKE', "%{$search}%")
+                      ->orWhere('admission_number', 'LIKE', "%{$search}%");
+                });
+            }
+
+            $students = $query->get()->map(function($student) {
+                $fees = $student->studentFees;
+                $totalFee = $fees->sum('amount');
+                $paidFee = $fees->sum('paid_amount');
+                $remainingFee = $fees->sum('balance_amount');
+
+                $status = 'unpaid';
+                if ($totalFee > 0 && $remainingFee == 0) {
+                    $status = 'paid';
+                } else if ($paidFee > 0 && $remainingFee > 0) {
+                    $status = 'partial';
+                } else if ($totalFee == 0) {
+                    $status = 'no_fees';
+                }
+
+                return [
+                    'id' => $student->id,
+                    'first_name' => $student->first_name,
+                    'last_name' => $student->last_name,
+                    'guardian_name' => $student->guardian_name,
+                    'admission_number' => $student->admission_number,
+                    'roll_number' => $student->roll_number,
+                    'program' => $student->program->name ?? 'N/A',
+                    'campus' => $student->campus->name ?? 'N/A',
+                    'batch' => $student->academicBatch->name ?? 'N/A',
+                    'class_semester' => $student->academicClass->name ?? $student->programSemester->name ?? 'N/A',
+                    'total_fee' => (float)$totalFee,
+                    'paid_fee' => (float)$paidFee,
+                    'remaining_fee' => (float)$remainingFee,
+                    'status' => $status,
+                    'fees' => $fees->map(fn($f) => [
+                        'fee_head' => $f->feeHead->name ?? 'N/A',
+                        'due_date' => $f->due_date ? $f->due_date->format('d M Y') : 'N/A',
+                        'amount' => (float)$f->amount,
+                        'paid_amount' => (float)$f->paid_amount,
+                        'balance_amount' => (float)$f->balance_amount,
+                        'status' => $f->status
+                    ])
+                ];
+            });
+
+            // Filter by fee status if requested
+            if ($statusFilter === 'paid') {
+                $students = $students->filter(fn($s) => $s['status'] === 'paid');
+            } else if ($statusFilter === 'defaulter' || $statusFilter === 'unpaid') {
+                $students = $students->filter(fn($s) => $s['remaining_fee'] > 0);
+            } else if ($statusFilter === 'partial') {
+                $students = $students->filter(fn($s) => $s['status'] === 'partial');
+            }
+
+            $students = $students->values();
+
+            $grandTotalFee = $students->sum('total_fee');
+            $grandPaidFee = $students->sum('paid_fee');
+            $grandRemainingFee = $students->sum('remaining_fee');
+
+            return $this->sendResponse([
+                'students' => $students,
+                'summary' => [
+                    'total_students' => $students->count(),
+                    'grand_total_fee' => (float)$grandTotalFee,
+                    'grand_paid_fee' => (float)$grandPaidFee,
+                    'grand_remaining_fee' => (float)$grandRemainingFee,
+                ],
+                'filters' => [
+                    'campus_id' => $campusId,
+                    'program_id' => $programId,
+                    'academic_batch_id' => $batchId,
+                    'status' => $statusFilter,
+                    'search' => $search
+                ]
+            ], 'Student fee summary report generated successfully.');
+
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to generate student fee summary report.', ['error' => $e->getMessage()], 500);
         }
     }
 }
