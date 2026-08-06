@@ -9,15 +9,18 @@ const RoleManagement = () => {
     const { showSuccess, showError } = useNotifications();
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
     const [isPermissionModalOpen, setPermissionModalOpen] = useState(false);
     const [isFormModalOpen, setFormModalOpen] = useState(false);
     const [selectedRole, setSelectedRole] = useState(null);
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
 
-    const fetchRoles = async (page = 1) => {
+    const fetchRoles = async (page = 1, searchQuery = search) => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/roles', { params: { page } });
+            const params = { page };
+            if (searchQuery) params.search = searchQuery;
+            const response = await axios.get('/api/roles', { params });
             setRoles(response.data.data.data || []);
             setPagination({
                 current_page: response.data.data.current_page,
@@ -34,8 +37,14 @@ const RoleManagement = () => {
     };
 
     useEffect(() => {
-        fetchRoles(pagination.current_page);
+        fetchRoles(pagination.current_page, search);
     }, [pagination.current_page]);
+
+    const handleSearchChange = (value) => {
+        setSearch(value);
+        setPagination(prev => ({ ...prev, current_page: 1 }));
+        fetchRoles(1, value);
+    };
 
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this role?')) return;
@@ -69,6 +78,8 @@ const RoleManagement = () => {
             <RoleList 
                 roles={roles} 
                 loading={loading} 
+                search={search}
+                onSearchChange={handleSearchChange}
                 onCreate={handleCreateRole}
                 onEdit={handleEditRole}
                 onDelete={handleDelete}

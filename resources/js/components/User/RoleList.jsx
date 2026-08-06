@@ -2,23 +2,53 @@ import React from 'react';
 import Card from '../UI/Card';
 import Pagination from '../UI/Pagination';
 
-const RoleList = ({ roles, loading, onCreate, onEdit, onDelete, onManagePermissions, pagination, setPagination }) => {
+const RoleList = ({ roles, loading, search = '', onSearchChange, onCreate, onEdit, onDelete, onManagePermissions, pagination, setPagination }) => {
     return (
         <Card noPadding>
-            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                 <div>
                     <h2 className="text-lg font-bold text-slate-800">System Roles</h2>
                     <p className="text-sm text-slate-500">Manage user roles and their access permissions</p>
                 </div>
-                <button
-                    onClick={onCreate}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition duration-200"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span>New Role</span>
-                </button>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                    {/* Search Input Bar */}
+                    <div className="relative w-full sm:w-64">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                            placeholder="Search role by name..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-sm text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                        />
+                        {search && (
+                            <button
+                                type="button"
+                                onClick={() => onSearchChange && onSearchChange('')}
+                                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={onCreate}
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700 transition duration-200 shadow-sm shrink-0"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>New Role</span>
+                    </button>
+                </div>
             </div>
 
             <div className="overflow-x-auto">

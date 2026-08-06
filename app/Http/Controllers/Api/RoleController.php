@@ -44,6 +44,15 @@ class RoleController extends BaseController implements HasMiddleware
                 $query->whereNotIn('name', $excludedRoles);
             }
 
+            if (request()->filled('search')) {
+                $search = trim(request('search'));
+                $searchSlug = strtolower(str_replace(' ', '_', $search));
+                $query->where(function ($q) use ($search, $searchSlug) {
+                    $q->where('name', 'like', "%{$searchSlug}%")
+                      ->orWhere('name', 'like', "%{$search}%");
+                });
+            }
+
             $roles = $query->paginate(request('per_page', 10));
 
             $roles->getCollection()->transform(function ($role) {

@@ -9,17 +9,47 @@ const ucwords = (str) => {
     });
 };
 
-const UserList = ({ users, loading, onAddNew, onEdit, onDelete, pagination, setPagination }) => {
+const UserList = ({ users, loading, search = '', onSearchChange, onAddNew, onEdit, onDelete, pagination, setPagination }) => {
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">User Management</h1>
                     <p className="text-slate-500 mt-1 font-medium">Manage administrators, teachers, and other staff.</p>
                 </div>
-                <Button onClick={onAddNew}>
-                    Add New User
-                </Button>
+                
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                    {/* Search Field */}
+                    <div className="relative w-full sm:w-64">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                            placeholder="Search user by name, email..."
+                            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-sm text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                        />
+                        {search && (
+                            <button
+                                type="button"
+                                onClick={() => onSearchChange && onSearchChange('')}
+                                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+
+                    <Button onClick={onAddNew} className="w-full sm:w-auto shrink-0">
+                        Add New User
+                    </Button>
+                </div>
             </div>
 
             <Card className="overflow-hidden border-slate-200 shadow-sm">

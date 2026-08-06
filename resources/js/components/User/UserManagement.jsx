@@ -11,12 +11,15 @@ const UserManagement = () => {
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
 
-    const fetchUsers = async (page = 1) => {
+    const fetchUsers = async (page = 1, searchQuery = search) => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/users', { params: { page } });
+            const params = { page };
+            if (searchQuery) params.search = searchQuery;
+            const response = await axios.get('/api/users', { params });
             setUsers(response.data.data.data);
             setPagination({
                 current_page: response.data.data.current_page,
@@ -32,15 +35,21 @@ const UserManagement = () => {
     };
 
     useEffect(() => {
-        fetchUsers(pagination.current_page);
+        fetchUsers(pagination.current_page, search);
     }, [pagination.current_page]);
+
+    const handleSearchChange = (value) => {
+        setSearch(value);
+        setPagination(prev => ({ ...prev, current_page: 1 }));
+        fetchUsers(1, value);
+    };
 
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this user?')) return;
         try {
             await axios.delete(`/api/users/${id}`);
             showSuccess('User deleted successfully!');
-            fetchUsers(pagination.current_page);
+            fetchUsers(pagination.current_page, search);
         } catch (error) {
             const message = error.response?.data?.message || 'Error deleting user';
             showError(message);
@@ -55,6 +64,8 @@ const UserManagement = () => {
                     <UserList 
                         users={users} 
                         loading={loading} 
+                        search={search}
+                        onSearchChange={handleSearchChange}
                         onAddNew={() => navigate('new')}
                         onEdit={(user) => navigate(`edit/${user.id}`)}
                         onDelete={handleDelete}
