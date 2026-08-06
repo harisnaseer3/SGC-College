@@ -278,13 +278,16 @@ class FeeService
             }
         }
 
+        // Apply any overdue fine policies to the student's fees
+        $this->applyFines($student->campus_id, $student->id);
+
         return $generatedCount;
     }
 
     /**
-     * Apply fines to overdue student fees.
+     * Apply fines to overdue student fees based on active Fine Policies.
      */
-    public function applyFines($campusId = null)
+    public function applyFines($campusId = null, $studentId = null)
     {
         $today = Carbon::today();
         
@@ -292,6 +295,7 @@ class FeeService
             ->where('due_date', '<', $today);
             
         if ($campusId) $query->where('campus_id', $campusId);
+        if ($studentId) $query->where('student_id', $studentId);
 
         $overdueFees = $query->get();
         $appliedCount = 0;
@@ -302,21 +306,20 @@ class FeeService
                 ->first();
 
             if ($policy) {
+                // Calculate days past due date
                 $overdueDays = $today->diffInDays($fee->due_date);
                 
-                if ($overdueDays > $policy->grace_days) {
+                if ($overdueDays >= (int)$policy->grace_days) {
                     $fineAmount = 0;
                     if ($policy->fine_type === 'fixed') {
-                        $fineAmount = $policy->fine_amount;
+                        $fineAmount = (float) $policy->fine_amount;
                     } else {
-                        $fineAmount = ($fee->amount * $policy->fine_amount) / 100;
+                        $fineAmount = round(($fee->amount * (float) $policy->fine_amount) / 100, 2);
                     }
 
-                    // Avoid double application: usually we check if fine was already applied for this period
-                    if ($fee->fine_amount < $fineAmount) {
-                        $diff = $fineAmount - $fee->fine_amount;
+                    if ((float)$fee->fine_amount !== (float)$fineAmount) {
                         $fee->fine_amount = $fineAmount;
-                        $fee->balance_amount += $diff;
+                        // Saving model automatically triggers balance_amount = (amount + fine) - discount - paid
                         $fee->save();
                         $appliedCount++;
                     }
@@ -333,6 +336,9 @@ class FeeService
     public function getVoucherData($studentId, $month = null, $year = null, $voucherNumber = null)
     {
         $student = Student::with(['program', 'academicBatch', 'campus.bankAccounts', 'organization'])->findOrFail($studentId);
+
+        // Auto-apply overdue fine policies before generating voucher data
+        $this->applyFines($student->campus_id, $student->id);
 
         if ($voucherNumber) {
             $allPendingFees = StudentFee::with('feeHead')
