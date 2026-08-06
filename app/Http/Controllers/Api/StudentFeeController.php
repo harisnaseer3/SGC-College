@@ -16,14 +16,14 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('role_or_permission:super_admin|view_student_fees', only: ['index', 'studentLedger', 'voucher', 'bulkVouchers', 'findByVoucher', 'vouchersList']),
-            new Middleware('role_or_permission:super_admin|create_student_fees', only: ['generate', 'manualAssign', 'generateVoucher']),
-            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['update', 'destroyVoucher', 'bulkDestroyVouchers']),
-            new Middleware('role_or_permission:super_admin|pay_student_fees|create_fee_receipts|manage_fee_receipts', only: ['deposit']),
-            new Middleware('role_or_permission:super_admin|split_student_fees', only: ['split', 'revertSplit']),
-            new Middleware('role_or_permission:super_admin|apply_fines', only: ['applyFines']),
-            new Middleware('role_or_permission:super_admin|view_student_fees', only: ['allPayments', 'showPayment']),
-            new Middleware('role_or_permission:super_admin|edit_student_fees', only: ['destroyPayment', 'bulkDestroyPayments']),
+            (new Middleware('role_or_permission:super_admin|view_student_fees'))->only(['index', 'studentLedger', 'voucher', 'bulkVouchers', 'findByVoucher', 'vouchersList']),
+            (new Middleware('role_or_permission:super_admin|create_student_fees'))->only(['generate', 'manualAssign', 'generateVoucher']),
+            (new Middleware('role_or_permission:super_admin|edit_student_fees'))->only(['update', 'destroyVoucher', 'bulkDestroyVouchers']),
+            (new Middleware('role_or_permission:super_admin|pay_student_fees|create_fee_receipts|manage_fee_receipts'))->only(['deposit']),
+            (new Middleware('role_or_permission:super_admin|split_student_fees'))->only(['split', 'revertSplit']),
+            (new Middleware('role_or_permission:super_admin|apply_fines'))->only(['applyFines']),
+            (new Middleware('role_or_permission:super_admin|view_student_fees'))->only(['allPayments', 'showPayment']),
+            (new Middleware('role_or_permission:super_admin|edit_student_fees'))->only(['destroyPayment', 'bulkDestroyPayments']),
         ];
     }
 
@@ -681,8 +681,12 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $vouchers = $query->orderBy('due_date', 'desc')
                               ->paginate($request->get('per_page', 10));
 
-            // Calculate unique aggregates
-            $allVouchersForAggregates = (clone $query)->select('student_id', 'semester_number', 'amount', 'fine_amount', 'discount_amount', 'arrears_amount', 'paid_amount', 'balance_amount')->get();
+            // Calculate unique aggregates (excluding carried_forward vouchers to prevent duplicate cumulative sums)
+            $allVouchersForAggregates = (clone $query)->select('student_id', 'semester_number', 'amount', 'fine_amount', 'discount_amount', 'arrears_amount', 'paid_amount', 'balance_amount', 'status')
+                ->where(function($q) {
+                    $q->whereNull('status')->orWhere('status', '!=', 'carried_forward');
+                })
+                ->get();
 
             $totalExpected = 0.00;
             $totalArrears = 0.00;
