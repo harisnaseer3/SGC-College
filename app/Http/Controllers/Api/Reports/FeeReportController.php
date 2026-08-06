@@ -205,6 +205,7 @@ class FeeReportController extends BaseController implements HasMiddleware
 
                 // Total Fee is Net Payable = (Base Amount + Fine) - Discount
                 $totalFee = $fees->sum(fn($f) => ($f->amount + $f->fine_amount) - $f->discount_amount);
+                $discountFee = $fees->sum('discount_amount');
                 $paidFee = $fees->sum('paid_amount');
                 $remainingFee = $fees->sum('balance_amount');
 
@@ -229,6 +230,7 @@ class FeeReportController extends BaseController implements HasMiddleware
                     'batch' => $student->academicBatch->name ?? 'N/A',
                     'class_semester' => $student->academicClass->name ?? $student->programSemester->name ?? 'N/A',
                     'total_fee' => (float)$totalFee,
+                    'discount_fee' => (float)$discountFee,
                     'paid_fee' => (float)$paidFee,
                     'remaining_fee' => (float)$remainingFee,
                     'status' => $status,
@@ -236,6 +238,7 @@ class FeeReportController extends BaseController implements HasMiddleware
                         'fee_head' => $f->feeHead->name ?? 'N/A',
                         'due_date' => $f->due_date ? $f->due_date->format('d M Y') : 'N/A',
                         'amount' => (float)(($f->amount + $f->fine_amount) - $f->discount_amount),
+                        'discount_amount' => (float)$f->discount_amount,
                         'paid_amount' => (float)$f->paid_amount,
                         'balance_amount' => (float)$f->balance_amount,
                         'status' => $f->status
@@ -255,6 +258,7 @@ class FeeReportController extends BaseController implements HasMiddleware
             $students = $students->values();
 
             $grandTotalFee = $students->sum('total_fee');
+            $grandDiscountFee = $students->sum('discount_fee');
             $grandPaidFee = $students->sum('paid_fee');
             $grandRemainingFee = $students->sum('remaining_fee');
 
@@ -263,6 +267,7 @@ class FeeReportController extends BaseController implements HasMiddleware
                 'summary' => [
                     'total_students' => $students->count(),
                     'grand_total_fee' => (float)$grandTotalFee,
+                    'grand_discount_fee' => (float)$grandDiscountFee,
                     'grand_paid_fee' => (float)$grandPaidFee,
                     'grand_remaining_fee' => (float)$grandRemainingFee,
                 ],

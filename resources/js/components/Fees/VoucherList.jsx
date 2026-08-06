@@ -161,6 +161,33 @@ const VoucherList = () => {
                 </button>
             </div>
 
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="p-5 border-slate-100 bg-white" hover={false}>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Vouchers</span>
+                    <h2 className="text-2xl font-black text-slate-800">{pagination.total}</h2>
+                    <p className="text-xs text-slate-400 mt-1">Matching current filters</p>
+                </Card>
+
+                <Card className="p-5 border-indigo-100 bg-indigo-50/20" hover={false}>
+                    <span className="text-[11px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Total Receivable</span>
+                    <h2 className="text-2xl font-black text-indigo-700">Rs. {aggregates ? ((aggregates.expected || 0) + (aggregates.arrears || 0)).toLocaleString() : '0'}</h2>
+                    <p className="text-xs text-indigo-400 mt-1">Expected revenue commitment</p>
+                </Card>
+
+                <Card className="p-5 border-emerald-100 bg-emerald-50/20" hover={false}>
+                    <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider block mb-1">Total Received</span>
+                    <h2 className="text-2xl font-black text-emerald-700">Rs. {aggregates ? (aggregates.received || 0).toLocaleString() : '0'}</h2>
+                    <p className="text-xs text-emerald-500 mt-1">Collected revenue</p>
+                </Card>
+
+                <Card className="p-5 border-rose-100 bg-rose-50/20" hover={false}>
+                    <span className="text-[11px] font-bold text-rose-500 uppercase tracking-wider block mb-1">Remaining Balance</span>
+                    <h2 className="text-2xl font-black text-rose-700">Rs. {aggregates ? (aggregates.balance || 0).toLocaleString() : '0'}</h2>
+                    <p className="text-xs text-rose-400 mt-1">Outstanding dues</p>
+                </Card>
+            </div>
+
             <Card className="p-6 border-slate-200 shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                     <div>

@@ -112,7 +112,8 @@ class DashboardController extends BaseController implements HasMiddleware
             $intakeSession = request('fee_intake_session');
             $batchId = request('fee_batch_id');
 
-            $vouchersQuery = \App\Models\GeneratedVoucher::query();
+            // Exclude carried_forward vouchers to prevent double-counting of rolled-over dues
+            $vouchersQuery = \App\Models\GeneratedVoucher::where('status', '!=', 'carried_forward');
             
             if ($intakeSession || $batchId) {
                 $vouchersQuery->whereHas('student', function ($query) use ($intakeSession, $batchId) {

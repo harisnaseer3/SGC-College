@@ -13,6 +13,7 @@ const StudentFeeSummaryReport = () => {
     const [summary, setSummary] = useState({
         total_students: 0,
         grand_total_fee: 0,
+        grand_discount_fee: 0,
         grand_paid_fee: 0,
         grand_remaining_fee: 0
     });
@@ -141,7 +142,8 @@ const StudentFeeSummaryReport = () => {
             { width: 25 }, // Father Name
             { width: 25 }, // Program
             { width: 20 }, // Batch
-            { width: 20 }, // Total Fee
+            { width: 20 }, // Total Net Fee
+            { width: 20 }, // Discount
             { width: 20 }, // Paid Fee
             { width: 20 }, // Remaining Fee
             { width: 15 }  // Status
@@ -149,7 +151,7 @@ const StudentFeeSummaryReport = () => {
 
         const addMergedHeader = (text, size = 12, isBold = true) => {
             const row = worksheet.addRow([text]);
-            worksheet.mergeCells(`A${row.number}:J${row.number}`);
+            worksheet.mergeCells(`A${row.number}:K${row.number}`);
             const cell = row.getCell(1);
             cell.font = { bold: isBold, size: size, color: { argb: 'FF0F172A' } };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -169,7 +171,8 @@ const StudentFeeSummaryReport = () => {
             "Father Name", 
             "Program", 
             "Batch", 
-            "Total Fee", 
+            "Total Net Fee", 
+            "Discount",
             "Paid Fee", 
             "Remaining Dues",
             "Status"
@@ -189,6 +192,7 @@ const StudentFeeSummaryReport = () => {
                 item.program || '',
                 item.batch || '',
                 Number(item.total_fee),
+                Number(item.discount_fee || 0),
                 Number(item.paid_fee),
                 Number(item.remaining_fee),
                 item.status.toUpperCase()
@@ -197,9 +201,10 @@ const StudentFeeSummaryReport = () => {
             row.getCell(7).numFmt = '"Rs. "#,##0.00';
             row.getCell(8).numFmt = '"Rs. "#,##0.00';
             row.getCell(9).numFmt = '"Rs. "#,##0.00';
+            row.getCell(10).numFmt = '"Rs. "#,##0.00';
 
             row.eachCell((cell, colNumber) => {
-                if ([1, 2, 6, 10].includes(colNumber)) {
+                if ([1, 2, 6, 11].includes(colNumber)) {
                     cell.alignment = { horizontal: 'center' };
                 }
             });
@@ -210,6 +215,7 @@ const StudentFeeSummaryReport = () => {
         const totalRow = worksheet.addRow([
             "", "", "", "", "", "GRAND TOTAL", 
             Number(summary.grand_total_fee), 
+            Number(summary.grand_discount_fee || 0),
             Number(summary.grand_paid_fee), 
             Number(summary.grand_remaining_fee),
             ""
@@ -218,6 +224,7 @@ const StudentFeeSummaryReport = () => {
         totalRow.getCell(7).numFmt = '"Rs. "#,##0.00';
         totalRow.getCell(8).numFmt = '"Rs. "#,##0.00';
         totalRow.getCell(9).numFmt = '"Rs. "#,##0.00';
+        totalRow.getCell(10).numFmt = '"Rs. "#,##0.00';
 
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), `Student_Fee_Summary_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -229,7 +236,7 @@ const StudentFeeSummaryReport = () => {
             <div className="flex items-center justify-between no-print">
                 <div>
                     <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Student Fee Summary Report</h1>
-                    <p className="text-slate-500 text-sm mt-1 font-medium">Comprehensive report displaying Total Fee, Paid Fee, and Remaining Dues per student.</p>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">Comprehensive report displaying Net Fee, Discounts, Paid Fee, and Remaining Dues per student.</p>
                 </div>
                 <div className="flex gap-3">
                     <Button variant="secondary" onClick={handleExportExcel} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:text-emerald-800">
@@ -244,7 +251,7 @@ const StudentFeeSummaryReport = () => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 no-print">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 no-print">
                 <Card className="p-5 border-slate-100 bg-white" hover={false}>
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Students</span>
                     <h2 className="text-2xl font-black text-slate-800">{summary.total_students}</h2>
@@ -252,9 +259,15 @@ const StudentFeeSummaryReport = () => {
                 </Card>
 
                 <Card className="p-5 border-indigo-100 bg-indigo-50/20" hover={false}>
-                    <span className="text-[11px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Total Fee Assigned</span>
+                    <span className="text-[11px] font-bold text-indigo-500 uppercase tracking-wider block mb-1">Total Net Fee</span>
                     <h2 className="text-2xl font-black text-indigo-700">Rs. {Number(summary.grand_total_fee).toLocaleString()}</h2>
-                    <p className="text-xs text-indigo-400 mt-1">Gross fee commitment</p>
+                    <p className="text-xs text-indigo-400 mt-1">Net fee commitment</p>
+                </Card>
+
+                <Card className="p-5 border-amber-100 bg-amber-50/20" hover={false}>
+                    <span className="text-[11px] font-bold text-amber-500 uppercase tracking-wider block mb-1">Total Discount</span>
+                    <h2 className="text-2xl font-black text-amber-700">Rs. {Number(summary.grand_discount_fee || 0).toLocaleString()}</h2>
+                    <p className="text-xs text-amber-500 mt-1">Concessions granted</p>
                 </Card>
 
                 <Card className="p-5 border-emerald-100 bg-emerald-50/20" hover={false}>
@@ -264,7 +277,7 @@ const StudentFeeSummaryReport = () => {
                 </Card>
 
                 <Card className="p-5 border-rose-100 bg-rose-50/20" hover={false}>
-                    <span className="text-[11px] font-bold text-rose-500 uppercase tracking-wider block mb-1">Total Remaining Dues</span>
+                    <span className="text-[11px] font-bold text-rose-500 uppercase tracking-wider block mb-1">Remaining Dues</span>
                     <h2 className="text-2xl font-black text-rose-700">Rs. {Number(summary.grand_remaining_fee).toLocaleString()}</h2>
                     <p className="text-xs text-rose-400 mt-1">Outstanding balance</p>
                 </Card>
@@ -350,7 +363,8 @@ const StudentFeeSummaryReport = () => {
                                 <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Roll # / Adm #</th>
                                 <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student Info</th>
                                 <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Program / Batch</th>
-                                <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Total Fee</th>
+                                <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Net Fee</th>
+                                <th className="px-5 py-3.5 text-[10px] font-bold text-amber-500 uppercase tracking-widest text-right">Discount</th>
                                 <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Paid Fee</th>
                                 <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Remaining Dues</th>
                                 <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Status</th>
@@ -360,7 +374,7 @@ const StudentFeeSummaryReport = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="8" className="px-6 py-20 text-center">
+                                    <td colSpan="9" className="px-6 py-20 text-center">
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Fee Summaries...</span>
@@ -385,6 +399,9 @@ const StudentFeeSummaryReport = () => {
                                             </td>
                                             <td className="px-5 py-3.5 text-right font-bold text-slate-900 text-sm">
                                                 Rs. {Number(item.total_fee).toLocaleString()}
+                                            </td>
+                                            <td className="px-5 py-3.5 text-right font-bold text-amber-600 text-sm">
+                                                Rs. {Number(item.discount_fee || 0).toLocaleString()}
                                             </td>
                                             <td className="px-5 py-3.5 text-right font-bold text-emerald-600 text-sm">
                                                 Rs. {Number(item.paid_fee).toLocaleString()}
@@ -427,7 +444,7 @@ const StudentFeeSummaryReport = () => {
                                         {/* Sub-table for fee head breakdown */}
                                         {(expandedRows[item.id] || window.matchMedia('print').matches) && item.fees && item.fees.length > 0 && (
                                             <tr className="bg-slate-50/40 print:bg-transparent">
-                                                <td colSpan="8" className="px-8 py-3">
+                                                <td colSpan="9" className="px-8 py-3">
                                                     <div className="border border-slate-200 rounded-xl bg-white p-4 shadow-sm print:border-slate-300 print:shadow-none">
                                                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Assigned Fee Head Breakdown</h4>
                                                         <table className="w-full text-left text-xs">
@@ -435,7 +452,8 @@ const StudentFeeSummaryReport = () => {
                                                                 <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider font-bold">
                                                                     <th className="py-1.5">Fee Head</th>
                                                                     <th className="py-1.5">Due Date</th>
-                                                                    <th className="py-1.5 text-right">Total Amount</th>
+                                                                    <th className="py-1.5 text-right">Net Amount</th>
+                                                                    <th className="py-1.5 text-right text-amber-500">Discount</th>
                                                                     <th className="py-1.5 text-right">Paid Amount</th>
                                                                     <th className="py-1.5 text-right">Remaining Dues</th>
                                                                     <th className="py-1.5 text-center">Status</th>
@@ -446,7 +464,8 @@ const StudentFeeSummaryReport = () => {
                                                                     <tr key={idx} className="text-slate-600">
                                                                         <td className="py-1.5 font-semibold text-slate-800">{fee.fee_head}</td>
                                                                         <td className="py-1.5">{fee.due_date}</td>
-                                                                        <td className="py-1.5 text-right">Rs. {fee.amount.toLocaleString()}</td>
+                                                                        <td className="py-1.5 text-right font-bold text-slate-800">Rs. {fee.amount.toLocaleString()}</td>
+                                                                        <td className="py-1.5 text-right text-amber-600 font-semibold">Rs. {(fee.discount_amount || 0).toLocaleString()}</td>
                                                                         <td className="py-1.5 text-right text-emerald-600">Rs. {fee.paid_amount.toLocaleString()}</td>
                                                                         <td className="py-1.5 text-right font-bold text-rose-600">Rs. {fee.balance_amount.toLocaleString()}</td>
                                                                         <td className="py-1.5 text-center">
