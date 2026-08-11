@@ -158,7 +158,7 @@ const FeePaymentReceipt = () => {
                         <div>
                             <span className="text-slate-500 block text-[11px]">Class / Semester:</span>
                             <span className="font-bold text-slate-900">
-                                {data.student?.academic_class?.name || data.student?.program_semester?.name || '-'}
+                                {data.payment_semester || data.student?.academic_class?.name || data.student?.program_semester?.name || '-'}
                             </span>
                         </div>
                     </div>

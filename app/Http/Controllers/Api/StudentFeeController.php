@@ -610,6 +610,33 @@ class StudentFeeController extends BaseController implements HasMiddleware
 
             $payment->organization = \App\Models\Organization::find($payment->organization_id);
 
+            // Determine specific semester for this payment
+            $semesterNumber = null;
+            if ($payment->voucher_number) {
+                $voucher = \App\Models\GeneratedVoucher::where('voucher_number', $payment->voucher_number)->first();
+                if ($voucher && $voucher->semester_number) {
+                    $semesterNumber = $voucher->semester_number;
+                }
+            }
+
+            if (!$semesterNumber) {
+                // Fallback: check student fees with this voucher_number or paid fees
+                $feeQuery = \App\Models\StudentFee::where('student_id', $payment->student_id);
+                if ($payment->voucher_number) {
+                    $feeQuery->where('voucher_number', $payment->voucher_number);
+                } else {
+                    $feeQuery->where('paid_amount', '>', 0);
+                }
+                $semesterNumber = $feeQuery->whereNotNull('semester_number')->max('semester_number');
+            }
+
+            if ($semesterNumber) {
+                $feeService = app(\App\Services\FeeService::class);
+                $payment->payment_semester = $feeService->getStudentSemesterLabel($payment->student, (int)$semesterNumber);
+            } else {
+                $payment->payment_semester = null;
+            }
+
             // Calculate current remaining balance for the student
             $payment->remaining_balance = \App\Models\StudentFee::where('student_id', $payment->student_id)
                 ->where('status', '!=', 'carried_forward')
