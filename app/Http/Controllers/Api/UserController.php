@@ -11,6 +11,7 @@ use App\Http\Requests\Api\StoreUserRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use App\Services\ActivityLogger;
 
 class UserController extends BaseController implements HasMiddleware
 {
@@ -82,6 +83,12 @@ class UserController extends BaseController implements HasMiddleware
             $role = Role::findByName($data['role'], 'web');
             $user->assignRole($role);
 
+            ActivityLogger::log('CREATED', 'Users', "Created user {$user->name} ({$user->email}) with role {$data['role']}", [
+                'user_id' => $user->id,
+                'role' => $data['role'],
+                'campus_id' => $user->campus_id,
+            ]);
+
             return $this->sendResponse($user->load(['roles', 'campus']), 'User created successfully.', 201);
         } catch (\Exception $e) {
             return $this->sendError('Failed to create user.', ['error' => $e->getMessage()], 500);
@@ -151,6 +158,11 @@ class UserController extends BaseController implements HasMiddleware
             $user->syncRoles([$role]);
         }
 
+        ActivityLogger::log('UPDATED', 'Users', "Updated user account {$user->name} ({$user->email})", [
+            'target_user_id' => $user->id,
+            'updated_fields' => array_keys($data),
+        ]);
+
         return $this->sendResponse($user->load(['roles', 'campus']), 'User updated successfully.');
     }
 
@@ -165,7 +177,16 @@ class UserController extends BaseController implements HasMiddleware
                 return $this->sendError('Unauthorized', [], 403);
             }
 
+            $userName = $user->name;
+            $userEmail = $user->email;
+            $userId = $user->id;
+
             $user->delete();
+
+            ActivityLogger::log('DELETED', 'Users', "Deleted user account {$userName} ({$userEmail})", [
+                'deleted_user_id' => $userId,
+            ]);
+
             return $this->sendResponse(null, 'User deleted successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to delete user.', ['error' => $e->getMessage()], 500);
@@ -196,6 +217,12 @@ class UserController extends BaseController implements HasMiddleware
             $user->save();
 
             $statusText = $user->is_active ? 'enabled' : 'disabled';
+
+            ActivityLogger::log('TOGGLED_STATUS', 'Users', "{$statusText} user account for {$user->name} ({$user->email})", [
+                'target_user_id' => $user->id,
+                'is_active' => $user->is_active,
+            ]);
+
             return $this->sendResponse($user->load(['roles', 'campus']), "User {$statusText} successfully.");
         } catch (\Exception $e) {
             return $this->sendError('Failed to update user status.', ['error' => $e->getMessage()], 500);

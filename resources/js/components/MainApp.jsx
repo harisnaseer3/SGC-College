@@ -24,6 +24,7 @@ import ExtraIncomeManagement from './ExtraIncome/ExtraIncomeManagement';
 import ExtraIncomeReceipt from './ExtraIncome/ExtraIncomeReceipt';
 import ExtraExpenseManagement from './ExtraExpense/ExtraExpenseManagement';
 import BackupManagement from './System/BackupManagement';
+import ActivityLogList from './ActivityLog/ActivityLogList';
 import AuthView from './Auth/AuthView';
 import InstituteSelection from './Auth/InstituteSelection';
 import ToastContainer from './UI/ToastContainer';
@@ -45,6 +46,8 @@ const AppContent = () => {
     }
 
     const isSuperAdmin = user.roles?.some(role => role.name === 'super_admin');
+    const isOrgAdmin = user.roles?.some(role => role.name === 'org_admin');
+    const canViewLogs = isSuperAdmin || isOrgAdmin;
     
     if (isSuperAdmin && !selectedOrganization) {
         return <InstituteSelection />;
@@ -66,6 +69,7 @@ const AppContent = () => {
                             <Route path="/roles/*" element={<RoleManagement />} />
                             <Route path="/academic/*" element={<AcademicManagement />} />
                             <Route path="/system/backups" element={<BackupManagement />} />
+                            {canViewLogs && <Route path="/activity-logs" element={<ActivityLogList />} />}
                             <Route path="/fees/*" element={<FeeManagement />} />
                             <Route path="/admissions" element={<AdmissionList />} />
                             <Route path="/new-admission" element={<NewAdmissionForm />} />

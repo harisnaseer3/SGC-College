@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 use App\Http\Requests\Api\Auth\RegisterRequest;
 use App\Http\Requests\Api\Auth\LoginRequest;
 
+use App\Services\ActivityLogger;
+
 class AuthController extends BaseController
 {
     public function register(RegisterRequest $request)
@@ -24,6 +26,8 @@ class AuthController extends BaseController
                 'organization_id' => $validated['organization_id'],
                 'campus_id' => $validated['campus_id'] ?? null,
             ]);
+
+            ActivityLogger::log('REGISTER', 'Auth', "User registered account for {$user->email}", null, $user);
 
             $token = $user->createToken('auth_token')->accessToken;
 
@@ -45,10 +49,12 @@ class AuthController extends BaseController
             $user = User::where('email', $validated['email'])->first();
 
             if (!$user || !Hash::check($validated['password'], $user->password)) {
+                ActivityLogger::log('FAILED_LOGIN', 'Auth', "Failed login attempt for email: {$validated['email']}");
                 return $this->sendError('Unauthorized.', ['error' => 'The provided credentials are incorrect.'], 401);
             }
 
             if (isset($user->is_active) && !$user->is_active) {
+                ActivityLogger::log('BLOCKED_LOGIN', 'Auth', "Attempted login on disabled account: {$validated['email']}", null, $user);
                 return $this->sendError('Account Disabled.', ['error' => 'Your account has been disabled. Please contact your administrator.'], 403);
             }
 
@@ -56,6 +62,8 @@ class AuthController extends BaseController
 
             $loadedUser = $user->load(['organization', 'campus', 'roles', 'permissions']);
             $loadedUser->permissions_list = $user->getAllPermissions()->pluck('name');
+
+            ActivityLogger::log('LOGIN', 'Auth', "User {$user->name} ({$user->email}) logged in successfully", null, $user);
 
             return $this->sendResponse([
                 'user' => $loadedUser,
@@ -72,6 +80,7 @@ class AuthController extends BaseController
         try {
             $user = $request->user();
             if ($user && $user->token()) {
+                ActivityLogger::log('LOGOUT', 'Auth', "User {$user->name} logged out", null, $user);
                 $user->token()->revoke();
             }
             return $this->sendResponse([], 'Logged out successfully');
