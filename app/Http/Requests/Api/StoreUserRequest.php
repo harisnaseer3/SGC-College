@@ -22,6 +22,7 @@ class StoreUserRequest extends FormRequest
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|string|exists:roles,name',
             'campus_id' => 'required_unless:role,super_admin,org_admin|nullable|exists:campuses,id',
+            'is_active' => 'sometimes|boolean',
         ];
     }
 }

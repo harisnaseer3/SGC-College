@@ -44,6 +44,20 @@ const UserManagement = () => {
         fetchUsers(1, value);
     };
 
+    const handleToggleStatus = async (user) => {
+        const actionText = user.is_active !== false ? 'disable' : 'enable';
+        if (!window.confirm(`Are you sure you want to ${actionText} ${user.name}'s account?`)) return;
+        try {
+            const response = await axios.patch(`/api/users/${user.id}/toggle-status`);
+            showSuccess(response.data.message || `User account ${actionText}d successfully!`);
+            fetchUsers(pagination.current_page, search);
+        } catch (error) {
+            const message = error.response?.data?.message || error.response?.data?.error || `Error updating user status`;
+            showError(message);
+            console.error('Error toggling status:', error);
+        }
+    };
+
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this user?')) return;
         try {
@@ -69,6 +83,7 @@ const UserManagement = () => {
                         onAddNew={() => navigate('new')}
                         onEdit={(user) => navigate(`edit/${user.id}`)}
                         onDelete={handleDelete}
+                        onToggleStatus={handleToggleStatus}
                         pagination={pagination}
                         setPagination={setPagination}
                     />

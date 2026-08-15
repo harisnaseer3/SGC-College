@@ -19,7 +19,8 @@ const UserForm = ({ onSuccess, onCancel }) => {
         password: '',
         password_confirmation: '',
         role: '',
-        campus_id: ''
+        campus_id: '',
+        is_active: true
     });
 
     const [roles, setRoles] = useState([]);
@@ -70,7 +71,8 @@ const UserForm = ({ onSuccess, onCancel }) => {
                         password: '',
                         password_confirmation: '',
                         role: user.roles?.[0]?.name || '',
-                        campus_id: user.campus_id || ''
+                        campus_id: user.campus_id || '',
+                        is_active: user.is_active !== false
                     });
                 }
             } catch (error) {
@@ -273,6 +275,25 @@ const UserForm = ({ onSuccess, onCancel }) => {
                                     )}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 pt-2">
+                        <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Account Status</label>
+                        <div className="flex items-center gap-3 pt-1">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                    type="checkbox"
+                                    name="is_active"
+                                    checked={formData.is_active}
+                                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                            <span className={`text-sm font-bold ${formData.is_active ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {formData.is_active ? 'Active (Account Enabled)' : 'Disabled (Account Suspended)'}
+                            </span>
                         </div>
                     </div>
 

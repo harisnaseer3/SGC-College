@@ -20,7 +20,7 @@ class UserController extends BaseController implements HasMiddleware
         return [
             new Middleware('permission:view_users', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
             new Middleware('permission:create_users', only: ['store', 'generate', 'manualAssign']),
-            new Middleware('permission:edit_users', only: ['update', 'assignCourses']),
+            new Middleware('permission:edit_users', only: ['update', 'toggleStatus', 'assignCourses']),
             new Middleware('permission:delete_users', only: ['destroy', 'bulkDelete']),
         ];
     }
@@ -121,6 +121,7 @@ class UserController extends BaseController implements HasMiddleware
             'password' => 'sometimes|string|min:8|confirmed|nullable',
             'role' => 'sometimes|string|exists:roles,name',
             'campus_id' => 'required_unless:role,super_admin,org_admin|nullable|exists:campuses,id',
+            'is_active' => 'sometimes|boolean',
         ]);
 
         if (isset($data['role']) && $data['role'] === 'super_admin' && !$currentUser->hasRole('super_admin', 'web')) {
@@ -139,6 +140,10 @@ class UserController extends BaseController implements HasMiddleware
         }
 
         $user->update($data);
+
+        if (isset($data['is_active']) && !$data['is_active']) {
+            $user->tokens()->update(['revoked' => true]);
+        }
 
         if (isset($data['role'])) {
             // Explicitly sync role using the 'web' guard format
@@ -164,6 +169,36 @@ class UserController extends BaseController implements HasMiddleware
             return $this->sendResponse(null, 'User deleted successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to delete user.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Toggle active/disabled status of user.
+     */
+    public function toggleStatus(Request $request, User $user): JsonResponse
+    {
+        try {
+            $currentUser = $request->user();
+            if (!$currentUser->hasRole('super_admin', 'web') && $user->campus_id !== $currentUser->campus_id) {
+                return $this->sendError('Unauthorized', [], 403);
+            }
+
+            if ($currentUser->id === $user->id) {
+                return $this->sendError('Action forbidden.', ['error' => 'You cannot disable your own account.'], 403);
+            }
+
+            $user->is_active = $request->has('is_active') ? $request->boolean('is_active') : !$user->is_active;
+            
+            if (!$user->is_active) {
+                $user->tokens()->update(['revoked' => true]);
+            }
+            
+            $user->save();
+
+            $statusText = $user->is_active ? 'enabled' : 'disabled';
+            return $this->sendResponse($user->load(['roles', 'campus']), "User {$statusText} successfully.");
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to update user status.', ['error' => $e->getMessage()], 500);
         }
     }
 }

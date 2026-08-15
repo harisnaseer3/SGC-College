@@ -48,6 +48,10 @@ class AuthController extends BaseController
                 return $this->sendError('Unauthorized.', ['error' => 'The provided credentials are incorrect.'], 401);
             }
 
+            if (isset($user->is_active) && !$user->is_active) {
+                return $this->sendError('Account Disabled.', ['error' => 'Your account has been disabled. Please contact your administrator.'], 403);
+            }
+
             $token = $user->createToken('auth_token')->accessToken;
 
             $loadedUser = $user->load(['organization', 'campus', 'roles', 'permissions']);

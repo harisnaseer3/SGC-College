@@ -55,6 +55,7 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/organizations/{organization}/campuses/{campus}', [CampusController::class, 'destroy']);
 
     // User & Role Routes
+    Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
     Route::apiResource('users', UserController::class);
     Route::apiResource('roles', RoleController::class);
     Route::post('roles/{role}/permissions', [RoleController::class, 'assignPermissions']);

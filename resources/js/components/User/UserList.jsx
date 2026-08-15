@@ -9,7 +9,7 @@ const ucwords = (str) => {
     });
 };
 
-const UserList = ({ users, loading, search = '', onSearchChange, onAddNew, onEdit, onDelete, pagination, setPagination }) => {
+const UserList = ({ users, loading, search = '', onSearchChange, onAddNew, onEdit, onDelete, onToggleStatus, pagination, setPagination }) => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -60,6 +60,7 @@ const UserList = ({ users, loading, search = '', onSearchChange, onAddNew, onEdi
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">User</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Role</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned College</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Created</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                             </tr>
@@ -67,11 +68,11 @@ const UserList = ({ users, loading, search = '', onSearchChange, onAddNew, onEdi
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-slate-400 font-medium">Loading users...</td>
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-medium">Loading users...</td>
                                 </tr>
                             ) : users.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-slate-400 font-medium">No users found.</td>
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-medium">No users found.</td>
                                 </tr>
                             ) : (
                                 users.map((user) => (
@@ -100,11 +101,39 @@ const UserList = ({ users, loading, search = '', onSearchChange, onAddNew, onEdi
                                         <td className="px-6 py-4 font-medium text-slate-600">
                                             {user.campus?.name || (['super_admin', 'org_admin'].includes(user.roles?.[0]?.name) ? 'Global Access' : 'Personal')}
                                         </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                user.is_active !== false
+                                                    ? 'bg-emerald-100 text-emerald-700'
+                                                    : 'bg-rose-100 text-rose-700'
+                                            }`}>
+                                                {user.is_active !== false ? 'Active' : 'Disabled'}
+                                            </span>
+                                        </td>
                                         <td className="px-6 py-4 text-slate-400 text-xs italic">
                                             {new Date(user.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => onToggleStatus && onToggleStatus(user)}
+                                                    title={user.is_active !== false ? "Disable User Account" : "Enable User Account"}
+                                                    className={`p-1.5 rounded-lg transition-all ${
+                                                        user.is_active !== false
+                                                            ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                                                            : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'
+                                                    }`}
+                                                >
+                                                    {user.is_active !== false ? (
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                        </svg>
+                                                    ) : (
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                    )}
+                                                </button>
                                                 <button 
                                                     onClick={() => onEdit(user)}
                                                     className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
