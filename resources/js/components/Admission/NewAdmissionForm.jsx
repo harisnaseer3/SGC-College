@@ -225,6 +225,17 @@ const NewAdmissionForm = () => {
         }
     };
 
+    const activeCampusId = formData.campus_id || selectedCampus || (formOptions.campuses.length > 0 ? formOptions.campuses[0].id : null);
+    const selectedCampusObj = formOptions.campuses.find(c => String(c.id) === String(activeCampusId));
+
+    const getCampusLogoUrl = (campus) => {
+        if (!campus || !campus.logo_url) return null;
+        if (campus.logo_url.startsWith('http://') || campus.logo_url.startsWith('https://')) return campus.logo_url;
+        if (campus.logo_url.startsWith('/storage/')) return campus.logo_url;
+        return `/storage/${campus.logo_url}`;
+    };
+    const campusLogoSrc = getCampusLogoUrl(selectedCampusObj);
+
     if (loading) return (
         <div className="flex flex-col items-center justify-center py-24">
             <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
@@ -235,28 +246,37 @@ const NewAdmissionForm = () => {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-16">
             {/* Top Page Header */}
-            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden print:hidden">
                 <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="relative z-10">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-bold uppercase tracking-wider mb-3">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         Student Management
                     </div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-white">
-                        {isEdit ? 'Edit Student Admission' : 'New Student Admission'}
-                    </h1>
+                    <div className="flex items-center gap-3">
+                        {campusLogoSrc && (
+                            <img src={campusLogoSrc} alt={selectedCampusObj?.name} className="w-10 h-10 rounded-lg object-contain bg-white p-1 border border-white/20 shrink-0" />
+                        )}
+                        <h1 className="text-3xl font-extrabold tracking-tight text-white">
+                            {isEdit ? 'Edit Student Admission' : 'New Student Admission'}
+                        </h1>
+                    </div>
                     <p className="text-indigo-200/80 text-sm mt-1 max-w-xl">
                         {isEdit ? 'Update student records, program assignments, and documents.' : 'Complete the student profile and academic details to generate admission record.'}
                     </p>
                 </div>
                 <div className="flex gap-3 relative z-10">
+                    <Button variant="secondary" type="button" onClick={() => window.print()} className="bg-white/10 hover:bg-white/20 text-white border-white/10 backdrop-blur flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H7a2 2 0 00-2 2v4h10z" /></svg>
+                        Print Blank Form
+                    </Button>
                     <Button variant="secondary" onClick={() => navigate('/admissions')} className="bg-white/10 hover:bg-white/20 text-white border-white/10 backdrop-blur">
                         ← Back to List
                     </Button>
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-8 print:hidden">
                 {/* Section 1: Academic Enrollment */}
                 <Card className="p-6 sm:p-8 border-indigo-100 shadow-sm hover:shadow-md transition-shadow">
                     <CardSectionHeader
@@ -580,6 +600,260 @@ const NewAdmissionForm = () => {
                     </Button>
                 </div>
             </form>
+
+            {/* Printable Blank Admission Form (Visible ONLY during window.print()) */}
+            <div className="hidden print:block print:w-full font-sans text-slate-900 bg-white p-4">
+                {/* Form Header */}
+                <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-4">
+                    <div className="flex items-center gap-4">
+                        {campusLogoSrc ? (
+                            <img 
+                                src={campusLogoSrc} 
+                                alt={selectedCampusObj?.name} 
+                                className="w-16 h-16 rounded-xl object-contain border-2 border-slate-900 shrink-0" 
+                            />
+                        ) : (
+                            <div className="w-16 h-16 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-2xl border-2 border-slate-900 shrink-0">
+                                SGC
+                            </div>
+                        )}
+                        <div>
+                            <h1 className="text-2xl font-black uppercase tracking-wider text-slate-900">
+                                {selectedCampusObj?.name || 'SGC Education System'}
+                            </h1>
+                            <p className="text-xs font-bold text-slate-700 uppercase tracking-widest">Official Student Admission Application Form</p>
+                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Please fill out all sections in BLOCK LETTERS using blue or black ballpoint pen.</p>
+                        </div>
+                    </div>
+
+                    {/* Photo Box */}
+                    <div className="w-28 h-32 border-2 border-dashed border-slate-400 rounded-lg flex flex-col items-center justify-center text-center p-2 bg-slate-50 shrink-0">
+                        <span className="text-[9px] font-extrabold uppercase text-slate-400 tracking-tight leading-tight">
+                            AFFIX RECENT PASSPORT SIZE PHOTOGRAPH HERE
+                        </span>
+                    </div>
+                </div>
+
+                {/* Form Metadata Header Line */}
+                <div className="grid grid-cols-3 gap-4 text-xs font-bold bg-slate-100 p-2.5 rounded-lg border border-slate-300 mb-4">
+                    <div>Form No: <span className="border-b border-slate-800 inline-block w-28">&nbsp;</span></div>
+                    <div>Admission Session: <span className="border-b border-slate-800 inline-block w-24">20____ - 20____</span></div>
+                    <div className="text-right">Date: <span className="border-b border-slate-800 inline-block w-24">____/____/20____</span></div>
+                </div>
+
+                {/* Section 1: Academic & Program Selection */}
+                <div className="mb-4">
+                    <h2 className="text-xs font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded mb-2">
+                        1. Academic & Program Enrollment
+                    </h2>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div className="flex items-baseline gap-2">
+                            <span className="font-bold text-slate-700">Campus Name:</span>
+                            <span className="border-b border-slate-400 flex-1 font-bold text-slate-900">{selectedCampusObj?.name || ''}</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="font-bold text-slate-700">Program / Degree:</span>
+                            <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="font-bold text-slate-700">Semester / Year:</span>
+                            <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <span className="font-bold text-slate-700">Intake / Shift:</span>
+                            <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Morning</span>
+                            <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Evening</span>
+                            <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Fall</span>
+                            <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Spring</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 2: Student Personal Information */}
+                <div className="mb-4">
+                    <h2 className="text-xs font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded mb-2">
+                        2. Student Information
+                    </h2>
+                    <div className="space-y-2.5 text-xs">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-700">First Name:</span>
+                                <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-700">Last Name:</span>
+                                <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-700">Student CNIC / B-Form:</span>
+                                <div className="flex gap-1 font-mono font-bold text-xs">
+                                    {[...Array(5)].map((_, i) => <span key={i} className="w-4 h-5 border border-slate-600 inline-flex items-center justify-center"></span>)}
+                                    <span>-</span>
+                                    {[...Array(7)].map((_, i) => <span key={i} className="w-4 h-5 border border-slate-600 inline-flex items-center justify-center"></span>)}
+                                    <span>-</span>
+                                    <span className="w-4 h-5 border border-slate-600 inline-flex items-center justify-center"></span>
+                                </div>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-700">Date of Birth:</span>
+                                <span className="border-b border-slate-400 flex-1">____/____/________</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="flex items-center gap-3">
+                                <span className="font-bold text-slate-700">Gender:</span>
+                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Male</span>
+                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Female</span>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-700">Religion:</span>
+                                <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-700">Contact Phone:</span>
+                                <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-baseline gap-2">
+                            <span className="font-bold text-slate-700">Email Address:</span>
+                            <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                        </div>
+
+                        <div className="flex items-baseline gap-2">
+                            <span className="font-bold text-slate-700">Present Address:</span>
+                            <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="font-bold text-slate-700">Permanent Address:</span>
+                            <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 3: Guardian Details */}
+                <div className="mb-4">
+                    <h2 className="text-xs font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded mb-2">
+                        3. Guardian / Parent Details
+                    </h2>
+                    <div className="space-y-2.5 text-xs">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-700">Guardian Name:</span>
+                                <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-700">Guardian Phone:</span>
+                                <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-700">Guardian CNIC:</span>
+                            <div className="flex gap-1 font-mono font-bold text-xs">
+                                {[...Array(5)].map((_, i) => <span key={i} className="w-4 h-5 border border-slate-600 inline-flex items-center justify-center"></span>)}
+                                <span>-</span>
+                                {[...Array(7)].map((_, i) => <span key={i} className="w-4 h-5 border border-slate-600 inline-flex items-center justify-center"></span>)}
+                                <span>-</span>
+                                <span className="w-4 h-5 border border-slate-600 inline-flex items-center justify-center"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 4: Academic Qualification History Table */}
+                <div className="mb-4">
+                    <h2 className="text-xs font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded mb-2">
+                        4. Academic Qualifications
+                    </h2>
+                    <table className="w-full border-collapse border border-slate-400 text-xs">
+                        <thead>
+                            <tr className="bg-slate-200 text-slate-900 font-bold uppercase text-[10px] text-center">
+                                <th className="border border-slate-400 p-1.5">Exam Passed</th>
+                                <th className="border border-slate-400 p-1.5">Board / University</th>
+                                <th className="border border-slate-400 p-1.5">Roll No.</th>
+                                <th className="border border-slate-400 p-1.5">Passing Year</th>
+                                <th className="border border-slate-400 p-1.5">Total Marks</th>
+                                <th className="border border-slate-400 p-1.5">Obtained Marks</th>
+                                <th className="border border-slate-400 p-1.5">Division / Grade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td className="border border-slate-400 p-2 font-bold">Matric / SSC</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                            </tr>
+                            <tr>
+                                <td className="border border-slate-400 p-2 font-bold">FSc / HSSC</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                            </tr>
+                            <tr>
+                                <td className="border border-slate-400 p-2 font-bold">Other Qualification</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                                <td className="border border-slate-400 p-2">&nbsp;</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Section 5: Documents Checklist */}
+                <div className="mb-4">
+                    <h2 className="text-xs font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded mb-2">
+                        5. Required Documents Checklist
+                    </h2>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> 4x Attested Passport Photographs</span>
+                        <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Copy of Student CNIC / B-Form</span>
+                        <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Copy of Father / Guardian CNIC</span>
+                        <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Copy of Matric / SSC Result Card</span>
+                        <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Copy of FSc / HSSC Result Card</span>
+                        <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Character Certificate from Last School/College</span>
+                    </div>
+                </div>
+
+                {/* Section 6: Declaration & Signatures */}
+                <div className="mt-6 border-t-2 border-slate-900 pt-4">
+                    <p className="text-[10px] text-slate-700 text-justify leading-relaxed font-medium mb-8">
+                        <strong>UNDERTAKING & DECLARATION:</strong> I hereby declare that the particulars given above are correct to the best of my knowledge and belief. I agree to abide by the rules, regulations, and discipline of SGC Education System. I understand that my admission will be cancelled if any statement is found incorrect or if I fail to meet the attendance requirements.
+                    </p>
+
+                    <div className="grid grid-cols-4 gap-4 text-xs font-bold text-slate-800 text-center pt-4">
+                        <div>
+                            <div className="border-b-2 border-slate-800 mb-1">&nbsp;</div>
+                            <span>Student Signature</span>
+                        </div>
+                        <div>
+                            <div className="border-b-2 border-slate-800 mb-1">&nbsp;</div>
+                            <span>Guardian Signature</span>
+                        </div>
+                        <div>
+                            <div className="border-b-2 border-slate-800 mb-1">&nbsp;</div>
+                            <span>Admission Officer</span>
+                        </div>
+                        <div>
+                            <div className="border-b-2 border-slate-800 mb-1">&nbsp;</div>
+                            <span>Principal / Stamp</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
