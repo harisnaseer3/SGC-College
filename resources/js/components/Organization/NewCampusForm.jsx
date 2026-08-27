@@ -23,7 +23,7 @@ const NewCampusForm = ({ organization, onSuccess, campus = null }) => {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
 
-    const onCancel = () => navigate(`/colleges/${organization.id}/campuses`);
+    const onCancel = () => navigate(`/organizations/${organization.id}/campuses`);
 
     const handleChange = (e) => {
         const { name, value, files } = e.target;

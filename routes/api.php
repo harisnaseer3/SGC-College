@@ -23,6 +23,12 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [PasswordController::class, 'forgot']);
 Route::post('/reset-password', [PasswordController::class, 'reset']);
 
+// ERP API Endpoints for System Amounts & Statistics
+Route::middleware('external_api_auth')->prefix('v1/erp')->group(function () {
+    Route::get('/stats', [\App\Http\Controllers\Api\ExternalApiController::class, 'stats']);
+    Route::get('/amounts', [\App\Http\Controllers\Api\ExternalApiController::class, 'amounts']);
+});
+
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     

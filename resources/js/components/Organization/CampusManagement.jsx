@@ -18,7 +18,7 @@ const EditCampusWrapper = ({ organization, campuses, onSuccess }) => {
                 <h3 className="text-lg font-bold text-slate-800">Campus Not Found</h3>
                 <p className="text-slate-500 mt-2">The campus you're trying to edit doesn't exist.</p>
                 <button
-                    onClick={() => navigate(`/colleges/${organization.id}/campuses`)}
+                    onClick={() => navigate(`/organizations/${organization.id}/campuses`)}
                     className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                     Back to List
@@ -77,7 +77,7 @@ const CampusManagement = ({ onBack }) => {
 
     const handleCreateSuccess = () => {
         fetchOrgAndCampuses(pagination.current_page);
-        navigate(`/colleges/${orgId}/campuses`);
+        navigate(`/organizations/${orgId}/campuses`);
     };
 
     const handleDelete = async (campus) => {

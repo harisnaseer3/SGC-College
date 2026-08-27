@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'external_api' => [
+        'key' => env('EXTERNAL_API_KEY', 'sgc_ext_secret_key_2026'),
+    ],
+
 ];

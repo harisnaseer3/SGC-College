@@ -27,6 +27,11 @@ class Campus extends Model
         return $this->belongsTo(Organization::class);
     }
 
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return static::withoutGlobalScope('organization')->where($field ?? $this->getRouteKeyName(), $value)->firstOrFail();
+    }
+
     public function bankAccounts()
     {
         return $this->hasMany(CampusBankAccount::class);

@@ -47,7 +47,11 @@ class CampusController extends BaseController implements HasMiddleware
                 return $this->sendError('Unauthorized access to this organization.', [], 403);
             }
 
-            $campuses = $organization->campuses()->with('bankAccounts')->paginate(request('per_page', 10));
+            $campuses = $organization->campuses()
+                ->withoutGlobalScope('organization')
+                ->where('organization_id', $organization->id)
+                ->with('bankAccounts')
+                ->paginate(request('per_page', 10));
             return $this->sendResponse($campuses, 'Campuses retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve campuses.', ['error' => $e->getMessage()], 500);
@@ -76,6 +80,7 @@ class CampusController extends BaseController implements HasMiddleware
             $bankAccountsData = $data['bank_accounts'] ?? [];
             unset($data['bank_accounts']);
 
+            $data['organization_id'] = $organization->id;
             $campus = $organization->campuses()->create($data);
 
             if (!empty($bankAccountsData)) {

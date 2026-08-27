@@ -11,6 +11,9 @@ trait HasOrganizationScope
     {
         static::creating(function ($model) {
             $user = auth()->user();
+            if (!empty($model->organization_id)) {
+                return;
+            }
             if ($user && empty($model->organization_id) && !$user->hasRole('super_admin')) {
                 $model->organization_id = $user->organization_id;
             } elseif ($user && $user->hasRole('super_admin') && request()->hasHeader('X-Organization-ID')) {
