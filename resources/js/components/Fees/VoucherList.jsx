@@ -17,7 +17,19 @@ const VoucherList = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedVoucherIds, setSelectedVoucherIds] = useState([]);
     const [programs, setPrograms] = useState([]);
-    
+    const [sortBy, setSortBy] = useState('id');
+    const [sortOrder, setSortOrder] = useState('desc');
+
+    const handleSort = (column) => {
+        if (sortBy === column) {
+            setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+        } else {
+            setSortBy(column);
+            setSortOrder('desc');
+        }
+        setCurrentPage(1);
+    };
+
     // Parse initial filters from URL
     const [filters, setFilters] = useState({
         month: searchParams.get('month') || '',
@@ -43,7 +55,7 @@ const VoucherList = () => {
     // Reset selection on filter or page change
     useEffect(() => {
         setSelectedVoucherIds([]);
-    }, [currentPage, filters.month, filters.year, filters.status, filters.search, filters.program_id]);
+    }, [currentPage, filters.month, filters.year, filters.status, filters.search, filters.program_id, sortBy, sortOrder]);
 
     const debounceTimer = useRef(null);
 
@@ -63,10 +75,10 @@ const VoucherList = () => {
         fetchVouchers(1);
     }, [filters.month, filters.year, filters.status, filters.program_id]);
 
-    // Fetch on page change
+    // Fetch on page or sort change
     useEffect(() => {
         fetchVouchers(currentPage);
-    }, [currentPage]);
+    }, [currentPage, sortBy, sortOrder]);
 
     const fetchVouchers = async (page) => {
         const pageNum = page ?? currentPage;
@@ -78,7 +90,9 @@ const VoucherList = () => {
                 year: filters.year,
                 status: filters.status,
                 search: filters.search,
-                program_id: filters.program_id
+                program_id: filters.program_id,
+                sort_by: sortBy,
+                sort_order: sortOrder
             };
             const response = await axios.get('/api/student-fees/vouchers-list', { params });
             const payload = response.data.data;
@@ -281,16 +295,88 @@ const VoucherList = () => {
                                         }}
                                     />
                                 </th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sr #</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Voucher #</th>
+                                <th 
+                                    className="px-6 py-4 text-[10px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest cursor-pointer select-none"
+                                    onClick={() => handleSort('id')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <span className={sortBy === 'id' ? 'text-indigo-600 font-extrabold' : ''}>Sr #</span>
+                                        {sortBy === 'id' && (
+                                            <svg className={`w-3.5 h-3.5 text-indigo-600 transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        )}
+                                    </div>
+                                </th>
+                                <th 
+                                    className="px-6 py-4 text-[10px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest cursor-pointer select-none"
+                                    onClick={() => handleSort('voucher_number')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <span className={sortBy === 'voucher_number' ? 'text-indigo-600 font-extrabold' : ''}>Voucher #</span>
+                                        {sortBy === 'voucher_number' && (
+                                            <svg className={`w-3.5 h-3.5 text-indigo-600 transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        )}
+                                    </div>
+                                </th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Due Date</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Voucher Amount</th>
+                                <th 
+                                    className="px-6 py-4 text-[10px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest cursor-pointer select-none"
+                                    onClick={() => handleSort('due_date')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <span className={sortBy === 'due_date' ? 'text-indigo-600 font-extrabold' : ''}>Due Date</span>
+                                        {sortBy === 'due_date' && (
+                                            <svg className={`w-3.5 h-3.5 text-indigo-600 transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        )}
+                                    </div>
+                                </th>
+                                <th 
+                                    className="px-6 py-4 text-[10px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-right cursor-pointer select-none"
+                                    onClick={() => handleSort('amount')}
+                                >
+                                    <div className="flex items-center justify-end gap-1">
+                                        <span className={sortBy === 'amount' ? 'text-indigo-600 font-extrabold' : ''}>Voucher Amount</span>
+                                        {sortBy === 'amount' && (
+                                            <svg className={`w-3.5 h-3.5 text-indigo-600 transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        )}
+                                    </div>
+                                </th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Arrears</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Receivable</th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Received</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Balance</th>
-                                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                <th 
+                                    className="px-6 py-4 text-[10px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest text-right cursor-pointer select-none"
+                                    onClick={() => handleSort('balance_amount')}
+                                >
+                                    <div className="flex items-center justify-end gap-1">
+                                        <span className={sortBy === 'balance_amount' ? 'text-indigo-600 font-extrabold' : ''}>Balance</span>
+                                        {sortBy === 'balance_amount' && (
+                                            <svg className={`w-3.5 h-3.5 text-indigo-600 transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        )}
+                                    </div>
+                                </th>
+                                <th 
+                                    className="px-6 py-4 text-[10px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest cursor-pointer select-none"
+                                    onClick={() => handleSort('status')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <span className={sortBy === 'status' ? 'text-indigo-600 font-extrabold' : ''}>Status</span>
+                                        {sortBy === 'status' && (
+                                            <svg className={`w-3.5 h-3.5 text-indigo-600 transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        )}
+                                    </div>
+                                </th>
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Action</th>
                             </tr>
                         </thead>

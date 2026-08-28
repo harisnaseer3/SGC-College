@@ -30,6 +30,7 @@ const StudentFeeSummaryReport = () => {
         program_id: '',
         academic_batch_id: '',
         status: 'all',
+        include_struck_off: false,
         search: ''
     });
 
@@ -103,7 +104,7 @@ const StudentFeeSummaryReport = () => {
 
     useEffect(() => {
         fetchReport();
-    }, [filters.program_id, filters.academic_batch_id, filters.status, selectedCampus, selectedOrganization]);
+    }, [filters.program_id, filters.academic_batch_id, filters.status, filters.include_struck_off, selectedCampus, selectedOrganization]);
 
     const debounceTimer = useRef(null);
     useEffect(() => {
@@ -192,7 +193,7 @@ const StudentFeeSummaryReport = () => {
             const row = worksheet.addRow([
                 item.roll_number || '',
                 item.admission_number || '',
-                `${item.first_name || ''} ${item.last_name || ''}`.trim(),
+                `${item.first_name || ''} ${item.last_name || ''}${item.student_status && item.student_status.toLowerCase().includes('struck') ? ' (Struck Off)' : ''}`.trim(),
                 item.guardian_name || '',
                 item.program || '',
                 item.batch || '',
@@ -290,7 +291,7 @@ const StudentFeeSummaryReport = () => {
 
             {/* Filters */}
             <Card className="p-6 no-print border-indigo-50 shadow-indigo-50/50" hover={false}>
-                <form onSubmit={handleApplyFilters} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <form onSubmit={handleApplyFilters} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Search Student</label>
                         <input
@@ -339,6 +340,17 @@ const StudentFeeSummaryReport = () => {
                             <option value="paid">Fully Paid</option>
                             <option value="partial">Partially Paid</option>
                         </select>
+                    </div>
+                    <div>
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 hover:text-slate-900 select-none bg-slate-50/80 px-4 py-2.5 rounded-xl border border-slate-200 w-full transition-all hover:bg-slate-100/50 h-[42px]">
+                            <input
+                                type="checkbox"
+                                checked={filters.include_struck_off || false}
+                                onChange={(e) => setFilters(prev => ({ ...prev, include_struck_off: e.target.checked }))}
+                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                            />
+                            <span>Include Struck Off</span>
+                        </label>
                     </div>
                 </form>
             </Card>
@@ -395,7 +407,14 @@ const StudentFeeSummaryReport = () => {
                                                 <div className="text-[10px] text-slate-400 font-bold uppercase">Adm: {item.admission_number || '—'}</div>
                                             </td>
                                             <td className="px-5 py-3.5">
-                                                <div className="font-bold text-slate-900 text-sm">{item.first_name} {item.last_name}</div>
+                                                <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                                                    <span>{item.first_name} {item.last_name}</span>
+                                                    {item.student_status && item.student_status.toLowerCase().includes('struck') && (
+                                                        <span className="px-2 py-0.5 text-[9px] font-black rounded bg-rose-100 text-rose-800 uppercase tracking-wider">
+                                                            Struck Off
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="text-xs text-slate-500">Father: {item.guardian_name || '—'}</div>
                                             </td>
                                             <td className="px-5 py-3.5">

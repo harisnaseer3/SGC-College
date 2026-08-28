@@ -169,6 +169,7 @@ class FeeReportController extends BaseController implements HasMiddleware
             $programId       = $request->input('program_id');
             $batchId         = $request->input('academic_batch_id');
             $statusFilter    = $request->input('status'); // 'all', 'paid', 'defaulter', 'partial'
+            $includeStruckOff = filter_var($request->input('include_struck_off', false), FILTER_VALIDATE_BOOLEAN);
             $search          = trim($request->input('search', ''));
 
             $query = Student::with([
@@ -179,6 +180,13 @@ class FeeReportController extends BaseController implements HasMiddleware
                 'programSemester:id,name',
                 'studentFees.feeHead'
             ]);
+
+            if (!$includeStruckOff) {
+                $query->where(function($q) {
+                    $q->whereNotIn(\Illuminate\Support\Facades\DB::raw('LOWER(status)'), ['struck off', 'struck_off'])
+                      ->orWhereNull('status');
+                });
+            }
 
             if ($campusId && !$request->hasHeader('X-Campus-ID')) {
                 $query->where('campus_id', $campusId);
@@ -225,6 +233,7 @@ class FeeReportController extends BaseController implements HasMiddleware
                     'guardian_name' => $student->guardian_name,
                     'admission_number' => $student->admission_number,
                     'roll_number' => $student->roll_number,
+                    'student_status' => $student->status,
                     'program' => $student->program->name ?? 'N/A',
                     'campus' => $student->campus->name ?? 'N/A',
                     'batch' => $student->academicBatch->name ?? 'N/A',

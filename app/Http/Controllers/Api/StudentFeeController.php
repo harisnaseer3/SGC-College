@@ -405,8 +405,12 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $count = count($request->installments);
             $firstDueDate = $request->installments[0]['due_date'];
 
-            if (!str_contains(strtolower($studentFee->feeHead->name), 'semester')) {
-                return $this->sendError("Installments can only be applied to Semester Fee.", [], 422);
+            $headName = strtolower($studentFee->feeHead->name ?? '');
+            $oneTimeKeywords = ['admission', 'registration', 'prospectus', 'security', 'caution', 'id card', 'card fee', 'certificate', 'degree'];
+            foreach ($oneTimeKeywords as $kw) {
+                if (str_contains($headName, $kw)) {
+                    return $this->sendError("Installments can only be applied to recurring fees (e.g. Monthly Fee or Tuition Fee), not one-time fees.", [], 422);
+                }
             }
 
             foreach ($request->installments as $index => $inst) {
@@ -714,7 +718,15 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 });
             }
 
-            $vouchers = $query->orderBy('due_date', 'desc')
+            $sortBy = $request->get('sort_by', 'id');
+            $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+            $allowedSorts = ['id', 'voucher_number', 'due_date', 'amount', 'balance_amount', 'status'];
+            if (!in_array($sortBy, $allowedSorts)) {
+                $sortBy = 'id';
+            }
+
+            $vouchers = $query->orderBy($sortBy, $sortOrder)
                               ->paginate($request->get('per_page', 10));
 
             // Calculate unique aggregates (excluding carried_forward vouchers to prevent duplicate cumulative sums)

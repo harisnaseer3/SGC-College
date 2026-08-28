@@ -72,6 +72,44 @@ const getSemesterLabel = (student, semNum, dueDateStr) => {
     return `${term} ${semStartDate.getFullYear()}`;
 };
 
+const isSplittableFee = (fee) => {
+    if (!fee || fee.status === 'paid' || fee.status === 'carried_forward') return false;
+    if (fee.remarks?.toLowerCase().includes('(installment')) return false;
+
+    const headName = (fee.fee_head?.name || fee.remarks || '').toLowerCase();
+    const freq = (fee.fee_head?.frequency || '').toLowerCase();
+    const type = (fee.fee_head?.type || '').toLowerCase();
+
+    const oneTimeKeywords = ['admission', 'registration', 'prospectus', 'security', 'caution', 'id card', 'card fee', 'certificate', 'degree'];
+    if (oneTimeKeywords.some(kw => headName.includes(kw))) {
+        return false;
+    }
+
+    if (freq === 'monthly' || freq === 'per_semester' || freq === 'annual' || type === 'recurring') {
+        return true;
+    }
+
+    if (headName.includes('monthly') || headName.includes('tuition') || headName.includes('tution') || headName.includes('semester') || headName.includes('program') || headName.includes('course')) {
+        return true;
+    }
+
+    return false;
+};
+
+const getInstallmentDueDate = (baseDueDateStr, installmentIndex = 0) => {
+    let baseDate = parseLocalDate(baseDueDateStr);
+    if (!baseDate || baseDate.getFullYear() < 2020) {
+        baseDate = new Date();
+        baseDate.setDate(baseDate.getDate() + 15);
+    }
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + (installmentIndex * 15));
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
 const StudentLedgerDetail = () => {
     const { studentId } = useParams();
     const navigate = useNavigate();
@@ -414,13 +452,13 @@ const StudentLedgerDetail = () => {
                                                 >
                                                     Adjust
                                                 </button>
-                                                {fee.status !== 'paid' && fee.status !== 'carried_forward' && !fee.remarks?.toLowerCase().includes('(installment') && fee.fee_head?.name?.toLowerCase().includes('semester') && (
+                                                {isSplittableFee(fee) && (
                                                     <button 
                                                         onClick={() => {
                                                             setSplittingFee(fee);
                                                             setInstallments([
-                                                                { amount: (fee.balance_amount / 2).toFixed(2), due_date: fee.due_date },
-                                                                { amount: (fee.balance_amount / 2).toFixed(2), due_date: new Date(new Date(fee.due_date).setMonth(new Date(fee.due_date).getMonth() + 1)).toISOString().split('T')[0] }
+                                                                { amount: (fee.balance_amount / 2).toFixed(2), due_date: getInstallmentDueDate(fee.due_date, 0) },
+                                                                { amount: (fee.balance_amount / 2).toFixed(2), due_date: getInstallmentDueDate(fee.due_date, 1) }
                                                             ]);
                                                         }}
                                                         className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 underline decoration-emerald-200 underline-offset-4"
@@ -700,7 +738,7 @@ const StudentLedgerDetail = () => {
                                                     const equalAmount = (splittingFee.balance_amount / newCount).toFixed(2);
                                                     setInstallments(Array(newCount).fill(0).map((_, i) => ({
                                                         amount: equalAmount,
-                                                        due_date: installments[i]?.due_date || splittingFee.due_date
+                                                        due_date: getInstallmentDueDate(splittingFee.due_date, i)
                                                     })));
                                                 }}
                                                 className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"
@@ -719,12 +757,9 @@ const StudentLedgerDetail = () => {
                                         onClick={() => {
                                             const newCount = installments.length + 1;
                                             const equalAmount = (splittingFee.balance_amount / newCount).toFixed(2);
-                                            const lastDate = new Date(installments[installments.length - 1].due_date);
-                                            const nextDate = new Date(lastDate.setMonth(lastDate.getMonth() + 1)).toISOString().split('T')[0];
-                                            
                                             setInstallments(Array(newCount).fill(0).map((_, i) => ({
                                                 amount: equalAmount,
-                                                due_date: i === newCount - 1 ? nextDate : installments[i]?.due_date || splittingFee.due_date
+                                                due_date: getInstallmentDueDate(splittingFee.due_date, i)
                                             })));
                                         }}
                                         className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
