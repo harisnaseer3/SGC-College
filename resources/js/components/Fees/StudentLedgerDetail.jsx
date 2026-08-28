@@ -5,26 +5,68 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 import Card from '../UI/Card';
 
-const getSemesterNumber = (admissionDateStr, dueDateStr, feeSemesterNumber) => {
-    if (feeSemesterNumber) return feeSemesterNumber;
-    if (!admissionDateStr) return 1;
-    const rawAdmission = new Date(admissionDateStr);
-    const startMonth = rawAdmission.getMonth() >= 6 ? 6 : 0;
-    const admission = new Date(rawAdmission.getFullYear(), startMonth, 1);
-    
-    const due = new Date(dueDateStr);
-    const target = new Date(due.getFullYear(), due.getMonth(), 1);
-    
-    if (target < admission) return 1;
-    const months = (target.getFullYear() - admission.getFullYear()) * 12 + (target.getMonth() - admission.getMonth());
-    return Math.floor(months / 6) + 1;
+const parseLocalDate = (dateStr) => {
+    if (!dateStr) return null;
+    const str = String(dateStr).trim().split(' ')[0];
+    const parts = str.split('-');
+    if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+            return new Date(year, month, day);
+        }
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
 };
 
-const getSemesterLabel = (admissionDateStr, semNum) => {
-    if (!admissionDateStr) return `Semester ${semNum}`;
-    const rawAdmission = new Date(admissionDateStr);
-    const startMonth = rawAdmission.getMonth() >= 6 ? 6 : 0;
-    const semStartDate = new Date(rawAdmission.getFullYear(), startMonth, 1);
+const getSemesterNumber = (admissionDateStr, dueDateStr, feeSemesterNumber, structureType = 'semester') => {
+    if (feeSemesterNumber) return feeSemesterNumber;
+    if (!admissionDateStr) return 1;
+    const admission = parseLocalDate(admissionDateStr);
+    const due = dueDateStr ? parseLocalDate(dueDateStr) : new Date();
+    
+    if (!admission || !due) return 1;
+    if (due < admission) return 1;
+    const months = (due.getFullYear() - admission.getFullYear()) * 12 + (due.getMonth() - admission.getMonth());
+    
+    if (structureType === 'monthly') {
+        return Math.max(1, months + 1);
+    }
+    if (structureType === 'annual') {
+        return Math.max(1, Math.floor(months / 12) + 1);
+    }
+    return Math.max(1, Math.floor(months / 6) + 1);
+};
+
+const getSemesterLabel = (student, semNum, dueDateStr) => {
+    const sType = student?.program?.structure_type || 'semester';
+    const admissionDateStr = student?.admission_date;
+    
+    const baseDate = parseLocalDate(admissionDateStr) || parseLocalDate(dueDateStr);
+    
+    if (sType === 'monthly') {
+        if (baseDate) {
+            const date = new Date(baseDate.getFullYear(), baseDate.getMonth() + (semNum - 1), 1);
+            const monthName = date.toLocaleString('default', { month: 'short' });
+            return `Month ${semNum} (${monthName} ${date.getFullYear()})`;
+        }
+        return `Month ${semNum}`;
+    }
+
+    if (sType === 'annual') {
+        if (baseDate) {
+            const startYear = baseDate.getFullYear() + (semNum - 1);
+            return `Year ${semNum} (${startYear}-${startYear + 1})`;
+        }
+        return `Year ${semNum}`;
+    }
+
+    // Default: Semester-wise
+    if (!baseDate) return `Semester ${semNum}`;
+    const startMonth = baseDate.getMonth() >= 6 ? 6 : 0;
+    const semStartDate = new Date(baseDate.getFullYear(), startMonth, 1);
     semStartDate.setMonth(semStartDate.getMonth() + (semNum - 1) * 6);
     const term = semStartDate.getMonth() >= 6 ? 'Fall' : 'Spring';
     return `${term} ${semStartDate.getFullYear()}`;
@@ -152,9 +194,10 @@ const StudentLedgerDetail = () => {
                     <Button 
                         onClick={async () => {
                             try {
+                                const structureType = ledger.student?.program?.structure_type || 'semester';
                                 const selectedSems = Object.values(ledger.fees.reduce((acc, fee) => {
-                                    const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date, fee.semester_number);
-                                    const key = `${fee.due_date ? new Date(fee.due_date).getMonth() + 1 : 1}-${fee.due_date ? new Date(fee.due_date).getFullYear() : 2026}`;
+                                    const semNum = getSemesterNumber(ledger.student?.admission_date, fee.due_date, fee.semester_number, structureType);
+                                    const key = `Period-${semNum}`;
                                     if (selectedPeriods.includes(key)) {
                                         acc.add(semNum);
                                     }
@@ -184,9 +227,11 @@ const StudentLedgerDetail = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
                 <Card className="p-6 bg-violet-50 border-violet-100">
-                    <div className="text-xs font-bold text-violet-500 uppercase">Total Semesters</div>
+                    <div className="text-xs font-bold text-violet-500 uppercase">
+                        {ledger?.student?.program?.structure_type === 'monthly' ? 'Total Months' : (ledger?.student?.program?.structure_type === 'annual' ? 'Total Years' : 'Total Semesters')}
+                    </div>
                     <div className="text-2xl font-bold text-violet-700">
-                        {ledger ? new Set([...(ledger.fees || []), ...(ledger.paid_fees || [])].map(fee => getSemesterNumber(ledger.student.admission_date, fee.due_date, fee.semester_number))).size : 0}
+                        {ledger ? new Set([...(ledger.fees || []), ...(ledger.paid_fees || [])].map(fee => getSemesterNumber(ledger.student?.admission_date, fee.due_date, fee.semester_number, ledger?.student?.program?.structure_type || 'semester'))).size : 0}
                     </div>
                 </Card>
                 <Card className="p-6 bg-fuchsia-50 border-fuchsia-100">
@@ -218,17 +263,13 @@ const StudentLedgerDetail = () => {
                     <h2 className="text-lg font-black text-slate-800 uppercase tracking-widest">Fee Billing Details</h2>
                 </div>
                 {Object.values(ledger.fees.reduce((acc, fee) => {
-                    const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date, fee.semester_number);
-                    const key = `Semester-${semNum}`;
+                    const structureType = ledger.student?.program?.structure_type || 'semester';
+                    const semNum = getSemesterNumber(ledger.student?.admission_date, fee.due_date, fee.semester_number, structureType);
+                    const key = `Period-${semNum}`;
                     if (!acc[key]) {
-                        const admission = new Date(ledger.student.admission_date);
-                        const startMonth = admission.getMonth() >= 6 ? 6 : 0;
-                        const semStartDate = new Date(admission.getFullYear(), startMonth, 1);
-                        semStartDate.setMonth(semStartDate.getMonth() + (semNum - 1) * 6);
                         acc[key] = {
-                            label: getSemesterLabel(ledger.student.admission_date, semNum),
-                            month: semStartDate.getMonth() + 1,
-                            year: semStartDate.getFullYear(),
+                            label: getSemesterLabel(ledger.student, semNum, fee.due_date),
+                            key: key,
                             semNum: semNum,
                             fees: []
                         };
@@ -236,19 +277,18 @@ const StudentLedgerDetail = () => {
                     acc[key].fees.push(fee);
                     return acc;
                 }, {})).sort((a, b) => a.semNum - b.semNum).map((group) => (
-                    <Card key={group.label} className={`overflow-hidden border-slate-200 shadow-sm transition-all duration-300 ${selectedPeriods.includes(`${group.month}-${group.year}`) ? 'ring-2 ring-indigo-500 bg-indigo-50/10' : ''}`}>
+                    <Card key={group.key} className={`overflow-hidden border-slate-200 shadow-sm transition-all duration-300 ${selectedPeriods.includes(group.key) ? 'ring-2 ring-indigo-500 bg-indigo-50/10' : ''}`}>
                         <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
                             <div className="flex items-center gap-3">
                                 <input 
                                     type="checkbox"
                                     className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                                    checked={selectedPeriods.includes(`${group.month}-${group.year}`)}
+                                    checked={selectedPeriods.includes(group.key)}
                                     onChange={() => {
-                                        const key = `${group.month}-${group.year}`;
-                                        if (selectedPeriods.includes(key)) {
-                                            setSelectedPeriods(selectedPeriods.filter(p => p !== key));
+                                        if (selectedPeriods.includes(group.key)) {
+                                            setSelectedPeriods(selectedPeriods.filter(p => p !== group.key));
                                         } else {
-                                            setSelectedPeriods([...selectedPeriods, key]);
+                                            setSelectedPeriods([...selectedPeriods, group.key]);
                                         }
                                     }}
                                 />
@@ -337,10 +377,30 @@ const StudentLedgerDetail = () => {
                                                     disabled={fee.status === 'paid' || fee.status === 'carried_forward'}
                                                     onClick={() => {
                                                         setEditingFee(fee);
+                                                        
+                                                        let defaultDueDate = '';
+                                                        if (fee.due_date) {
+                                                            const parsed = parseLocalDate(fee.due_date);
+                                                            if (parsed && parsed.getFullYear() >= 2020) {
+                                                                const y = parsed.getFullYear();
+                                                                const m = String(parsed.getMonth() + 1).padStart(2, '0');
+                                                                const d = String(parsed.getDate()).padStart(2, '0');
+                                                                defaultDueDate = `${y}-${m}-${d}`;
+                                                            }
+                                                        }
+                                                        if (!defaultDueDate) {
+                                                            const future = new Date();
+                                                            future.setDate(future.getDate() + 15);
+                                                            const y = future.getFullYear();
+                                                            const m = String(future.getMonth() + 1).padStart(2, '0');
+                                                            const d = String(future.getDate()).padStart(2, '0');
+                                                            defaultDueDate = `${y}-${m}-${d}`;
+                                                        }
+
                                                         setAdjustment({ 
                                                             discount_amount: fee.discount_amount || 0, 
                                                             fine_amount: fee.fine_amount || 0, 
-                                                            due_date: fee.due_date ? fee.due_date.substring(0, 10) : '',
+                                                            due_date: defaultDueDate,
                                                             discount_type: 'fixed',
                                                             apply_to_all: false,
                                                             apply_due_date_to_all: false 
@@ -402,17 +462,13 @@ const StudentLedgerDetail = () => {
                     <div className="space-y-4">
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Cleared Vouchers</div>
                         {Object.values(ledger.paid_fees.reduce((acc, fee) => {
-                            const semNum = getSemesterNumber(ledger.student.admission_date, fee.due_date, fee.semester_number);
-                            const key = `Semester-${semNum}`;
+                            const structureType = ledger.student?.program?.structure_type || 'semester';
+                            const semNum = getSemesterNumber(ledger.student?.admission_date, fee.due_date, fee.semester_number, structureType);
+                            const key = `Period-${semNum}`;
                             if (!acc[key]) {
-                                const admission = new Date(ledger.student.admission_date);
-                                const startMonth = admission.getMonth() >= 6 ? 6 : 0;
-                                const semStartDate = new Date(admission.getFullYear(), startMonth, 1);
-                                semStartDate.setMonth(semStartDate.getMonth() + (semNum - 1) * 6);
                                 acc[key] = {
-                                    label: getSemesterLabel(ledger.student.admission_date, semNum),
-                                    month: semStartDate.getMonth() + 1,
-                                    year: semStartDate.getFullYear(),
+                                    label: getSemesterLabel(ledger.student, semNum, fee.due_date),
+                                    key: key,
                                     semNum: semNum,
                                     fees: []
                                 };
@@ -420,7 +476,7 @@ const StudentLedgerDetail = () => {
                             acc[key].fees.push(fee);
                             return acc;
                         }, {})).sort((a, b) => a.semNum - b.semNum).map((group) => (
-                            <Card key={group.label} className="overflow-hidden border-emerald-100 shadow-sm opacity-80">
+                            <Card key={group.key} className="overflow-hidden border-emerald-100 shadow-sm opacity-80">
                                 <div className="bg-emerald-50 px-6 py-3 border-b border-emerald-100 flex justify-between items-center">
                                     <div className="flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>

@@ -299,28 +299,42 @@ const NewAdmissionForm = () => {
                             <label className={labelCls}>Program <span className="text-rose-500">*</span></label>
                             <select name="program_id" value={formData.program_id} onChange={handleChange} className={inputCls} required>
                                 <option value="">Select Program</option>
-                                {formOptions.programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                {formOptions.programs.map(p => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.name} ({p.structure_type ? (p.structure_type.charAt(0).toUpperCase() + p.structure_type.slice(1)) : 'Semester'})
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
                         {formData.program_id ? (
                             <>
-                                <div>
-                                    <label className={labelCls}>Semester <span className="text-rose-500">*</span></label>
-                                    <select name="program_semester_id" value={formData.program_semester_id} onChange={handleChange} className={inputCls} required>
-                                        <option value="">Select Semester</option>
-                                        {(() => {
-                                            const prog = formOptions.programs.find(p => p.id == formData.program_id);
-                                            if (!prog) return null;
-                                            const totalSems = prog.total_semesters || 8;
-                                            return prog.semesters
-                                                ?.filter(s => s.semester_number <= totalSems)
-                                                .map(s => (
-                                                    <option key={s.id} value={s.id}>Semester {s.semester_number}</option>
-                                                ));
-                                        })()}
-                                    </select>
-                                </div>
+                                {(() => {
+                                    const prog = formOptions.programs.find(p => p.id == formData.program_id);
+                                    const sType = prog?.structure_type || 'semester';
+                                    const termLabel = sType === 'monthly' ? 'Month' : (sType === 'annual' ? 'Year' : 'Semester');
+                                    const totalSems = prog?.total_semesters || (sType === 'monthly' ? 12 : (sType === 'annual' ? 4 : 8));
+                                    
+                                    return (
+                                        <div>
+                                            <label className={labelCls}>{termLabel} <span className="text-rose-500">*</span></label>
+                                            <select name="program_semester_id" value={formData.program_semester_id} onChange={handleChange} className={inputCls} required>
+                                                <option value="">Select {termLabel}</option>
+                                                {prog?.semesters && prog.semesters.length > 0 ? (
+                                                    prog.semesters
+                                                        .filter(s => s.semester_number <= totalSems)
+                                                        .map(s => (
+                                                            <option key={s.id} value={s.id}>{termLabel} {s.semester_number}</option>
+                                                        ))
+                                                ) : (
+                                                    [...Array(totalSems)].map((_, i) => (
+                                                        <option key={i + 1} value={i + 1}>{termLabel} {i + 1}</option>
+                                                    ))
+                                                )}
+                                            </select>
+                                        </div>
+                                    );
+                                })()}
 
                                 <div>
                                     <label className={labelCls}>Academic Batch <span className="text-rose-500">*</span></label>
@@ -338,14 +352,22 @@ const NewAdmissionForm = () => {
                             </div>
                         )}
 
-                        <div>
-                            <label className={labelCls}>Intake Session <span className="text-rose-500">*</span></label>
-                            <select name="intake_session" value={formData.intake_session} onChange={handleChange} className={inputCls} required>
-                                <option value="">Select Intake</option>
-                                <option value="Fall">Fall</option>
-                                <option value="Spring">Spring</option>
-                            </select>
-                        </div>
+                        {(() => {
+                            const prog = formOptions.programs.find(p => p.id == formData.program_id);
+                            const sType = prog?.structure_type || 'semester';
+                            if (sType !== 'semester') return null;
+
+                            return (
+                                <div>
+                                    <label className={labelCls}>Intake Session <span className="text-rose-500">*</span></label>
+                                    <select name="intake_session" value={formData.intake_session} onChange={handleChange} className={inputCls} required>
+                                        <option value="">Select Intake</option>
+                                        <option value="Fall">Fall</option>
+                                        <option value="Spring">Spring</option>
+                                    </select>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </Card>
 

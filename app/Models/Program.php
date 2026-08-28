@@ -18,7 +18,8 @@ class Program extends Model
         'code',
         'description',
         'duration_years',
-        'total_semesters'
+        'total_semesters',
+        'structure_type',
     ];
 
     public function semesters()

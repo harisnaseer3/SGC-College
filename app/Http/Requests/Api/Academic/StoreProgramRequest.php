@@ -27,6 +27,7 @@ class StoreProgramRequest extends FormRequest
             'description' => 'nullable|string',
             'duration_years' => 'required|integer|min:1',
             'total_semesters' => 'required|integer|min:1',
+            'structure_type' => 'nullable|string|in:semester,monthly,annual',
             'campus_id' => 'required|exists:campuses,id',
         ];
     }

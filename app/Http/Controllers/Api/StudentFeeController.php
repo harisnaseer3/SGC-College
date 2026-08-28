@@ -246,6 +246,15 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 ->orderBy('due_date', 'asc')
                 ->get();
 
+            $structureType = $student->program->structure_type ?? 'semester';
+            if (in_array($structureType, ['monthly', 'annual'])) {
+                $currentSem = $this->feeService->getStudentSemesterNumber($student, \Carbon\Carbon::now());
+                $allFees = $allFees->filter(function($f) use ($student, $currentSem) {
+                    $semNum = $f->semester_number ?: $this->feeService->getStudentSemesterNumber($student, $f->due_date);
+                    return $semNum <= $currentSem || $f->paid_amount > 0 || !empty($f->voucher_number);
+                })->values();
+            }
+
             // Split: unpaid/partial go to billing details; paid go to payment history
             $unpaidFees = $allFees->whereIn('status', ['unpaid', 'partial', 'carried_forward'])->values();
             $paidFees   = $allFees->where('status', 'paid')->values();

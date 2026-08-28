@@ -4,7 +4,7 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 import Pagination from '../UI/Pagination';
 
-const EMPTY = { name: '', code: '', description: '', duration_years: 4, total_semesters: 8, campus_id: '' };
+const EMPTY = { name: '', code: '', description: '', duration_years: 4, total_semesters: 8, structure_type: 'semester', campus_id: '' };
 
 const inputCls = 'w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm';
 
@@ -47,7 +47,8 @@ const ProgramManagement = () => {
     const openEdit = (p) => {
         setEditing(p);
         setFormData({ name: p.name, code: p.code || '', description: p.description || '',
-            duration_years: p.duration_years, total_semesters: p.total_semesters, campus_id: p.campus_id || '' });
+            duration_years: p.duration_years, total_semesters: p.total_semesters,
+            structure_type: p.structure_type || 'semester', campus_id: p.campus_id || '' });
         setShowForm(true);
     };
     const closeForm = () => { setShowForm(false); setEditing(null); setFormData(EMPTY); };
@@ -121,14 +122,26 @@ const ProgramManagement = () => {
                                 {campuses?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Structure Type (Fee & Term System)</label>
+                            <select className={inputCls} value={formData.structure_type}
+                                onChange={(e) => setFormData({ ...formData, structure_type: e.target.value,
+                                    total_semesters: e.target.value === 'monthly' ? 12 : (e.target.value === 'annual' ? 4 : 8) })} required>
+                                <option value="semester">Semester-wise (Every 6 Months)</option>
+                                <option value="monthly">Monthly System (Every Month)</option>
+                                <option value="annual">Annual System (Every Year)</option>
+                            </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 md:col-span-2">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Duration (Years)</label>
                                 <input type="number" className={inputCls} value={formData.duration_years}
                                     onChange={(e) => setFormData({ ...formData, duration_years: e.target.value })} required />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Total Semesters</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    {formData.structure_type === 'monthly' ? 'Total Months' : (formData.structure_type === 'annual' ? 'Total Years' : 'Total Semesters')}
+                                </label>
                                 <input type="number" className={inputCls} value={formData.total_semesters}
                                     onChange={(e) => setFormData({ ...formData, total_semesters: e.target.value })} required />
                             </div>
@@ -154,8 +167,8 @@ const ProgramManagement = () => {
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Code</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Campus</th>
+                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Structure</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Duration</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Semesters</th>
                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                         </tr>
                     </thead>
@@ -167,8 +180,20 @@ const ProgramManagement = () => {
                                 <td className="px-6 py-4 text-sm text-slate-800 font-semibold">{p.name}</td>
                                 <td className="px-6 py-4 text-sm text-slate-500 font-mono">{p.code || '—'}</td>
                                 <td className="px-6 py-4 text-sm text-slate-500">{p.campus?.name || '—'}</td>
-                                <td className="px-6 py-4 text-sm text-slate-500">{p.duration_years} yrs</td>
-                                <td className="px-6 py-4 text-sm text-slate-500">{p.total_semesters}</td>
+                                <td className="px-6 py-4 text-xs">
+                                    <span className={`px-2 py-1 rounded-md font-bold uppercase ${
+                                        p.structure_type === 'monthly'
+                                            ? 'bg-purple-100 text-purple-700'
+                                            : p.structure_type === 'annual'
+                                            ? 'bg-amber-100 text-amber-700'
+                                            : 'bg-blue-100 text-blue-700'
+                                    }`}>
+                                        {p.structure_type || 'semester'}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-slate-500">
+                                    {p.duration_years} yrs ({p.total_semesters} {p.structure_type === 'monthly' ? 'months' : (p.structure_type === 'annual' ? 'years' : 'semesters')})
+                                </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center justify-end gap-1">
                                         <button onClick={() => openEdit(p)} title="Edit"

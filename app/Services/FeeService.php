@@ -53,17 +53,10 @@ class FeeService
 
             foreach ($itemsToApply as $item) {
                 $feeHead = $item->feeHead;
-                $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
-                $isSemester = ($feeHead->frequency === 'semester');
-
-                if ($semNumber === 1) {
-                    if (!$isOneTime && !$isSemester) {
-                        continue;
-                    }
-                } else {
-                    if (!$isSemester) {
-                        continue;
-                    }
+                $structureType = $student->program->structure_type ?? 'semester';
+                
+                if (!$this->shouldApplyFeeHead($feeHead, $semNumber, $structureType)) {
+                    continue;
                 }
                 
                 if ($item->amount <= 0) {
@@ -140,17 +133,10 @@ class FeeService
 
         foreach ($itemsToApply as $item) {
             $feeHead = $item->feeHead;
-            $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
-            $isSemester = ($feeHead->frequency === 'semester');
+            $structureType = $student->program->structure_type ?? 'semester';
 
-            if ($semNumber === 1) {
-                if (!$isOneTime && !$isSemester) {
-                    continue;
-                }
-            } else {
-                if (!$isSemester) {
-                    continue;
-                }
+            if (!$this->shouldApplyFeeHead($feeHead, $semNumber, $structureType)) {
+                continue;
             }
             
             if ($item->amount <= 0) {
@@ -198,6 +184,20 @@ class FeeService
 
         $admissionDate = Carbon::parse($student->admission_date);
         $currentDate = Carbon::now();
+        $structureType = $student->program->structure_type ?? 'semester';
+
+        // Find current semester/period number for the student as of today
+        $currentSem = $this->getStudentSemesterNumber($student, $currentDate);
+
+        // Prune any unissued future fees for monthly/annual programs (e.g. pre-generated future months)
+        if (in_array($structureType, ['monthly', 'annual'])) {
+            StudentFee::where('student_id', $student->id)
+                ->where('semester_number', '>', $currentSem)
+                ->whereNull('voucher_number')
+                ->where('status', 'unpaid')
+                ->where('paid_amount', 0)
+                ->delete();
+        }
 
         // Fetch fee structures that apply to this student
         $structures = FeeStructure::where('campus_id', $student->campus_id)
@@ -218,9 +218,6 @@ class FeeService
 
         $generatedCount = 0;
 
-        // Find current semester number for the student
-        $currentSem = $this->getStudentSemesterNumber($student, $currentDate);
-
         for ($s = 1; $s <= $currentSem; $s++) {
             [$start, $end] = $this->getStudentSemesterRange($student, $s);
             $dueDate = $start->copy()->day(10);
@@ -237,17 +234,9 @@ class FeeService
 
             foreach ($itemsToApply as $item) {
                 $feeHead = $item->feeHead;
-                $isOneTime = ($feeHead->frequency === 'one_time' || $feeHead->frequency_name === 'Once at First Fee');
-                $isSemester = ($feeHead->frequency === 'semester');
 
-                if ($s === 1) {
-                    if (!$isOneTime && !$isSemester) {
-                        continue;
-                    }
-                } else {
-                    if (!$isSemester) {
-                        continue;
-                    }
+                if (!$this->shouldApplyFeeHead($feeHead, $s, $structureType)) {
+                    continue;
                 }
                 
                 if ($item->amount <= 0) {
@@ -774,7 +763,36 @@ class FeeService
     }
 
     /**
-     * Get the semester number for a student based on a given date (like due_date).
+     * Determine if a fee head applies to a specific period number and structure type.
+     */
+    public function shouldApplyFeeHead($feeHead, int $periodNumber, string $structureType = 'semester'): bool
+    {
+        $freq = $feeHead->frequency ?? 'semester';
+        $isOneTime = ($freq === 'one_time' || ($feeHead->frequency_name ?? '') === 'Once at First Fee');
+        
+        if ($periodNumber === 1) {
+            if ($isOneTime) return true;
+        } else {
+            if ($isOneTime) return false;
+        }
+
+        if ($freq === 'monthly') return true;
+
+        if ($structureType === 'monthly') {
+            if ($freq === 'semester') return true;
+            if ($freq === 'annual') return ($periodNumber - 1) % 12 === 0;
+        } elseif ($structureType === 'annual') {
+            if ($freq === 'annual' || $freq === 'semester') return true;
+        } else {
+            if ($freq === 'semester') return true;
+            if ($freq === 'annual') return ($periodNumber - 1) % 2 === 0;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the semester/period number for a student based on a given date (like due_date).
      */
     public function getStudentSemesterNumber(Student $student, Carbon $date): int
     {
@@ -783,11 +801,34 @@ class FeeService
         }
 
         $admissionDate = Carbon::parse($student->admission_date)->startOfMonth();
+        $targetDate = $date->copy()->startOfMonth();
+        $structureType = $student->program->structure_type ?? 'semester';
+
+        if ($structureType === 'monthly') {
+            if ($targetDate->lt($admissionDate)) {
+                return 1;
+            }
+            $monthNumber = (int) $admissionDate->diffInMonths($targetDate) + 1;
+            if ($student->program && $student->program->total_semesters) {
+                $monthNumber = min($monthNumber, $student->program->total_semesters);
+            }
+            return $monthNumber;
+        }
+
+        if ($structureType === 'annual') {
+            if ($targetDate->lt($admissionDate)) {
+                return 1;
+            }
+            $yearNumber = (int) $admissionDate->diffInYears($targetDate) + 1;
+            if ($student->program && $student->program->duration_years) {
+                $yearNumber = min($yearNumber, $student->program->duration_years);
+            }
+            return $yearNumber;
+        }
+
         // Standardize the start month to the calendar semester (Jan or July) of the admission date
         $startMonth = $admissionDate->month >= 7 ? 7 : 1;
         $standardizedAdmission = $admissionDate->copy()->month($startMonth)->startOfMonth();
-
-        $targetDate = $date->copy()->startOfMonth();
 
         if ($targetDate->lt($standardizedAdmission)) {
             return 1;
@@ -813,6 +854,20 @@ class FeeService
             ? Carbon::parse($student->admission_date)->startOfMonth() 
             : Carbon::now()->startOfMonth();
 
+        $structureType = $student->program->structure_type ?? 'semester';
+
+        if ($structureType === 'monthly') {
+            $start = $admissionDate->copy()->addMonths($semesterNumber - 1)->startOfMonth();
+            $end = $start->copy()->endOfMonth();
+            return [$start, $end];
+        }
+
+        if ($structureType === 'annual') {
+            $start = $admissionDate->copy()->addYears($semesterNumber - 1)->startOfMonth();
+            $end = $start->copy()->addYear()->subDay()->endOfMonth();
+            return [$start, $end];
+        }
+
         // Standardize the start month to the calendar semester (Jan or July) of the admission date
         $startMonth = $admissionDate->month >= 7 ? 7 : 1;
         $standardizedAdmission = $admissionDate->copy()->month($startMonth)->startOfMonth();
@@ -830,6 +885,16 @@ class FeeService
     public function getStudentSemesterLabel(Student $student, int $semesterNumber): string
     {
         [$start, $end] = $this->getStudentSemesterRange($student, $semesterNumber);
+        $structureType = $student->program->structure_type ?? 'semester';
+
+        if ($structureType === 'monthly') {
+            return "Month {$semesterNumber} (" . $start->format('M Y') . ")";
+        }
+
+        if ($structureType === 'annual') {
+            return "Year {$semesterNumber} (" . $start->year . "-" . ($start->year + 1) . ")";
+        }
+
         $term = $start->month >= 7 ? 'Fall' : 'Spring';
         return "{$term} {$start->year}";
     }

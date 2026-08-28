@@ -165,7 +165,7 @@ const FeeStructureManagement = () => {
                                 >
                                     <option value="">All Programs</option>
                                     {programs.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                        <option key={p.id} value={p.id}>{p.name} ({p.structure_type ? (p.structure_type.charAt(0).toUpperCase() + p.structure_type.slice(1)) : 'Semester'})</option>
                                     ))}
                                 </select>
                             </div>
