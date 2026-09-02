@@ -31,7 +31,8 @@ const FeeCollectionReport = () => {
     const [filters, setFilters] = useState({
         start_date: dateRange.start,
         end_date: dateRange.end,
-        payment_method: ''
+        payment_method: '',
+        search: ''
     });
 
     const fetchReport = async () => {
@@ -80,7 +81,7 @@ const FeeCollectionReport = () => {
 
     useEffect(() => {
         fetchReport();
-    }, [filters.start_date, filters.end_date, filters.payment_method, selectedCampus, selectedOrganization]);
+    }, [filters.start_date, filters.end_date, filters.payment_method, filters.search, selectedCampus, selectedOrganization]);
 
     useEffect(() => {
         fetchDetails();
@@ -237,7 +238,22 @@ const FeeCollectionReport = () => {
 
             {/* Filters */}
             <Card className="p-6 no-print border-indigo-50 shadow-indigo-50/50" hover={false}>
-                <form onSubmit={handleApplyFilters} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                <form onSubmit={handleApplyFilters} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                    <div className="md:col-span-2 lg:col-span-4">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Search Payment</label>
+                        <div className="relative">
+                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            </span>
+                            <input
+                                type="text"
+                                placeholder="Search by student name, roll number, admission number, receipt, or transaction ID…"
+                                value={filters.search}
+                                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all bg-slate-50/50 text-sm font-semibold"
+                            />
+                        </div>
+                    </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">From Date</label>
                         <input
@@ -279,7 +295,8 @@ const FeeCollectionReport = () => {
                                 setFilters({
                                     start_date: range.start,
                                     end_date: range.end,
-                                    payment_method: ''
+                                    payment_method: '',
+                                    search: ''
                                 });
                             }}
                             className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
