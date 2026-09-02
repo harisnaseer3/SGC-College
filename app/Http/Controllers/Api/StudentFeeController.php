@@ -139,14 +139,23 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function generate(\App\Http\Requests\Api\Fees\GenerateStudentFeeRequest $request)
     {
         try {
-            $count = $this->feeService->generateFees(
+            $result = $this->feeService->generateFees(
                 $request->campus_id,
                 $request->program_id,
                 $request->academic_batch_id,
                 $request->due_date
             );
 
-            return $this->sendResponse(['count' => $count], "Billing process completed. $count fee records generated.");
+            // Fetch correctly for arrays (new logic) or ints (fallback)
+            $count = is_array($result) ? $result['count'] : $result;
+            $skipped = is_array($result) ? $result['skipped_struck_off'] : 0;
+
+            $msg = "Billing process completed. $count fee records generated.";
+            if ($skipped > 0) {
+                $msg .= " Note: $skipped struck-off students were skipped automatically.";
+            }
+
+            return $this->sendResponse(['count' => $count, 'skipped' => $skipped], $msg);
         } catch (\Exception $e) {
             return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
         }
@@ -368,6 +377,10 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function manualAssign(\App\Models\Student $student)
     {
         try {
+            if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
+                return $this->sendError("Fees cannot be manually assigned because the student is marked as Struck Off.", [], 400);
+            }
+
             $count = $this->feeService->assignInitialFees($student);
             
             if ($count === 0) {
@@ -670,6 +683,17 @@ class StudentFeeController extends BaseController implements HasMiddleware
         try {
             $query = \App\Models\GeneratedVoucher::with(['student.program', 'student.campus']);
 
+            // Exclude fee vouchers for struck off students if voucher due date is on or after their struck-off date
+            $query->whereNotIn('generated_vouchers.id', function($q) {
+                $q->select('generated_vouchers.id')
+                  ->from('generated_vouchers')
+                  ->join('students', 'students.id', '=', 'generated_vouchers.student_id')
+                  ->join('student_status_logs', 'student_status_logs.student_id', '=', 'students.id')
+                  ->whereRaw('LOWER(students.status) IN ("struck off", "struck_off")')
+                  ->where('student_status_logs.status', 'Struck Off')
+                  ->whereRaw('generated_vouchers.due_date >= student_status_logs.action_date');
+            });
+
             if ($request->filled('month') && $request->filled('year')) {
                 $query->whereMonth('due_date', $request->month)
                       ->whereYear('due_date', $request->year);
@@ -835,6 +859,9 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $fees = $feesQuery->get();
 
             if ($fees->isEmpty()) {
+                if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
+                    return $this->sendError('No unpaid fees found to generate a voucher. Note: This student is marked as Struck Off, so no new fees can be generated for them.', [], 400);
+                }
                 return $this->sendError('No unpaid fees found to generate a voucher.', [], 400);
             }
 

@@ -156,4 +156,17 @@ class Student extends Model
     {
         return $this->hasMany(StudentFee::class);
     }
+
+    /**
+     * Get the struck off date if the student is currently struck off.
+     */
+    public function getStruckOffDateAttribute()
+    {
+        if (strtolower($this->status) !== 'struck off' && strtolower($this->status) !== 'struck_off') {
+            return null;
+        }
+
+        $log = $this->statusLogs()->where('status', 'Struck Off')->orderBy('action_date', 'desc')->first();
+        return $log ? $log->action_date : null;
+    }
 }

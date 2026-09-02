@@ -25,6 +25,7 @@ class FeeService
         $structures = $structureQuery->with('items.feeHead')->get();
 
         $generatedCount = 0;
+        $skippedStruckOff = 0;
 
         // 2. Fetch relevant students
         $studentQuery = Student::where('campus_id', $campusId);
@@ -33,6 +34,21 @@ class FeeService
         $students = $studentQuery->get();
 
         foreach ($students as $student) {
+            // Skip fee generation for struck off students from their struck-off date onward
+            if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
+                $struckOffLog = \App\Models\StudentStatusLog::where('student_id', $student->id)
+                    ->where('status', 'Struck Off')
+                    ->orderBy('action_date', 'desc')
+                    ->first();
+                if ($struckOffLog) {
+                    $struckOffDate = \Carbon\Carbon::parse($struckOffLog->action_date)->startOfDay();
+                    if ($dueDate->copy()->startOfDay()->greaterThanOrEqualTo($struckOffDate)) {
+                        $skippedStruckOff++;
+                        continue;
+                    }
+                }
+            }
+
             $semNumber = $this->getStudentSemesterNumber($student, $dueDate);
             [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
 
