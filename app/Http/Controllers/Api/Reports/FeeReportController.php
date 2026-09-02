@@ -30,6 +30,7 @@ class FeeReportController extends BaseController implements HasMiddleware
             $programId = $request->input('program_id');
             $batchId = $request->input('academic_batch_id');
             $includeStruckOff = filter_var($request->input('include_struck_off', false), FILTER_VALIDATE_BOOLEAN);
+            $search = trim($request->input('search', ''));
 
             // Only include students who have at least one voucher-generated overdue fee
             $query = Student::whereHas('studentFees', function($q) use ($dueDateBefore) {
@@ -46,6 +47,15 @@ class FeeReportController extends BaseController implements HasMiddleware
             }
             if ($batchId) {
                 $query->where('academic_batch_id', $batchId);
+            }
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('first_name', 'LIKE', "%{$search}%")
+                      ->orWhere('last_name', 'LIKE', "%{$search}%")
+                      ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                      ->orWhere('roll_number', 'LIKE', "%{$search}%")
+                      ->orWhere('admission_number', 'LIKE', "%{$search}%");
+                });
             }
 
             // Exclude struck-off students unless explicitly requested
@@ -138,6 +148,7 @@ class FeeReportController extends BaseController implements HasMiddleware
             $endDate   = $request->input('end_date', Carbon::today()->endOfMonth()->toDateString());
             $campusId  = $request->input('campus_id');
             $paymentMethod = $request->input('payment_method');
+            $search = trim($request->input('search', ''));
 
             $query = \App\Models\FeePayment::with(['student.program', 'student.campus', 'receiver']);
 
@@ -154,6 +165,20 @@ class FeeReportController extends BaseController implements HasMiddleware
 
             if ($paymentMethod) {
                 $query->where('payment_method', $paymentMethod);
+            }
+
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('receipt_number', 'LIKE', "%{$search}%")
+                      ->orWhere('transaction_id', 'LIKE', "%{$search}%")
+                      ->orWhereHas('student', function($sq) use ($search) {
+                          $sq->where('first_name', 'LIKE', "%{$search}%")
+                             ->orWhere('last_name', 'LIKE', "%{$search}%")
+                             ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                             ->orWhere('roll_number', 'LIKE', "%{$search}%")
+                             ->orWhere('admission_number', 'LIKE', "%{$search}%");
+                      });
+                });
             }
 
             $payments = $query->orderBy('payment_date', 'desc')->get();
