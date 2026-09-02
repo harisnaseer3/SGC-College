@@ -255,6 +255,26 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 ->orderBy('due_date', 'asc')
                 ->get();
 
+            // For struck-off students: hide unpaid fees with due_date >= struck-off date
+            if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
+                $struckOffLog = \App\Models\StudentStatusLog::where('student_id', $student->id)
+                    ->where('status', 'Struck Off')
+                    ->orderBy('action_date', 'desc')
+                    ->first();
+                if ($struckOffLog) {
+                    $struckOffDate = \Carbon\Carbon::parse($struckOffLog->action_date)->startOfDay();
+                    $allFees = $allFees->filter(function($fee) use ($struckOffDate) {
+                        // Always keep paid/partial fees (they are historical records)
+                        if (in_array($fee->status, ['paid', 'partial', 'carried_forward'])) {
+                            return true;
+                        }
+                        // Hide unpaid fees whose due date is on or after the struck-off date
+                        $feeDueDate = \Carbon\Carbon::parse($fee->due_date)->startOfDay();
+                        return $feeDueDate->lt($struckOffDate);
+                    })->values();
+                }
+            }
+
             $structureType = $student->program->structure_type ?? 'semester';
             if (in_array($structureType, ['monthly', 'annual'])) {
                 $currentSem = $this->feeService->getStudentSemesterNumber($student, \Carbon\Carbon::now());
@@ -844,6 +864,23 @@ class StudentFeeController extends BaseController implements HasMiddleware
         $studentId = $request->student_id;
         $student = \App\Models\Student::findOrFail($studentId);
 
+        // Block voucher generation for struck-off students for fees on/after their struck-off date
+        if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
+            $struckOffLog = \App\Models\StudentStatusLog::where('student_id', $student->id)
+                ->where('status', 'Struck Off')
+                ->orderBy('action_date', 'desc')
+                ->first();
+            if ($struckOffLog) {
+                $struckOffDate = \Carbon\Carbon::parse($struckOffLog->action_date)->startOfDay();
+                return $this->sendError(
+                    'Voucher generation is not allowed for this student. They were marked as Struck Off on ' . $struckOffDate->format('d M Y') . '. No new vouchers can be issued from that date onward.',
+                    [],
+                    400
+                );
+            }
+            return $this->sendError('Voucher generation is not allowed for struck-off students.', [], 400);
+        }
+
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             $feesQuery = StudentFee::where('student_id', $studentId)
@@ -859,9 +896,6 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $fees = $feesQuery->get();
 
             if ($fees->isEmpty()) {
-                if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
-                    return $this->sendError('No unpaid fees found to generate a voucher. Note: This student is marked as Struck Off, so no new fees can be generated for them.', [], 400);
-                }
                 return $this->sendError('No unpaid fees found to generate a voucher.', [], 400);
             }
 

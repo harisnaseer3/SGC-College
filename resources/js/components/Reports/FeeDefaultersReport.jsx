@@ -23,7 +23,8 @@ const FeeDefaultersReport = () => {
     const [filters, setFilters] = useState({
         due_date_before: new Date().toLocaleDateString('sv-SE'), // YYYY-MM-DD local
         program_id: '',
-        academic_batch_id: ''
+        academic_batch_id: '',
+        include_struck_off: false
     });
 
     const [expandedRows, setExpandedRows] = useState({});
@@ -90,7 +91,7 @@ const FeeDefaultersReport = () => {
 
     useEffect(() => {
         fetchReport();
-    }, [filters.due_date_before, filters.program_id, filters.academic_batch_id, selectedCampus, selectedOrganization]);
+    }, [filters.due_date_before, filters.program_id, filters.academic_batch_id, filters.include_struck_off, selectedCampus, selectedOrganization]);
 
     useEffect(() => {
         fetchDetails();
@@ -265,21 +266,46 @@ const FeeDefaultersReport = () => {
                             ))}
                         </select>
                     </div>
-                    <div className="flex gap-2">
-                        <Button type="submit" loading={loading} className="flex-1 py-2.5 shadow-lg shadow-indigo-200">
-                            Filter
-                        </Button>
-                        <button
-                            type="button"
-                            onClick={() => setFilters({
-                                due_date_before: new Date().toLocaleDateString('sv-SE'),
-                                program_id: '',
-                                academic_batch_id: ''
-                            })}
-                            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
-                        >
-                            Reset
-                        </button>
+                    <div className="flex flex-col gap-3">
+                        <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    checked={filters.include_struck_off}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, include_struck_off: e.target.checked }))}
+                                    className="sr-only"
+                                />
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                                    filters.include_struck_off
+                                        ? 'bg-rose-500 border-rose-500'
+                                        : 'bg-white border-slate-300 group-hover:border-rose-400'
+                                }`}>
+                                    {filters.include_struck_off && (
+                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    )}
+                                </div>
+                            </div>
+                            <span className="text-xs font-bold text-slate-600">Include Struck Off Students</span>
+                        </label>
+                        <div className="flex gap-2">
+                            <Button type="submit" loading={loading} className="flex-1 py-2.5 shadow-lg shadow-indigo-200">
+                                Filter
+                            </Button>
+                            <button
+                                type="button"
+                                onClick={() => setFilters({
+                                    due_date_before: new Date().toLocaleDateString('sv-SE'),
+                                    program_id: '',
+                                    academic_batch_id: '',
+                                    include_struck_off: false
+                                })}
+                                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
+                            >
+                                Reset
+                            </button>
+                        </div>
                     </div>
                 </form>
             </Card>

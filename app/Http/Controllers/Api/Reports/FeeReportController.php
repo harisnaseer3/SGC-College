@@ -29,9 +29,12 @@ class FeeReportController extends BaseController implements HasMiddleware
             $campusId = $request->input('campus_id');
             $programId = $request->input('program_id');
             $batchId = $request->input('academic_batch_id');
+            $includeStruckOff = filter_var($request->input('include_struck_off', false), FILTER_VALIDATE_BOOLEAN);
 
+            // Only include students who have at least one voucher-generated overdue fee
             $query = Student::whereHas('studentFees', function($q) use ($dueDateBefore) {
                 $q->whereIn('status', ['unpaid', 'partial'])
+                  ->whereNotNull('voucher_number')
                   ->where('due_date', '<=', Carbon::parse($dueDateBefore)->toDateString());
             })->with(['program:id,name', 'campus:id,name', 'academicBatch:id,name']);
 
@@ -45,12 +48,42 @@ class FeeReportController extends BaseController implements HasMiddleware
                 $query->where('academic_batch_id', $batchId);
             }
 
-            $students = $query->get()->map(function($student) use ($dueDateBefore) {
+            // Exclude struck-off students unless explicitly requested
+            if (!$includeStruckOff) {
+                $query->where(function($q) {
+                    $q->whereNotIn(\Illuminate\Support\Facades\DB::raw('LOWER(status)'), ['struck off', 'struck_off'])
+                      ->orWhereNull('status');
+                });
+            }
+
+            $students = $query->get()->map(function($student) use ($dueDateBefore, $includeStruckOff) {
+                // Determine struck-off date (if student is struck off)
+                $struckOffDate = null;
+                if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
+                    $struckOffLog = \App\Models\StudentStatusLog::where('student_id', $student->id)
+                        ->where('status', 'Struck Off')
+                        ->orderBy('action_date', 'desc')
+                        ->first();
+                    if ($struckOffLog) {
+                        $struckOffDate = Carbon::parse($struckOffLog->action_date)->startOfDay();
+                    }
+                }
+
+                // Only count fees where a voucher was actually generated, are still unpaid/partial,
+                // and their due date is on or before the cutoff date.
                 $fees = $student->studentFees()
                     ->whereIn('status', ['unpaid', 'partial'])
+                    ->whereNotNull('voucher_number')
                     ->where('due_date', '<=', Carbon::parse($dueDateBefore)->toDateString())
                     ->with('feeHead')
                     ->get();
+
+                // Exclude fees on/after the struck-off date for struck-off students
+                if ($struckOffDate) {
+                    $fees = $fees->filter(function($fee) use ($struckOffDate) {
+                        return Carbon::parse($fee->due_date)->startOfDay()->lt($struckOffDate);
+                    })->values();
+                }
 
                 $totalOverdue = $fees->sum('balance_amount');
 
@@ -70,6 +103,7 @@ class FeeReportController extends BaseController implements HasMiddleware
                         'amount' => (float)$f->amount,
                         'paid_amount' => (float)$f->paid_amount,
                         'balance_amount' => (float)$f->balance_amount,
+                        'voucher_number' => $f->voucher_number,
                         'remarks' => $f->remarks
                     ])
                 ];
