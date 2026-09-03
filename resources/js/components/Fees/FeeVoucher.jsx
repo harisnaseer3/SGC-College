@@ -61,7 +61,7 @@ const FeeVoucher = () => {
             {/* Voucher Container */}
             <div className="space-y-0">
                 {data.map((voucherData, vIndex) => (
-                    <div key={vIndex} className="voucher-container max-w-7xl mx-auto p-4 flex gap-4 overflow-x-auto page-break-after-always">
+                    <div key={vIndex} className="voucher-container max-w-7xl mx-auto p-4 flex gap-4 overflow-x-auto">
                         {voucherData.copy_names.map((copyName, index) => (
                             <VoucherCopy key={index} copyName={copyName} data={voucherData} />
                         ))}
@@ -73,28 +73,38 @@ const FeeVoucher = () => {
                 @media print {
                     @page {
                         size: landscape;
-                        margin: 0.5cm;
+                        margin: 5mm;
                     }
-                    body {
+                    html, body {
                         background: white;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        height: auto !important;
                     }
                     .voucher-container {
                         padding: 0 !important;
+                        margin: 0 !important;
                         gap: 0 !important;
                         display: flex !important;
                         flex-direction: row !important;
                         width: 100% !important;
+                        break-after: page;
+                        break-inside: avoid;
+                        page-break-after: always;
+                        page-break-inside: avoid;
+                    }
+                    .voucher-container:last-child {
+                        break-after: auto;
+                        page-break-after: auto;
                     }
                     .voucher-copy {
                         width: 33.33% !important;
                         border: 1px solid #000 !important;
                         height: auto !important;
+                        box-sizing: border-box !important;
                     }
-                    .print\:hidden {
+                    .print\\:hidden {
                         display: none !important;
-                    }
-                    .page-break-after-always {
-                        page-break-after: always;
                     }
                 }
 
