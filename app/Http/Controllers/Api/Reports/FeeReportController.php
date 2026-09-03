@@ -32,11 +32,10 @@ class FeeReportController extends BaseController implements HasMiddleware
             $includeStruckOff = filter_var($request->input('include_struck_off', false), FILTER_VALIDATE_BOOLEAN);
             $search = trim($request->input('search', ''));
 
-            // Only include students who have at least one voucher-generated overdue fee
-            $query = Student::whereHas('studentFees', function($q) use ($dueDateBefore) {
+            // Only include students who have at least one voucher-generated unpaid or partial fee
+            $query = Student::whereHas('studentFees', function($q) {
                 $q->whereIn('status', ['unpaid', 'partial'])
-                  ->whereNotNull('voucher_number')
-                  ->where('due_date', '<=', Carbon::parse($dueDateBefore)->toDateString());
+                  ->whereNotNull('voucher_number');
             })->with(['program:id,name', 'campus:id,name', 'academicBatch:id,name']);
 
             if ($campusId && !$request->hasHeader('X-Campus-ID')) {
@@ -66,7 +65,7 @@ class FeeReportController extends BaseController implements HasMiddleware
                 });
             }
 
-            $students = $query->get()->map(function($student) use ($dueDateBefore, $includeStruckOff) {
+            $students = $query->get()->map(function($student) use ($includeStruckOff) {
                 // Determine struck-off date (if student is struck off)
                 $struckOffDate = null;
                 if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
@@ -79,12 +78,10 @@ class FeeReportController extends BaseController implements HasMiddleware
                     }
                 }
 
-                // Only count fees where a voucher was actually generated, are still unpaid/partial,
-                // and their due date is on or before the cutoff date.
+                // Only count fees where a voucher was actually generated and are still unpaid/partial
                 $fees = $student->studentFees()
                     ->whereIn('status', ['unpaid', 'partial'])
                     ->whereNotNull('voucher_number')
-                    ->where('due_date', '<=', Carbon::parse($dueDateBefore)->toDateString())
                     ->with('feeHead')
                     ->get();
 
