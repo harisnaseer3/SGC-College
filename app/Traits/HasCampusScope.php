@@ -29,7 +29,7 @@ trait HasCampusScope
                         $q->where($table . '.campus_id', $user->campus_id)
                           ->orWhereNull($table . '.campus_id');
                     });
-                } elseif ($user->hasAnyRole(['super_admin', 'org_admin']) && request()->hasHeader('X-Campus-ID')) {
+                } elseif ($user->hasAnyRole(['super_admin', 'org_admin']) && request()->header('X-Campus-ID')) {
                     $builder->where($builder->getModel()->getTable() . '.campus_id', request()->header('X-Campus-ID'));
                 }
             }

@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 
 const CampusSwitcher = () => {
-    const { user, selectedOrganization, selectedCampus, setCampus } = useAuth();
+    const { user, selectedOrganization, setOrganization, selectedCampus, setCampus } = useAuth();
     const { showError } = useNotifications();
     const [campuses, setCampuses] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -15,21 +15,23 @@ const CampusSwitcher = () => {
     const isEligible = user?.roles?.some(role => ['super_admin', 'org_admin'].includes(role.name));
     
     // Determine the orgId to fetch campuses for:
+    const isSuperAdmin = user?.roles?.some(role => role.name === 'super_admin');
     const orgId = selectedOrganization || user?.organization_id;
 
     useEffect(() => {
-        if (!isEligible || !orgId) return;
+        if (!isEligible) return;
 
         const fetchCampuses = async () => {
             setLoading(true);
             try {
-                // Fetch campuses for the active organization
-                const response = await axios.get(`/api/organizations/${orgId}/campuses?per_page=100`);
+                // If super_admin, fetch all campuses across all organizations; otherwise fetch for active org
+                const endpoint = isSuperAdmin ? `/api/campuses?per_page=100` : (orgId ? `/api/organizations/${orgId}/campuses?per_page=100` : `/api/campuses?per_page=100`);
+                const response = await axios.get(endpoint);
                 const data = response.data.data?.data || response.data.data || [];
                 setCampuses(data);
             } catch (error) {
                 console.error('Error fetching campuses:', error);
-                showError('Failed to load campuses for this organization.');
+                showError('Failed to load campuses.');
             } finally {
                 setLoading(false);
             }
@@ -49,12 +51,18 @@ const CampusSwitcher = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    if (!isEligible || !orgId) return null;
+    if (!isEligible) return null;
 
-    const handleSelect = (campusId) => {
-        setCampus(campusId);
+    const handleSelect = (campus) => {
+        if (campus) {
+            if (campus.organization_id && campus.organization_id !== selectedOrganization) {
+                setOrganization(campus.organization_id);
+            }
+            setCampus(campus.id);
+        } else {
+            setCampus(null);
+        }
         setIsOpen(false);
-        // Optionally reload the page or rely on React state to re-fetch data components
         window.location.reload(); 
     };
 
@@ -101,7 +109,7 @@ const CampusSwitcher = () => {
                         {campuses.map(campus => (
                             <button
                                 key={campus.id}
-                                onClick={() => handleSelect(campus.id)}
+                                onClick={() => handleSelect(campus)}
                                 className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors line-clamp-1 ${
                                     selectedCampus == campus.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'
                                 }`}

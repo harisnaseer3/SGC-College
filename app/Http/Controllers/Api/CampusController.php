@@ -20,7 +20,7 @@ class CampusController extends BaseController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:view_campuses', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
+            new Middleware('permission:view_campuses', only: ['index', 'allCampuses', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
             new Middleware('permission:create_campuses', only: ['store', 'generate', 'manualAssign']),
             new Middleware('permission:edit_campuses', only: ['update', 'assignCourses']),
             new Middleware('permission:delete_campuses', only: ['destroy', 'bulkDelete']),
@@ -33,6 +33,28 @@ class CampusController extends BaseController implements HasMiddleware
     private function isSuperAdmin(): bool
     {
         return auth()->user()->hasRole('super_admin', 'web');
+    }
+
+    /**
+     * Display a listing of all campuses across all organizations for Super Admin.
+     */
+    public function allCampuses(): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+
+            if (!$user->hasRole('super_admin', 'web')) {
+                return $this->sendError('Unauthorized. Only super admins can view all campuses.', [], 403);
+            }
+
+            $campuses = Campus::withoutGlobalScopes(['organization', 'campus'])
+                ->with(['organization:id,name', 'bankAccounts'])
+                ->paginate(request('per_page', 100));
+
+            return $this->sendResponse($campuses, 'All campuses retrieved successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to retrieve campuses.', ['error' => $e->getMessage()], 500);
+        }
     }
 
     /**

@@ -28,8 +28,15 @@ trait HasOrganizationScope
                     $builder->where($builder->getModel()->getTable() . '.organization_id', $user->organization_id);
                 }
             } elseif ($user && $user->hasRole('super_admin')) {
-                if (request()->hasHeader('X-Organization-ID')) {
+                if (request()->header('X-Organization-ID')) {
                     $builder->where($builder->getModel()->getTable() . '.organization_id', request()->header('X-Organization-ID'));
+                } elseif (request()->header('X-Campus-ID')) {
+                    // If campus ID is explicitly selected by Super Admin, derive organization_id from campus or bypass organization filter since campus_id is already globally scoped
+                    $campusId = request()->header('X-Campus-ID');
+                    $campusOrgId = \App\Models\Campus::withoutGlobalScopes()->where('id', $campusId)->value('organization_id');
+                    if ($campusOrgId) {
+                        $builder->where($builder->getModel()->getTable() . '.organization_id', $campusOrgId);
+                    }
                 }
             }
         });
