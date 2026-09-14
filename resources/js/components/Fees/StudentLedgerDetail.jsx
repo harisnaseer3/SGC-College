@@ -120,6 +120,8 @@ const StudentLedgerDetail = () => {
     const [splittingFee, setSplittingFee] = useState(null);
     const [installments, setInstallments] = useState([]);
     const [selectedPeriods, setSelectedPeriods] = useState([]);
+    const [voucherModal, setVoucherModal] = useState(null); // { semNum, fees }
+    const [voucherModalSelected, setVoucherModalSelected] = useState([]);
     const { showSuccess, showError } = useNotifications();
 
     useEffect(() => {
@@ -139,20 +141,21 @@ const StudentLedgerDetail = () => {
         }
     };
 
-    const handleGenerateVoucher = async (semNum, feeIds = null) => {
+    const handleGenerateVoucher = async (feeIds) => {
         try {
-            const payload = { student_id: studentId };
-            if (feeIds) {
-                payload.fee_ids = feeIds;
-            } else {
-                payload.semester_number = semNum;
-            }
+            const payload = { student_id: studentId, fee_ids: feeIds };
             await axios.post('/api/student-fees/vouchers/generate', payload);
             showSuccess('Voucher generated successfully!');
             fetchLedger();
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to generate voucher');
         }
+    };
+
+    const openVoucherModal = (semNum, fees) => {
+        const eligible = fees.filter(f => f.status !== 'paid' && f.status !== 'carried_forward' && !f.voucher_number);
+        setVoucherModal({ semNum, fees: eligible });
+        setVoucherModalSelected(eligible.map(f => f.id));
     };
 
     const handleUpdateFee = async (e) => {
@@ -217,10 +220,13 @@ const StudentLedgerDetail = () => {
                 {ledger.fees.some(f => f.status !== 'paid' && !f.voucher_number) && (
                     <Button 
                         onClick={() => {
-                            const earliestUngenerated = ledger.fees.filter(f => f.status !== 'paid' && !f.voucher_number).sort((a, b) => new Date(a.due_date) - new Date(b.due_date))[0];
-                            if (earliestUngenerated) {
-                                const semNum = getSemesterNumber(ledger.student.admission_date, earliestUngenerated.due_date, earliestUngenerated.semester_number);
-                                handleGenerateVoucher(semNum);
+                            const structureType = ledger.student?.program?.structure_type || 'semester';
+                            const ungeneratedFees = ledger.fees.filter(f => f.status !== 'paid' && f.status !== 'carried_forward' && !f.voucher_number).sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+                            if (ungeneratedFees.length > 0) {
+                                const earliest = ungeneratedFees[0];
+                                const semNum = getSemesterNumber(ledger.student.admission_date, earliest.due_date, earliest.semester_number, structureType);
+                                const semFees = ungeneratedFees.filter(f => getSemesterNumber(ledger.student.admission_date, f.due_date, f.semester_number, structureType) === semNum);
+                                openVoucherModal(semNum, semFees);
                             }
                         }} 
                         variant="primary"
@@ -347,7 +353,7 @@ const StudentLedgerDetail = () => {
                                 </div>
                             ) : (
                                 <Button 
-                                    onClick={() => handleGenerateVoucher(group.semNum)} 
+                                    onClick={() => openVoucherModal(group.semNum, group.fees)} 
                                     variant="primary" 
                                     size="sm"
                                     className="text-[10px] py-1 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
@@ -373,8 +379,8 @@ const StudentLedgerDetail = () => {
                                 {group.fees.map((fee) => (
                                     <tr key={fee.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="px-6 py-4 text-sm font-semibold text-slate-800">
-                                            {fee.fee_head?.name}
-                                            {fee.remarks && <div className="text-[10px] text-slate-400 font-normal">{fee.remarks}</div>}
+                                            {fee.fee_head?.name || fee.remarks || 'Unknown Fee'}
+                                            {fee.fee_head?.name && fee.remarks && <div className="text-[10px] text-slate-400 font-normal">{fee.remarks}</div>}
                                         </td>
                                         <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right">Rs. {Number(fee.amount).toLocaleString()}</td>
                                         <td className="px-6 py-4 text-sm font-bold text-rose-600 text-right">Rs. {Number(fee.fine_amount || 0).toLocaleString()}</td>
@@ -395,7 +401,7 @@ const StudentLedgerDetail = () => {
                                             <div className="flex flex-col gap-1">
                                                 {fee.status !== 'paid' && fee.status !== 'carried_forward' && !fee.voucher_number && fee.remarks?.toLowerCase().includes('(installment') && (
                                                     <button 
-                                                        onClick={() => handleGenerateVoucher(fee.semester_number, [fee.id])}
+                                                        onClick={() => openVoucherModal(fee.semester_number, [fee])}
                                                         className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-200 underline-offset-4"
                                                     >
                                                         Generate Voucher
@@ -787,6 +793,82 @@ const StudentLedgerDetail = () => {
                                 <Button type="submit" className="flex-1">Create Installments</Button>
                             </div>
                         </form>
+                    </Card>
+                </div>
+            )}
+
+            {/* Fee Selection Modal for Voucher Generation */}
+            {voucherModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                    <Card className="w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-gradient-to-r from-indigo-50 to-slate-50">
+                            <div>
+                                <h3 className="font-bold text-slate-800 text-lg">Select Fees for Voucher</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Choose which fee heads to include in this voucher.</p>
+                            </div>
+                            <button onClick={() => setVoucherModal(null)} className="text-slate-400 hover:text-slate-600 mt-0.5">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-3 max-h-[55vh] overflow-y-auto">
+                            {voucherModal.fees.length === 0 ? (
+                                <p className="text-sm text-slate-400 italic text-center py-4">No eligible unpaid fees found for this semester.</p>
+                            ) : (
+                                voucherModal.fees.map(fee => (
+                                    <label key={fee.id} className={`flex items-center gap-4 p-3 rounded-xl border cursor-pointer transition-all ${
+                                        voucherModalSelected.includes(fee.id)
+                                            ? 'bg-indigo-50 border-indigo-200 shadow-sm'
+                                            : 'bg-slate-50 border-slate-100 opacity-60'
+                                    }`}>
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 flex-shrink-0"
+                                            checked={voucherModalSelected.includes(fee.id)}
+                                            onChange={() => {
+                                                setVoucherModalSelected(prev =>
+                                                    prev.includes(fee.id)
+                                                        ? prev.filter(id => id !== fee.id)
+                                                        : [...prev, fee.id]
+                                                );
+                                            }}
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-semibold text-slate-800 truncate">{fee.fee_head?.name || fee.remarks || 'Unknown Fee'}</div>
+                                            {fee.fee_head?.name && fee.remarks && <div className="text-[10px] text-slate-400">{fee.remarks}</div>}
+                                        </div>
+                                        <div className="text-right flex-shrink-0">
+                                            <div className="text-sm font-black text-slate-900">Rs. {Number(fee.balance_amount).toLocaleString()}</div>
+                                            <div className="text-[10px] text-slate-400 uppercase">{fee.status}</div>
+                                        </div>
+                                    </label>
+                                ))
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4">
+                            <div className="text-sm">
+                                <span className="text-slate-500 font-medium">Selected Total: </span>
+                                <span className="font-black text-indigo-700">
+                                    Rs. {voucherModal.fees
+                                        .filter(f => voucherModalSelected.includes(f.id))
+                                        .reduce((sum, f) => sum + Number(f.balance_amount), 0)
+                                        .toLocaleString()}
+                                </span>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="secondary" size="sm" onClick={() => setVoucherModal(null)}>Cancel</Button>
+                                <Button
+                                    size="sm"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                                    disabled={voucherModalSelected.length === 0}
+                                    onClick={async () => {
+                                        setVoucherModal(null);
+                                        await handleGenerateVoucher(voucherModalSelected);
+                                    }}
+                                >
+                                    Confirm &amp; Generate
+                                </Button>
+                            </div>
+                        </div>
                     </Card>
                 </div>
             )}
