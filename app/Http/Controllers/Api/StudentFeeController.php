@@ -1033,10 +1033,18 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 ->where('voucher_number', $voucher->voucher_number)
                 ->update(['voucher_number' => null]);
 
+            $maxArrearsSem = StudentFee::withoutGlobalScopes()
+                ->where('student_id', $voucher->student_id)
+                ->whereHas('feeHead', function($q) {
+                    $q->where('name', 'Arrears');
+                })
+                ->whereNotNull('voucher_number')
+                ->max('semester_number') ?? 0;
+
             // Restore older carried_forward fees of this student
             $carriedForwardFees = StudentFee::withoutGlobalScopes()
                 ->where('student_id', $voucher->student_id)
-                ->where('semester_number', '<', $voucher->semester_number)
+                ->where('semester_number', '>=', $maxArrearsSem)
                 ->where('status', 'carried_forward')
                 ->get();
 
@@ -1047,7 +1055,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
 
             // Restore older carried_forward vouchers of this student
             $carriedForwardVouchers = \App\Models\GeneratedVoucher::where('student_id', $voucher->student_id)
-                ->where('semester_number', '<', $voucher->semester_number)
+                ->where('semester_number', '>=', $maxArrearsSem)
                 ->where('status', 'carried_forward')
                 ->get();
 
