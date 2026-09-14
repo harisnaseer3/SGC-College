@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProgramSemester extends Model
 {
+    use \App\Traits\LogsActivity;
+
     protected $fillable = [
         'program_id',
         'semester_number',

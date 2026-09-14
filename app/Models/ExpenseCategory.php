@@ -9,6 +9,8 @@ use App\Traits\HasCampusScope;
 
 class ExpenseCategory extends Model
 {
+    use \App\Traits\LogsActivity;
+
     use HasOrganizationScope, HasCampusScope;
 
     protected $fillable = [

@@ -14,6 +14,8 @@ use App\Traits\HasCampusScope;
 
 class User extends Authenticatable
 {
+    use \App\Traits\LogsActivity;
+
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, HasRoles, HasOrganizationScope, HasCampusScope;
 

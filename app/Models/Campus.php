@@ -7,6 +7,8 @@ use App\Traits\HasOrganizationScope;
 
 class Campus extends Model
 {
+    use \App\Traits\LogsActivity;
+
     use HasOrganizationScope;
     protected $fillable = [
         'organization_id',

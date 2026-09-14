@@ -10,6 +10,8 @@ use App\Traits\HasCampusScope;
 
 class Student extends Model
 {
+    use \App\Traits\LogsActivity;
+
     use HasOrganizationScope, HasCampusScope, SoftDeletes;
 
     protected $fillable = [

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CampusBankAccount extends Model
 {
+    use \App\Traits\LogsActivity;
+
     protected $fillable = [
         'campus_id',
         'bank_name',

@@ -8,6 +8,8 @@ use App\Traits\HasOrganizationScope;
 
 class Section extends Model
 {
+    use \App\Traits\LogsActivity;
+
     use HasOrganizationScope;
 
     protected $fillable = ['organization_id', 'academic_class_id', 'name'];

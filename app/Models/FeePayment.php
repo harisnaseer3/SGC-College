@@ -8,6 +8,8 @@ use App\Traits\HasCampusScope;
 
 class FeePayment extends Model
 {
+    use \App\Traits\LogsActivity;
+
     use HasOrganizationScope, HasCampusScope;
 
     protected $fillable = [

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class FeeStructureItem extends Model
 {
+    use \App\Traits\LogsActivity;
+
     protected $fillable = [
         'fee_structure_id',
         'fee_head_id',
