@@ -47,6 +47,7 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/admissions/bulk-delete', [App\Http\Controllers\Api\AdmissionController::class, 'bulkDelete']);
     Route::apiResource('admissions', App\Http\Controllers\Api\AdmissionController::class);
     Route::post('/admissions/bulk-status', [App\Http\Controllers\Api\StudentStatusController::class, 'bulkStatus']);
+    Route::post('/admissions/bulk-batch', [App\Http\Controllers\Api\AdmissionController::class, 'bulkBatch']);
     Route::post('/admissions/{student}/status', [App\Http\Controllers\Api\StudentStatusController::class, 'store']);
     Route::get('/admissions/{student}/status-history', [App\Http\Controllers\Api\StudentStatusController::class, 'index']);
 

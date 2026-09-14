@@ -7,6 +7,7 @@ import Button from '../UI/Button';
 import StatusBadge from '../UI/StatusBadge';
 import StatusUpdateModal from './Status/StatusUpdateModal';
 import BulkStatusUpdateModal from './Status/BulkStatusUpdateModal';
+import BulkBatchUpdateModal from './Status/BulkBatchUpdateModal';
 import ImportModal from './ImportModal';
 import Pagination from '../UI/Pagination';
 
@@ -36,6 +37,9 @@ const AdmissionList = () => {
 
     // Bulk Status Modal State
     const [bulkModalOpen, setBulkModalOpen] = useState(false);
+
+    // Bulk Batch Modal State
+    const [bulkBatchModalOpen, setBulkBatchModalOpen] = useState(false);
 
     // Import Modal State
     const [importModalOpen, setImportModalOpen] = useState(false);
@@ -302,6 +306,18 @@ const AdmissionList = () => {
                                 </span>
                             </button>
                             <button
+                                onClick={() => setBulkBatchModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 border border-sky-600 text-white font-semibold text-sm rounded-xl hover:bg-sky-700 transition-all shadow-sm"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                </svg>
+                                Update Batch
+                                <span className="bg-white/25 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                                    {selectedIds.length}
+                                </span>
+                            </button>
+                            <button
                                 onClick={() => setBulkDeleteConfirm(true)}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 border border-rose-600 text-white font-semibold text-sm rounded-xl hover:bg-rose-700 transition-all shadow-sm"
                             >
@@ -522,6 +538,15 @@ const AdmissionList = () => {
                 studentIds={selectedIds}
                 campuses={formOptions.campuses}
                 onClose={() => setBulkModalOpen(false)}
+                onDone={handleBulkDone}
+            />
+
+            {/* ── Bulk Batch Update Modal ── */}
+            <BulkBatchUpdateModal
+                isOpen={bulkBatchModalOpen}
+                studentIds={selectedIds}
+                batches={formOptions.batches}
+                onClose={() => setBulkBatchModalOpen(false)}
                 onDone={handleBulkDone}
             />
 

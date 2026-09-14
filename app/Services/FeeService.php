@@ -70,7 +70,11 @@ class FeeService
             foreach ($itemsToApply as $item) {
                 $feeHead = $item->feeHead;
                 $structureType = $student->program->structure_type ?? 'semester';
-                
+
+                if (!$feeHead) {
+                    continue;
+                }
+
                 if (!$this->shouldApplyFeeHead($feeHead, $semNumber, $structureType)) {
                     continue;
                 }
@@ -150,6 +154,10 @@ class FeeService
         foreach ($itemsToApply as $item) {
             $feeHead = $item->feeHead;
             $structureType = $student->program->structure_type ?? 'semester';
+
+            if (!$feeHead) {
+                continue;
+            }
 
             if (!$this->shouldApplyFeeHead($feeHead, $semNumber, $structureType)) {
                 continue;
@@ -250,6 +258,10 @@ class FeeService
 
             foreach ($itemsToApply as $item) {
                 $feeHead = $item->feeHead;
+
+                if (!$feeHead) {
+                    continue;
+                }
 
                 if (!$this->shouldApplyFeeHead($feeHead, $s, $structureType)) {
                     continue;
@@ -439,7 +451,7 @@ class FeeService
             $feeItems = $currentFees->values()->map(function ($fee, $index) {
                 return [
                     'sr_no' => $index + 1,
-                    'head' => $fee->feeHead->name,
+                    'head' => $fee->feeHead->name ?? 'Unknown',
                     'amount' => number_format($fee->balance_amount, 0),
                 ];
             })->all();
@@ -674,7 +686,7 @@ class FeeService
                 'fee_items' => $groupFees->values()->map(function ($fee, $index) {
                     return [
                         'sr_no' => $index + 1,
-                        'head' => $fee->feeHead->name,
+                        'head' => $fee->feeHead->name ?? 'Unknown',
                         'amount' => number_format($fee->balance_amount, 0),
                     ];
                 })->all(),
@@ -783,6 +795,10 @@ class FeeService
      */
     public function shouldApplyFeeHead($feeHead, int $periodNumber, string $structureType = 'semester'): bool
     {
+        if (!$feeHead) {
+            return false;
+        }
+
         $freq = $feeHead->frequency ?? 'semester';
         $isOneTime = ($freq === 'one_time' || ($feeHead->frequency_name ?? '') === 'Once at First Fee');
         

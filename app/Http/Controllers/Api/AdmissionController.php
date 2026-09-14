@@ -252,4 +252,28 @@ class AdmissionController extends BaseController implements HasMiddleware
             return $this->sendError('Bulk delete failed.', ['error' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Update academic batch for multiple students
+     */
+    public function bulkBatch(Request $request)
+    {
+        $request->validate([
+            'student_ids'   => 'required|array|min:1',
+            'student_ids.*' => 'integer|exists:students,id',
+            'academic_batch_id' => 'required|integer|exists:academic_batches,id',
+        ]);
+
+        try {
+            $updated = Student::whereIn('id', $request->student_ids)
+                ->update(['academic_batch_id' => $request->academic_batch_id]);
+                
+            return $this->sendResponse(
+                ['updated' => $updated],
+                "{$updated} student(s) batch updated successfully."
+            );
+        } catch (\Exception $e) {
+            return $this->sendError('Bulk batch update failed.', ['error' => $e->getMessage()], 500);
+        }
+    }
 }

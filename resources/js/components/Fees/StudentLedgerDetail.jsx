@@ -200,6 +200,7 @@ const StudentLedgerDetail = () => {
     };
 
     if (loading) return <div className="py-20 text-center animate-pulse text-slate-500 font-bold uppercase tracking-widest text-xs">Loading Ledger...</div>;
+    if (!ledger) return null;
 
     return (
         <div className="p-8 space-y-6">
