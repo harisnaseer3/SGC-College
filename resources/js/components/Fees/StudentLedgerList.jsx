@@ -82,6 +82,7 @@ const StudentLedgerList = () => {
     const fetchFees = async () => {
         setLoading(true);
         try {
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
             const params = { 
                 ...filterData, 
                 status: filterData.status.join(','),
@@ -89,7 +90,8 @@ const StudentLedgerList = () => {
                 academic_batch_id: filterData.academic_batch_id.join(','),
                 month: printMonth,
                 year: printYear,
-                page: pagination.current_page
+                page: pagination.current_page,
+                per_page: perPage
             };
             const response = await axios.get('/api/student-fees', { params });
             const data = response.data.data;
@@ -106,6 +108,15 @@ const StudentLedgerList = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            setPagination(prev => ({ ...prev, current_page: 1 }));
+            fetchFees();
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, [filterData, printMonth, printYear]);
 
     const handleAssignFee = async (studentId) => {
         try {

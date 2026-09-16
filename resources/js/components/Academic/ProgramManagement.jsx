@@ -22,9 +22,18 @@ const ProgramManagement = () => {
     useEffect(() => { fetchPrograms(pagination.current_page); }, [pagination.current_page]);
     useEffect(() => { fetchCampuses(); }, []);
 
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            fetchPrograms(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, []);
+
     const fetchPrograms = async (page = 1) => {
         try {
-            const res = await axios.get('/api/programs', { params: { page } });
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
+            const res = await axios.get('/api/programs', { params: { page, per_page: perPage } });
             setPrograms(res.data.data.data);
             setPagination({
                 current_page: res.data.data.current_page,

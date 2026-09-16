@@ -18,7 +18,8 @@ const RoleManagement = () => {
     const fetchRoles = async (page = 1, searchQuery = search) => {
         setLoading(true);
         try {
-            const params = { page };
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
+            const params = { page, per_page: perPage };
             if (searchQuery) params.search = searchQuery;
             const response = await axios.get('/api/roles', { params });
             setRoles(response.data.data.data || []);
@@ -39,6 +40,14 @@ const RoleManagement = () => {
     useEffect(() => {
         fetchRoles(pagination.current_page, search);
     }, [pagination.current_page]);
+
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            fetchRoles(1, search);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, [search]);
 
     const handleSearchChange = (value) => {
         setSearch(value);

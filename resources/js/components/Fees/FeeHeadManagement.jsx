@@ -23,9 +23,18 @@ const FeeHeadManagement = () => {
         fetchHeads(pagination.current_page);
     }, [pagination.current_page]);
 
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            fetchHeads(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, []);
+
     const fetchHeads = async (page = 1) => {
         try {
-            const response = await axios.get('/api/fee-heads', { params: { page } });
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
+            const response = await axios.get('/api/fee-heads', { params: { page, per_page: perPage } });
             setHeads(response.data.data.data);
             setPagination({
                 current_page: response.data.data.current_page,

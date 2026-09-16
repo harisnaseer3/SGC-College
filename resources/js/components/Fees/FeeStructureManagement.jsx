@@ -27,10 +27,19 @@ const FeeStructureManagement = () => {
         fetchInitialData(pagination.current_page);
     }, [pagination.current_page]);
 
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            fetchInitialData(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, []);
+
     const fetchInitialData = async (page = 1) => {
         try {
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
             const [structRes, headRes, progRes, batchRes, campusRes] = await Promise.all([
-                axios.get('/api/fee-structures', { params: { page } }),
+                axios.get('/api/fee-structures', { params: { page, per_page: perPage } }),
                 axios.get('/api/fee-heads'),
                 axios.get('/api/programs?all=1'),
                 axios.get('/api/academic-batches?all=1'),

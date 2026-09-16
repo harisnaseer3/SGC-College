@@ -12,20 +12,33 @@ const DataTable = ({
     className = "",
     printAll = false,
     pagination = null,
-    onPageChange = null
+    onPageChange = null,
+    onPerPageChange = null
 }) => {
     const [currentPage, setCurrentPage] = useState(1);
+    const [clientItemsPerPage, setClientItemsPerPage] = useState(() => Number(localStorage.getItem('per_page')) || itemsPerPage);
 
-    // Reset to page 1 when data changes (e.g. after a search/filter)
     useEffect(() => {
-        if (!pagination) setCurrentPage(1);
-    }, [data.length, pagination]);
+        const handleCustomPerPage = (e) => {
+            if (e.detail) {
+                setClientItemsPerPage(e.detail);
+                setCurrentPage(1);
+            }
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, []);
 
     const isServerPaginated = pagination !== null;
-    
-    // Allow localStorage to override client-side itemsPerPage if set, otherwise fallback to prop
-    const clientItemsPerPage = Number(localStorage.getItem('per_page')) || itemsPerPage;
     const perPage = isServerPaginated ? pagination.per_page : clientItemsPerPage;
+
+    const handlePerPageChange = (newPerPage) => {
+        setClientItemsPerPage(newPerPage);
+        setCurrentPage(1);
+        if (onPerPageChange) {
+            onPerPageChange(newPerPage);
+        }
+    };
 
     const currentList = isServerPaginated ? data : data.slice(
         (currentPage - 1) * perPage,
@@ -90,6 +103,7 @@ const DataTable = ({
                         totalItems={totalItems}
                         itemsPerPage={perPage}
                         onPageChange={isServerPaginated ? onPageChange : setCurrentPage}
+                        onPerPageChange={handlePerPageChange}
                     />
                 )}
             </div>

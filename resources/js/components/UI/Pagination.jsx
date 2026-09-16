@@ -53,6 +53,7 @@ const Pagination = ({
                     onChange={(e) => {
                         const val = Number(e.target.value);
                         localStorage.setItem('per_page', val);
+                        window.dispatchEvent(new CustomEvent('perPageChange', { detail: val }));
                         if (onPerPageChange) {
                             onPerPageChange(val);
                         }

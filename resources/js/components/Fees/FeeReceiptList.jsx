@@ -81,8 +81,10 @@ const FeeReceiptList = () => {
         const pageNum = page ?? currentPage;
         setLoading(true);
         try {
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
             const params = {
                 page: pageNum,
+                per_page: perPage,
                 start_date: filters.start_date,
                 end_date: filters.end_date,
                 search: filters.search,
@@ -104,6 +106,15 @@ const FeeReceiptList = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            setCurrentPage(1);
+            fetchPayments(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, [filters]);
 
     const handleFilter = (e) => { if (e) e.preventDefault(); };
     const handleSearch = (e) => { if (e) e.preventDefault(); };

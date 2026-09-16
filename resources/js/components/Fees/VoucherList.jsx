@@ -84,8 +84,10 @@ const VoucherList = () => {
         const pageNum = page ?? currentPage;
         setLoading(true);
         try {
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
             const params = {
                 page: pageNum,
+                per_page: perPage,
                 month: filters.month,
                 year: filters.year,
                 status: filters.status,
@@ -111,6 +113,15 @@ const VoucherList = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            setCurrentPage(1);
+            fetchVouchers(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, [filters, sortBy, sortOrder]);
 
     const handleDeleteVoucher = async (id) => {
         if (!window.confirm('Are you sure you want to delete this voucher? This will dissociate its fees and return them to the ledger.')) {

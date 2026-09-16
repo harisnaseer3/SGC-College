@@ -42,7 +42,8 @@ const OrganizationManagement = () => {
     const fetchOrganizations = async (page = 1) => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/organizations', { params: { page } });
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
+            const response = await axios.get('/api/organizations', { params: { page, per_page: perPage } });
             setOrganizations(response.data.data.data);
             setPagination({
                 current_page: response.data.data.current_page,
@@ -60,6 +61,14 @@ const OrganizationManagement = () => {
     useEffect(() => {
         fetchOrganizations(pagination.current_page);
     }, [pagination.current_page]);
+
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            fetchOrganizations(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, []);
 
     const handleCreateSuccess = () => {
         fetchOrganizations(pagination.current_page);

@@ -22,9 +22,18 @@ const BatchManagement = () => {
     useEffect(() => { fetchBatches(pagination.current_page); }, [pagination.current_page]);
     useEffect(() => { fetchCampuses(); }, []);
 
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            fetchBatches(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, []);
+
     const fetchBatches = async (page = 1) => {
         try {
-            const res = await axios.get('/api/academic-batches', { params: { page } });
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
+            const res = await axios.get('/api/academic-batches', { params: { page, per_page: perPage } });
             setBatches(res.data.data.data);
             setPagination({
                 current_page: res.data.data.current_page,

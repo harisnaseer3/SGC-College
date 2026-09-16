@@ -39,8 +39,10 @@ const ExtraIncomeList = () => {
     const fetchIncomes = async (page = 1) => {
         try {
             setLoading(true);
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
             const params = new URLSearchParams();
             params.append('page', page);
+            params.append('per_page', perPage);
             if (searchQuery) params.append('search', searchQuery);
             if (filterCategory) params.append('category_id', filterCategory);
             if (startDate) params.append('start_date', startDate);
@@ -74,6 +76,14 @@ const ExtraIncomeList = () => {
     useEffect(() => {
         fetchIncomes(pagination.current_page);
     }, [pagination.current_page, searchQuery, filterCategory, startDate, endDate]);
+
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            fetchIncomes(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, [searchQuery, filterCategory, startDate, endDate]);
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this income record?')) {

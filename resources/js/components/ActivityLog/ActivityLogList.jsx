@@ -44,7 +44,8 @@ const ActivityLogList = () => {
     const fetchLogs = async (page = 1) => {
         setLoading(true);
         try {
-            const params = { page, per_page: pagination.per_page };
+            const perPage = Number(localStorage.getItem('per_page')) || 15;
+            const params = { page, per_page: perPage };
             if (search) params.search = search;
             if (selectedModule) params.module = selectedModule;
             if (selectedAction) params.action = selectedAction;
@@ -71,6 +72,14 @@ const ActivityLogList = () => {
     useEffect(() => {
         fetchLogs(pagination.current_page);
     }, [pagination.current_page, selectedModule, selectedAction, dateFrom, dateTo]);
+
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            fetchLogs(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, [selectedModule, selectedAction, dateFrom, dateTo, search]);
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();

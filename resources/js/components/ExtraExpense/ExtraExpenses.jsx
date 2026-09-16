@@ -75,8 +75,10 @@ const ExtraExpenses = () => {
     const fetchExpenses = async (page = 1) => {
         try {
             setLoading(true);
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
             const params = new URLSearchParams();
             params.append('page', page);
+            params.append('per_page', perPage);
             if (filterCategory) params.append('category_id', filterCategory);
             if (filterStatus) params.append('status', filterStatus);
             if (searchQuery) params.append('search', searchQuery);
@@ -101,6 +103,15 @@ const ExtraExpenses = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const handleCustomPerPage = () => {
+            setCurrentPage(1);
+            fetchExpenses(1);
+        };
+        window.addEventListener('perPageChange', handleCustomPerPage);
+        return () => window.removeEventListener('perPageChange', handleCustomPerPage);
+    }, [filterCategory, filterStatus, searchQuery, startDate, endDate, sortField, sortDirection]);
 
     const handleOpenModal = (expense = null) => {
         if (expense) {

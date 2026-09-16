@@ -85,7 +85,8 @@ const AdmissionList = () => {
 
     const fetchStudents = async (page = 1) => {
         try {
-            const response = await axios.get('/api/admissions', { params: { page, ...filters } });
+            const perPage = Number(localStorage.getItem('per_page')) || 10;
+            const response = await axios.get('/api/admissions', { params: { page, per_page: perPage, ...filters } });
             setStudents(response.data.data.data);
             setPagination({
                 current_page: response.data.data.current_page,
@@ -420,6 +421,7 @@ const AdmissionList = () => {
                 emptyMessage="No student records found."
                 pagination={pagination}
                 onPageChange={(page) => setPagination(prev => ({ ...prev, current_page: page }))}
+                onPerPageChange={(newPerPage) => fetchStudents(1)}
                 renderRow={(student) => {
                     const pic = avatarSrc(student);
                     const isChecked = selectedIds.includes(student.id);
