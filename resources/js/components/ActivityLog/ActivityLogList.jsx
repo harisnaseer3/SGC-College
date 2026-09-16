@@ -30,7 +30,6 @@ const getActionBadgeColor = (action) => {
 };
 
 const ActivityLogList = () => {
-    const { showError } = useNotifications();
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -40,6 +39,41 @@ const ActivityLogList = () => {
     const [dateTo, setDateTo] = useState('');
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 15 });
     const [selectedLog, setSelectedLog] = useState(null);
+    const [showUndoModal, setShowUndoModal] = useState(false);
+    const [undoPin, setUndoPin] = useState('');
+    const [undoingLog, setUndoingLog] = useState(null);
+    const [undoLoading, setUndoLoading] = useState(false);
+    const { showError, showSuccess } = useNotifications();
+
+    const handleTriggerUndo = (log) => {
+        setUndoingLog(log);
+        setUndoPin('');
+        setShowUndoModal(true);
+    };
+
+    const handleConfirmUndo = async (e) => {
+        e.preventDefault();
+        if (!undoPin || undoPin.length !== 5) {
+            showError('Please enter a valid 5-digit PIN');
+            return;
+        }
+        setUndoLoading(true);
+        try {
+            await axios.post(`/api/activity-logs/${undoingLog.id}/undo`, { pin: undoPin });
+            showSuccess('Activity log successfully undone!');
+            setShowUndoModal(false);
+            setUndoingLog(null);
+            if (selectedLog && selectedLog.id === undoingLog.id) {
+                setSelectedLog(null);
+            }
+            fetchLogs(pagination.current_page);
+        } catch (error) {
+            const msg = error.response?.data?.message || error.response?.data?.data?.pin || 'Failed to undo action';
+            showError(msg);
+        } finally {
+            setUndoLoading(false);
+        }
+    };
 
     const fetchLogs = async (page = 1) => {
         setLoading(true);
@@ -302,11 +336,91 @@ const ActivityLogList = () => {
                             )}
                         </div>
 
-                        <div className="flex justify-end pt-4 border-t border-slate-100">
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                            <Button 
+                                type="button" 
+                                variant="danger"
+                                onClick={() => handleTriggerUndo(selectedLog)}
+                                className="bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1.5"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                Undo Action
+                            </Button>
                             <Button variant="secondary" onClick={() => setSelectedLog(null)}>
                                 Close
                             </Button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Security PIN Modal for Undo */}
+            {showUndoModal && undoingLog && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-bold">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">Security Verification</h3>
+                                    <p className="text-xs text-slate-500">Confirm undo for Log #{undoingLog.id}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowUndoModal(false)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleConfirmUndo} className="space-y-4">
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
+                                <span className="font-bold text-slate-800">Action:</span> {undoingLog.description}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                                    Enter 5-Digit Security PIN / Password
+                                </label>
+                                <input
+                                    type="password"
+                                    maxLength="5"
+                                    placeholder="•••••"
+                                    value={undoPin}
+                                    onChange={(e) => setUndoPin(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-center text-2xl font-bold tracking-widest text-slate-900 focus:bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none transition-all"
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <Button 
+                                    type="button" 
+                                    variant="secondary" 
+                                    onClick={() => setShowUndoModal(false)}
+                                    disabled={undoLoading}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    type="submit" 
+                                    className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                                    disabled={undoLoading}
+                                >
+                                    {undoLoading ? 'Verifying...' : 'Confirm Undo'}
+                                </Button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

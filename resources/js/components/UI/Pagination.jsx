@@ -3,14 +3,15 @@ import React from 'react';
 const Pagination = ({ 
     currentPage, 
     totalItems, 
-    itemsPerPage, 
+    itemsPerPage = Number(localStorage.getItem('per_page')) || 10, 
     onPageChange,
     onPerPageChange
 }) => {
-    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+    const effectivePerPage = itemsPerPage || Number(localStorage.getItem('per_page')) || 10;
+    const totalPages = Math.ceil(totalItems / effectivePerPage) || 1;
 
-    const startItem = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
-    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+    const startItem = totalItems > 0 ? (currentPage - 1) * effectivePerPage + 1 : 0;
+    const endItem = Math.min(currentPage * effectivePerPage, totalItems);
 
     const getPageNumbers = () => {
         const pages = [];
@@ -49,7 +50,7 @@ const Pagination = ({
                     Showing <span className="text-slate-900">{startItem}</span> to <span className="text-slate-900">{endItem}</span> of <span className="text-slate-900">{totalItems}</span> results
                 </div>
                 <select 
-                    value={itemsPerPage} 
+                    value={effectivePerPage} 
                     onChange={(e) => {
                         const val = Number(e.target.value);
                         localStorage.setItem('per_page', val);
