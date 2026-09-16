@@ -10,6 +10,8 @@ class IncomeCategory extends Model
 {
     use \App\Traits\LogsActivity;
 
+    const LOG_MODULE = 'Finance';
+
     use HasOrganizationScope, HasCampusScope;
 
     protected $fillable = [

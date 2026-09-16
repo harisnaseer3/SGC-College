@@ -5,7 +5,7 @@ import Button from '../UI/Button';
 import Pagination from '../UI/Pagination';
 import { useNotifications } from '../../contexts/NotificationContext';
 
-const MODULE_OPTIONS = ['Auth', 'Users', 'Admissions', 'Fees', 'Expenses', 'Programs', 'System'];
+const MODULE_OPTIONS = ['Auth', 'Users', 'Admissions', 'Fees', 'Finance', 'Expenses', 'Programs', 'System'];
 const ACTION_OPTIONS = ['LOGIN', 'LOGOUT', 'FAILED_LOGIN', 'BLOCKED_LOGIN', 'CREATED', 'UPDATED', 'DELETED', 'TOGGLED_STATUS', 'REGISTER'];
 
 const getActionBadgeColor = (action) => {
