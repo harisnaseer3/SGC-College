@@ -138,9 +138,14 @@ class BackupController extends BaseController implements HasMiddleware
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         try {
+            $pin = $request->input('pin');
+            if ($pin !== '42747') {
+                return $this->sendError('Invalid Security PIN', ['pin' => 'Incorrect 5-digit PIN entered.'], 422);
+            }
+
             $backup = Backup::findOrFail($id);
 
             $path = storage_path('app/' . $backup->file_path);

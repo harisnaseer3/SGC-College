@@ -53,15 +53,38 @@ const BackupManagement = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this backup file?')) return;
+    const [showPinModal, setShowPinModal] = useState(false);
+    const [selectedBackupId, setSelectedBackupId] = useState(null);
+    const [pinInput, setPinInput] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
+    const openDeleteModal = (id) => {
+        setSelectedBackupId(id);
+        setPinInput('');
+        setShowPinModal(true);
+    };
+
+    const handleConfirmDelete = async (e) => {
+        e?.preventDefault();
+        if (!pinInput || pinInput.trim().length === 0) {
+            showError('Please enter the 5-digit PIN.');
+            return;
+        }
+
+        setIsDeleting(true);
         try {
-            await axios.delete(`/api/backups/${id}`);
+            await axios.delete(`/api/backups/${selectedBackupId}`, {
+                data: { pin: pinInput }
+            });
             showSuccess('Backup deleted successfully.');
+            setShowPinModal(false);
+            setSelectedBackupId(null);
+            setPinInput('');
             fetchBackups();
         } catch (error) {
             showError(error.response?.data?.message || 'Failed to delete backup.');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -223,9 +246,9 @@ const BackupManagement = () => {
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                                 </button>
                                                 <button 
-                                                    onClick={() => handleDelete(backup.id)}
+                                                    onClick={() => openDeleteModal(backup.id)}
                                                     className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
-                                                    title="Delete"
+                                                    title="Delete Backup"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                 </button>
@@ -238,6 +261,70 @@ const BackupManagement = () => {
                     </table>
                 </div>
             </Card>
+
+            {/* PIN Verification Modal */}
+            {showPinModal && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <span className="p-2 bg-rose-50 text-rose-600 rounded-lg">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </span>
+                                Enter Security PIN
+                            </h3>
+                            <button 
+                                onClick={() => setShowPinModal(false)}
+                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleConfirmDelete} className="space-y-4">
+                            <p className="text-sm text-slate-600">
+                                Deleting a system backup is a permanent action. Please enter the 5-digit security PIN to proceed.
+                            </p>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+                                    Security PIN (5-digits)
+                                </label>
+                                <input
+                                    type="password"
+                                    maxLength="5"
+                                    placeholder="Enter 5-digit PIN"
+                                    value={pinInput}
+                                    onChange={(e) => setPinInput(e.target.value)}
+                                    autoFocus
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 font-mono text-center tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => setShowPinModal(false)}
+                                    disabled={isDeleting}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    variant="danger"
+                                    disabled={isDeleting || pinInput.length === 0}
+                                    className="bg-rose-600 hover:bg-rose-700 text-white"
+                                >
+                                    {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
