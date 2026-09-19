@@ -724,32 +724,42 @@ const NewAdmissionForm = () => {
                     `}
                 </style>
                 {/* Form Header */}
-                <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-4">
-                    <div className="flex items-center gap-4">
+                <div className="flex justify-between items-center border-b-2 border-slate-900 pb-4 mb-4">
+                    {/* Logo Box */}
+                    <div className="w-28 flex justify-start shrink-0">
                         {campusLogoSrc ? (
                             <img 
                                 src={campusLogoSrc} 
                                 alt={selectedCampusObj?.name} 
-                                className="w-16 h-16 rounded-xl object-contain border-2 border-slate-900 shrink-0" 
+                                className="w-24 h-24 object-contain shrink-0" 
                             />
                         ) : (
-                            <div className="w-16 h-16 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-2xl border-2 border-slate-900 shrink-0">
+                            <div className="w-20 h-20 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-2xl border-2 border-slate-900 shrink-0">
                                 SGC
                             </div>
                         )}
-                        <div>
-                            <h1 className="text-2xl font-black uppercase tracking-wider text-slate-900">
-                                {selectedCampusObj?.name || 'SGC Education System'}
-                            </h1>
-                            <p className="text-xs font-bold text-slate-700 uppercase tracking-widest">Affiliated with Fedral Board of Intermediate and SecondryEducation (FBISE). </p>
-                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Please fill out all sections in BLOCK LETTERS using blue or black ballpoint pen.</p>
-                        </div>
+                    </div>
+
+                    {/* Center Text */}
+                    <div className="flex-1 text-center px-4 self-center">
+                        <h1 className="text-[26px] font-black uppercase tracking-wider text-slate-900 leading-tight">
+                            {selectedCampusObj?.name || 'SGC Education System'}
+                        </h1>
+                        <p className="text-[13px] font-semibold text-slate-800 mt-1">
+                            Affiliated with Federal Board of Intermediate and Secondary Education (FBISE), Islamabad
+                        </p>
+                        <p className="text-base font-bold text-red-700 uppercase tracking-widest mt-2">
+                            Admission Application Form
+                            {formData.program_id && formOptions.programs.find(p => p.id == formData.program_id) ? (
+                                ` (${formOptions.programs.find(p => p.id == formData.program_id).name})`
+                            ) : ''}
+                        </p>
                     </div>
 
                     {/* Photo Box */}
-                    <div className="w-28 h-32 border-2 border-dashed border-slate-400 rounded-lg flex flex-col items-center justify-center text-center p-2 bg-slate-50 shrink-0">
-                        <span className="text-[9px] font-extrabold uppercase text-slate-400 tracking-tight leading-tight">
-                            AFFIX RECENT PASSPORT SIZE PHOTOGRAPH HERE
+                    <div className="w-24 h-28 border-[1.5px] border-dotted border-slate-600 flex flex-col items-center justify-center text-center p-2 bg-transparent shrink-0">
+                        <span className="text-[9px] font-bold uppercase text-slate-500 tracking-tight leading-tight">
+                            AFFIX RECENT<br/>PASSPORT SIZE<br/>PHOTOGRAPH
                         </span>
                     </div>
                 </div>

@@ -230,10 +230,10 @@ const AdmissionList = () => {
             s.student_cnic ?? '',
             s.address ?? '',
             s.program?.name ?? '',
-            s.program_semester ? `Semester ${s.program_semester.semester_number}` : '',
+            s.program_branch ? s.program_branch : (s.program_semester ? `Semester ${s.program_semester.semester_number}` : ''),
             s.academic_batch?.name ?? '',
             s.campus?.name ?? '',
-            s.intake_session ?? '',
+            s.program?.structure_type === 'monthly' ? '' : (s.intake_session ?? ''),
             s.admission_date ?? '',
             s.status ?? '',
             s.guardian_name ?? '',
@@ -454,11 +454,13 @@ const AdmissionList = () => {
                             <td className="px-6 py-4">
                                 <p className="text-sm font-bold text-slate-900">{student.program?.name}</p>
                                 <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                                    {student.program_semester ? `Semester ${student.program_semester.semester_number}` : 'N/A'}
+                                    {student.program_branch ? student.program_branch : (student.program_semester ? `Semester ${student.program_semester.semester_number}` : 'N/A')}
                                 </p>
                             </td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.academic_batch?.name ?? '—'}</td>
-                            <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.intake_session ?? '—'}</td>
+                            <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                                {student.program?.structure_type === 'monthly' ? '—' : (student.intake_session ?? '—')}
+                            </td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.campus?.name}</td>
                             <td className="px-6 py-4">
                                 <StatusBadge status={student.status} />
@@ -644,9 +646,9 @@ const AdmissionList = () => {
                                     <DetailRow label="Registration No" value={selected.registration_no} />
                                     <DetailRow label="Roll Number" value={selected.roll_number} />
                                     <DetailRow label="Program" value={selected.program?.name} />
-                                    <DetailRow label="Semester" value={selected.program_semester ? `Semester ${selected.program_semester.semester_number}` : null} />
+                                    <DetailRow label="Branch/Sem" value={selected.program_branch ? selected.program_branch : (selected.program_semester ? `Semester ${selected.program_semester.semester_number}` : null)} />
                                     <DetailRow label="Batch" value={selected.academic_batch?.name} />
-                                    <DetailRow label="Intake" value={selected.intake_session} />
+                                    {selected.program?.structure_type !== 'monthly' && <DetailRow label="Intake" value={selected.intake_session} />}
                                     <DetailRow label="Campus" value={selected.campus?.name} />
                                     <DetailRow label="Admission Date" value={selected.admission_date} />
                                 </div>
