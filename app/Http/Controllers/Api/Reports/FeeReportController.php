@@ -144,6 +144,7 @@ class FeeReportController extends BaseController implements HasMiddleware
             $startDate = $request->input('start_date', Carbon::today()->startOfMonth()->toDateString());
             $endDate   = $request->input('end_date', Carbon::today()->endOfMonth()->toDateString());
             $campusId  = $request->input('campus_id');
+            $bankAccountId = $request->input('bank_account_id');
             $paymentMethod = $request->input('payment_method');
             $search = trim($request->input('search', ''));
 
@@ -158,6 +159,23 @@ class FeeReportController extends BaseController implements HasMiddleware
 
             if ($campusId && !$request->hasHeader('X-Campus-ID')) {
                 $query->where('campus_id', $campusId);
+            }
+
+            if ($bankAccountId) {
+                $bankAccount = \App\Models\CampusBankAccount::find($bankAccountId);
+                if ($bankAccount) {
+                    $bankName = trim($bankAccount->bank_name);
+                    $accNum   = trim($bankAccount->account_number);
+                    $last4    = strlen($accNum) >= 4 ? substr($accNum, -4) : $accNum;
+
+                    $query->where(function($q) use ($bankName, $accNum, $last4) {
+                        $q->where('remarks', 'LIKE', "%{$bankName}%")
+                          ->orWhere('remarks', 'LIKE', "%{$accNum}%")
+                          ->orWhere('remarks', 'LIKE', "%{$last4}%")
+                          ->orWhere('transaction_id', 'LIKE', "%{$accNum}%")
+                          ->orWhere('transaction_id', 'LIKE', "%{$last4}%");
+                    });
+                }
             }
 
             if ($paymentMethod) {
@@ -183,6 +201,13 @@ class FeeReportController extends BaseController implements HasMiddleware
             $totalAmount = $payments->sum('amount');
             $byMethod = $payments->groupBy('payment_method')->map(fn($group) => $group->sum('amount'));
 
+            $bankAccounts = [];
+            if ($campusId) {
+                $bankAccounts = \App\Models\CampusBankAccount::where('campus_id', $campusId)
+                    ->where('is_active', true)
+                    ->get(['id', 'bank_name', 'account_title', 'account_number', 'branch_code']);
+            }
+
             $formattedPayments = $payments->map(fn($p) => [
                 'id' => $p->id,
                 'receipt_number' => $p->receipt_number,
@@ -201,11 +226,13 @@ class FeeReportController extends BaseController implements HasMiddleware
                 'payments' => $formattedPayments,
                 'total_amount' => (float)$totalAmount,
                 'by_method' => $byMethod,
+                'bank_accounts' => $bankAccounts,
                 'count' => $payments->count(),
                 'filters' => [
                     'start_date' => $startDate,
                     'end_date' => $endDate,
                     'campus_id' => $campusId,
+                    'bank_account_id' => $bankAccountId,
                     'payment_method' => $paymentMethod
                 ]
             ], 'Collection report generated successfully.');

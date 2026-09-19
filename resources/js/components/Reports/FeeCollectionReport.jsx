@@ -19,6 +19,8 @@ const FeeCollectionReport = () => {
     const [campusDetails, setCampusDetails] = useState(null);
     const [orgDetails, setOrgDetails] = useState(null);
 
+    const [bankAccounts, setBankAccounts] = useState([]);
+
     // Default to current month start and end dates
     const getMonthDateRange = () => {
         const now = new Date();
@@ -31,6 +33,7 @@ const FeeCollectionReport = () => {
     const [filters, setFilters] = useState({
         start_date: dateRange.start,
         end_date: dateRange.end,
+        bank_account_id: '',
         payment_method: '',
         search: ''
     });
@@ -47,6 +50,9 @@ const FeeCollectionReport = () => {
                 setData(response.data.data.payments || []);
                 setTotalAmount(response.data.data.total_amount || 0);
                 setByMethod(response.data.data.by_method || {});
+                if (response.data.data.bank_accounts) {
+                    setBankAccounts(response.data.data.bank_accounts);
+                }
                 setCurrentPage(1);
             }
         } catch (err) {
@@ -81,7 +87,7 @@ const FeeCollectionReport = () => {
 
     useEffect(() => {
         fetchReport();
-    }, [filters.start_date, filters.end_date, filters.payment_method, filters.search, selectedCampus, selectedOrganization]);
+    }, [filters.start_date, filters.end_date, filters.bank_account_id, filters.payment_method, filters.search, selectedCampus, selectedOrganization]);
 
     useEffect(() => {
         fetchDetails();
@@ -238,8 +244,8 @@ const FeeCollectionReport = () => {
 
             {/* Filters */}
             <Card className="p-6 no-print border-indigo-50 shadow-indigo-50/50" hover={false}>
-                <form onSubmit={handleApplyFilters} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-                    <div className="md:col-span-2 lg:col-span-4">
+                <form onSubmit={handleApplyFilters} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
+                    <div className="md:col-span-2 lg:col-span-5">
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Search Payment</label>
                         <div className="relative">
                             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
@@ -273,6 +279,21 @@ const FeeCollectionReport = () => {
                         />
                     </div>
                     <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Bank Account</label>
+                        <select
+                            value={filters.bank_account_id}
+                            onChange={(e) => setFilters(prev => ({ ...prev, bank_account_id: e.target.value }))}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 transition-all bg-slate-50/50 text-sm font-semibold"
+                        >
+                            <option value="">All Bank Accounts</option>
+                            {bankAccounts.map(account => (
+                                <option key={account.id} value={account.id}>
+                                    {account.bank_name} - {account.account_number} ({account.account_title})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Payment Method</label>
                         <select
                             value={filters.payment_method}
@@ -295,6 +316,7 @@ const FeeCollectionReport = () => {
                                 setFilters({
                                     start_date: range.start,
                                     end_date: range.end,
+                                    bank_account_id: '',
                                     payment_method: '',
                                     search: ''
                                 });
