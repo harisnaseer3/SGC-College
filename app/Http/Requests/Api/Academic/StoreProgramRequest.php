@@ -29,6 +29,8 @@ class StoreProgramRequest extends FormRequest
             'total_semesters' => 'required|integer|min:1',
             'structure_type' => 'nullable|string|in:semester,monthly,annual',
             'campus_id' => 'required|exists:campuses,id',
+            'branches' => 'nullable|array',
+            'branches.*' => 'nullable|string'
         ];
     }
 }

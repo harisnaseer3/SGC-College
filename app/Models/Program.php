@@ -22,6 +22,11 @@ class Program extends Model
         'duration_years',
         'total_semesters',
         'structure_type',
+        'branches',
+    ];
+
+    protected $casts = [
+        'branches' => 'array',
     ];
 
     public function semesters()

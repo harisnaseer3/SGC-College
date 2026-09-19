@@ -35,18 +35,21 @@ class Student extends Model
         'status',
         'program_id',
         'program_semester_id',
+        'program_branch',
         'academic_batch_id',
         'intake_session',
         'student_cnic',
         'gender',
         'is_transfer',
         'religion',
+        'qualifications',
         'student_picture',
         'attachments',
     ];
 
     protected $casts = [
         'attachments' => 'array',
+        'qualifications' => 'array',
     ];
 
     protected static function boot()

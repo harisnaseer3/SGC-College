@@ -4,7 +4,7 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 import Pagination from '../UI/Pagination';
 
-const EMPTY = { name: '', code: '', description: '', duration_years: 4, total_semesters: 8, structure_type: 'semester', campus_id: '' };
+const EMPTY = { name: '', code: '', description: '', duration_years: 4, total_semesters: 8, structure_type: 'semester', campus_id: '', branches: [] };
 
 const inputCls = 'w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm';
 
@@ -57,7 +57,7 @@ const ProgramManagement = () => {
         setEditing(p);
         setFormData({ name: p.name, code: p.code || '', description: p.description || '',
             duration_years: p.duration_years, total_semesters: p.total_semesters,
-            structure_type: p.structure_type || 'semester', campus_id: p.campus_id || '' });
+            structure_type: p.structure_type || 'semester', campus_id: p.campus_id || '', branches: p.branches || [] });
         setShowForm(true);
     };
     const closeForm = () => { setShowForm(false); setEditing(null); setFormData(EMPTY); };
@@ -161,6 +161,12 @@ const ProgramManagement = () => {
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
                         </div>
                         <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Branches / Groups (Comma separated, optional)</label>
+                            <input type="text" className={inputCls} value={formData.branches ? formData.branches.join(', ') : ''}
+                                placeholder="e.g. Pre-Engineering, Pre-Medical, ICS"
+                                onChange={(e) => setFormData({ ...formData, branches: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} />
+                        </div>
+                        <div className="md:col-span-2">
                             <Button type="submit" loading={saving}>
                                 {editing ? 'Save Changes' : 'Create Program'}
                             </Button>
@@ -186,7 +192,12 @@ const ProgramManagement = () => {
                             <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400 italic">No programs defined yet.</td></tr>
                         ) : programs.map((p) => (
                             <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 text-sm text-slate-800 font-semibold">{p.name}</td>
+                                <td className="px-6 py-4">
+                                    <div className="text-sm text-slate-800 font-semibold">{p.name}</div>
+                                    {p.branches && p.branches.length > 0 && (
+                                        <div className="text-[10.5px] text-slate-400 mt-0.5">Branches: {p.branches.join(', ')}</div>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4 text-sm text-slate-500 font-mono">{p.code || '—'}</td>
                                 <td className="px-6 py-4 text-sm text-slate-500">{p.campus?.name || '—'}</td>
                                 <td className="px-6 py-4 text-xs">

@@ -42,6 +42,7 @@ const NewAdmissionForm = () => {
         campus_id: '',
         program_id: '',
         program_semester_id: '',
+        program_branch: '',
         academic_batch_id: '',
         intake_session: '',
         admission_number: '',
@@ -62,6 +63,7 @@ const NewAdmissionForm = () => {
         guardian_cnic: '',
         guardian_phone: '',
         admission_date: new Date().toISOString().split('T')[0],
+        qualifications: [{ exam_passed: '', board_university: '', roll_number: '', passing_year: '', marks_obtained: '', total_marks: '', grade_division: '' }]
     });
 
     const [pictureFile, setPictureFile] = useState(null);
@@ -117,6 +119,7 @@ const NewAdmissionForm = () => {
                 campus_id:           s.campus_id || '',
                 program_id:          s.program_id || '',
                 program_semester_id: s.program_semester_id || '',
+                program_branch:      s.program_branch || '',
                 academic_batch_id:   s.academic_batch_id || '',
                 intake_session:      s.intake_session || '',
                 admission_number:    s.admission_number || '',
@@ -137,6 +140,7 @@ const NewAdmissionForm = () => {
                 guardian_cnic:       s.guardian_cnic || '',
                 guardian_phone:      s.guardian_phone || '',
                 admission_date:      s.admission_date || '',
+                qualifications:      s.qualifications && s.qualifications.length > 0 ? s.qualifications : [{ exam_passed: '', board_university: '', roll_number: '', passing_year: '', marks_obtained: '', total_marks: '', grade_division: '' }]
             });
             if (s.student_picture) {
                 setPicturePreview(`/storage/${s.student_picture}`);
@@ -157,10 +161,30 @@ const NewAdmissionForm = () => {
             const updated = { ...prev, [name]: type === 'checkbox' ? checked : value };
             if (name === 'program_id') {
                 updated.program_semester_id = '';
+                updated.program_branch = '';
                 updated.academic_batch_id = '';
             }
             return updated;
         });
+    };
+
+    const handleQualChange = (index, field, value) => {
+        const newQuals = [...formData.qualifications];
+        newQuals[index][field] = value;
+        setFormData({ ...formData, qualifications: newQuals });
+    };
+
+    const addQual = () => {
+        setFormData({
+            ...formData,
+            qualifications: [...formData.qualifications, { exam_passed: '', board_university: '', roll_number: '', passing_year: '', marks_obtained: '', total_marks: '', grade_division: '' }]
+        });
+    };
+
+    const removeQual = (index) => {
+        const newQuals = [...formData.qualifications];
+        newQuals.splice(index, 1);
+        setFormData({ ...formData, qualifications: newQuals });
     };
 
     const handlePictureChange = (e) => {
@@ -182,7 +206,13 @@ const NewAdmissionForm = () => {
             }
 
             Object.entries(formData).forEach(([key, val]) => {
-                if (key === 'is_transfer') {
+                if (key === 'qualifications') {
+                    val.forEach((q, idx) => {
+                        Object.entries(q).forEach(([qKey, qVal]) => {
+                            payload.append(`qualifications[${idx}][${qKey}]`, qVal || '');
+                        });
+                    });
+                } else if (key === 'is_transfer') {
                     payload.append(key, val === 'true' || val === true ? '1' : '0');
                 } else if (key === 'is_enrolled') {
                     payload.append(key, val ? '1' : '0');
@@ -306,6 +336,18 @@ const NewAdmissionForm = () => {
                                 ))}
                             </select>
                         </div>
+
+                        {formData.program_id && formOptions.programs.find(p => p.id == formData.program_id)?.branches?.length > 0 && (
+                            <div>
+                                <label className={labelCls}>Branch / Group <span className="text-rose-500">*</span></label>
+                                <select name="program_branch" value={formData.program_branch} onChange={handleChange} className={inputCls} required>
+                                    <option value="">Select Branch</option>
+                                    {formOptions.programs.find(p => p.id == formData.program_id).branches.map((b, i) => (
+                                        <option key={i} value={b}>{b}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         {formData.program_id ? (
                             <>
@@ -612,6 +654,57 @@ const NewAdmissionForm = () => {
                     </div>
                 </Card>
 
+                {/* Section 5: Academic Qualifications */}
+                <Card className="p-6 sm:p-8 border-sky-100 shadow-sm hover:shadow-md transition-shadow">
+                    <CardSectionHeader
+                        icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>}
+                        title="Academic Qualifications"
+                        subtitle="Previous educational history and examination records"
+                        color="sky"
+                    />
+
+                    <div className="overflow-x-auto pb-4">
+                        <table className="w-full text-left min-w-[800px]">
+                            <thead>
+                                <tr className="border-b border-slate-200">
+                                    <th className="pb-3 text-xs font-bold text-slate-500 uppercase">Exam Passed</th>
+                                    <th className="pb-3 text-xs font-bold text-slate-500 uppercase">Board/University</th>
+                                    <th className="pb-3 text-xs font-bold text-slate-500 uppercase">Roll No.</th>
+                                    <th className="pb-3 text-xs font-bold text-slate-500 uppercase">Passing Year</th>
+                                    <th className="pb-3 text-xs font-bold text-slate-500 uppercase">Marks Obt</th>
+                                    <th className="pb-3 text-xs font-bold text-slate-500 uppercase">Total Marks</th>
+                                    <th className="pb-3 text-xs font-bold text-slate-500 uppercase">Grade/Div</th>
+                                    <th className="pb-3 w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {formData.qualifications.map((q, idx) => (
+                                    <tr key={idx}>
+                                        <td className="py-2.5 pr-2"><input type="text" value={q.exam_passed} onChange={(e) => handleQualChange(idx, 'exam_passed', e.target.value)} className={`${inputCls} min-w-[120px]`} placeholder="Matric/O-Level" /></td>
+                                        <td className="py-2.5 px-2"><input type="text" value={q.board_university} onChange={(e) => handleQualChange(idx, 'board_university', e.target.value)} className={`${inputCls} min-w-[120px]`} placeholder="BISE LHR" /></td>
+                                        <td className="py-2.5 px-2"><input type="text" value={q.roll_number} onChange={(e) => handleQualChange(idx, 'roll_number', e.target.value)} className={`${inputCls} min-w-[100px]`} /></td>
+                                        <td className="py-2.5 px-2"><input type="text" value={q.passing_year} onChange={(e) => handleQualChange(idx, 'passing_year', e.target.value)} className={`${inputCls} min-w-[80px]`} placeholder={new Date().getFullYear()} /></td>
+                                        <td className="py-2.5 px-2"><input type="text" value={q.marks_obtained} onChange={(e) => handleQualChange(idx, 'marks_obtained', e.target.value)} className={`${inputCls} min-w-[80px]`} /></td>
+                                        <td className="py-2.5 px-2"><input type="text" value={q.total_marks} onChange={(e) => handleQualChange(idx, 'total_marks', e.target.value)} className={`${inputCls} min-w-[80px]`} /></td>
+                                        <td className="py-2.5 px-2"><input type="text" value={q.grade_division} onChange={(e) => handleQualChange(idx, 'grade_division', e.target.value)} className={`${inputCls} min-w-[80px]`} placeholder="A+" /></td>
+                                        <td className="py-2.5 pl-2 text-right">
+                                            <button type="button" onClick={() => removeQual(idx)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Remove Row">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <div className="mt-3">
+                            <button type="button" onClick={addQual} className="text-xs font-bold text-sky-600 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                Add Qualification
+                            </button>
+                        </div>
+                    </div>
+                </Card>
+
                 {/* Form Footer Action Buttons */}
                 <div className="flex items-center justify-end gap-4 p-6 bg-white border border-slate-200 rounded-2xl shadow-lg sticky bottom-4 z-20">
                     <Button variant="secondary" onClick={() => navigate('/admissions')} type="button" className="px-6">
@@ -624,7 +717,12 @@ const NewAdmissionForm = () => {
             </form>
 
             {/* Printable Blank Admission Form (Visible ONLY during window.print()) */}
-            <div className="hidden print:block print:w-full font-sans text-slate-900 bg-white p-4">
+            <div className="hidden print:block print:w-full font-sans text-slate-900 bg-white print:p-0 p-4">
+                <style type="text/css" media="print">
+                    {`
+                        @page { size: auto; margin: 15mm; }
+                    `}
+                </style>
                 {/* Form Header */}
                 <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-4">
                     <div className="flex items-center gap-4">
@@ -643,7 +741,7 @@ const NewAdmissionForm = () => {
                             <h1 className="text-2xl font-black uppercase tracking-wider text-slate-900">
                                 {selectedCampusObj?.name || 'SGC Education System'}
                             </h1>
-                            <p className="text-xs font-bold text-slate-700 uppercase tracking-widest">Official Student Admission Application Form</p>
+                            <p className="text-xs font-bold text-slate-700 uppercase tracking-widest">Affiliated with Fedral Board of Intermediate and SecondryEducation (FBISE). </p>
                             <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Please fill out all sections in BLOCK LETTERS using blue or black ballpoint pen.</p>
                         </div>
                     </div>
@@ -668,25 +766,39 @@ const NewAdmissionForm = () => {
                     <h2 className="text-xs font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded mb-2">
                         1. Academic & Program Enrollment
                     </h2>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="grid grid-cols-1 gap-y-3 gap-x-4 text-xs mt-1">
                         <div className="flex items-baseline gap-2">
                             <span className="font-bold text-slate-700">Campus Name:</span>
-                            <span className="border-b border-slate-400 flex-1 font-bold text-slate-900">{selectedCampusObj?.name || ''}</span>
+                            <span className="border-b border-slate-400 flex-1 font-bold text-slate-900 border-dashed">{selectedCampusObj?.name || ''}</span>
                         </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className="font-bold text-slate-700">Program / Degree:</span>
-                            <span className="border-b border-slate-400 flex-1">&nbsp;</span>
+                        <div className="flex flex-col gap-2 col-span-2 sm:col-span-1">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-700">Program / Degree:</span>
+                                <span className="border-b border-slate-400 flex-1 font-bold text-slate-900 border-dashed">
+                                    {formData.program_id ? formOptions.programs.find(p => p.id == formData.program_id)?.name : '\u00A0'}
+                                </span>
+                            </div>
+                            {formData.program_id && formOptions.programs.find(p => p.id == formData.program_id)?.branches?.length > 0 && (
+                                <div className="flex items-center gap-3 flex-wrap mt-1">
+                                    <span className="font-bold text-slate-700">Branch / Group:</span>
+                                    {formOptions.programs.find(p => p.id == formData.program_id).branches.map((b, i) => (
+                                        <span key={i} className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> {b}</span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className="font-bold text-slate-700">Semester / Year:</span>
-                            <span className="border-b border-slate-400 flex-1">&nbsp;</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <span className="font-bold text-slate-700">Intake / Shift:</span>
-                            <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Morning</span>
-                            <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Evening</span>
-                            <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Fall</span>
-                            <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Spring</span>
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-baseline gap-2">
+                                <span className="font-bold text-slate-700">Semester / Year:</span>
+                                <span className="border-b border-slate-400 flex-1 border-dashed">&nbsp;</span>
+                            </div>
+                            <div className="flex items-center gap-3 flex-wrap mt-1">
+                                <span className="font-bold text-slate-700">Intake / Shift:</span>
+                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Morning</span>
+                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Evening</span>
+                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Fall</span>
+                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Spring</span>
+                            </div>
                         </div>
                     </div>
                 </div>
