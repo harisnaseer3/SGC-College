@@ -6,11 +6,33 @@ use App\Http\Controllers\Controller;
 use App\Models\SuspenseEntry;
 use App\Models\FeePayment;
 use App\Models\GeneratedVoucher;
+use App\Models\StudentFee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\FeeService;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
-class SuspenseEntryController extends Controller
+class SuspenseEntryController extends Controller implements HasMiddleware
 {
+    protected $feeService;
+
+    public function __construct(FeeService $feeService)
+    {
+        $this->feeService = $feeService;
+    }
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:view_suspense_entries', only: ['index']),
+            new Middleware('permission:create_suspense_entries', only: ['store']),
+            new Middleware('permission:edit_suspense_entries', only: ['update']),
+            new Middleware('permission:delete_suspense_entries', only: ['destroy']),
+            new Middleware('permission:reconcile_suspense_entries', only: ['reconcile']),
+        ];
+    }
+
     public function index(Request $request)
     {
         $query = SuspenseEntry::with(['campusBankAccount', 'feePayment.student.user'])->latest();
@@ -53,6 +75,33 @@ class SuspenseEntryController extends Controller
         return response()->json(['message' => 'Suspense Entry created successfully', 'data' => $entry], 201);
     }
 
+    public function update(Request $request, SuspenseEntry $suspenseEntry)
+    {
+        if ($suspenseEntry->status === 'RECONCILED') {
+            return response()->json(['message' => 'Cannot edit a reconciled entry'], 422);
+        }
+
+        $validated = $request->validate([
+            'campus_bank_account_id' => 'required|exists:campus_bank_accounts,id',
+            'amount' => 'required|numeric|min:1',
+            'deposit_date' => 'required|date',
+            'reference_number' => 'nullable|string|max:255',
+            'notes' => 'nullable|string',
+        ]);
+
+        $suspenseEntry->update($validated);
+        return response()->json(['message' => 'Suspense Entry updated successfully', 'data' => $suspenseEntry]);
+    }
+
+    public function destroy(SuspenseEntry $suspenseEntry)
+    {
+        if ($suspenseEntry->status === 'RECONCILED') {
+            return response()->json(['message' => 'Cannot delete a reconciled entry'], 422);
+        }
+        $suspenseEntry->delete();
+        return response()->json(['message' => 'Suspense Entry deleted successfully']);
+    }
+
     public function reconcile(Request $request, SuspenseEntry $suspenseEntry)
     {
         if ($suspenseEntry->status === 'RECONCILED') {
@@ -68,35 +117,51 @@ class SuspenseEntryController extends Controller
             return response()->json(['message' => 'Please provide either a Fee ID or Voucher Number.'], 422);
         }
 
-        if (!empty($validated['voucher_number']) && empty($validated['student_fee_id'])) {
+        $studentId = null;
+
+        if (!empty($validated['voucher_number'])) {
             $voucher = GeneratedVoucher::where('voucher_number', $validated['voucher_number'])->first();
-            if (!$voucher) {
-                return response()->json(['message' => 'Voucher not found.'], 404);
-            }
-            $fee = $voucher->studentFees()->first();
-            if ($fee) {
-                $validated['student_fee_id'] = $fee->id;
+            if ($voucher) {
+                $studentId = $voucher->student_id;
             } else {
-                return response()->json(['message' => 'No pending fees found for this voucher.'], 422);
+                $fee = StudentFee::where('voucher_number', $validated['voucher_number'])->first();
+                if ($fee) {
+                    $studentId = $fee->student_id;
+                }
+            }
+        } elseif (!empty($validated['student_fee_id'])) {
+            $fee = StudentFee::find($validated['student_fee_id']);
+            if ($fee) {
+                $studentId = $fee->student_id;
             }
         }
 
-        DB::beginTransaction();
+        if (!$studentId) {
+            return response()->json(['message' => 'Could not determine the student tied to this voucher or fee.'], 404);
+        }
 
         try {
-            $payment = FeePayment::create([
-                'student_fee_id' => $validated['student_fee_id'],
-                'amount_paid' => $suspenseEntry->amount,
-                'payment_date' => $suspenseEntry->deposit_date,
-                'campus_bank_account_id' => $suspenseEntry->campus_bank_account_id,
-                'payment_method' => 'Bank',
-                'reference_number' => $suspenseEntry->reference_number,
-                'created_by' => auth()->id(),
-            ]);
+            DB::beginTransaction();
+
+            // Record the payment properly via FeeService
+            $receiptNumber = $this->feeService->recordPayment(
+                $studentId,
+                (float) $suspenseEntry->amount,
+                [
+                    'payment_date' => $suspenseEntry->deposit_date,
+                    'payment_method' => 'Bank',
+                    'transaction_id' => $suspenseEntry->reference_number,
+                    'remarks' => 'Reconciled from Suspense Entry #' . $suspenseEntry->id,
+                    'voucher_number' => $validated['voucher_number'] ?? null,
+                ]
+            );
+
+            // Fetch the freshly created FeePayment record using the unique receipt_number
+            $payment = FeePayment::where('receipt_number', $receiptNumber)->first();
 
             $suspenseEntry->update([
                 'status' => 'RECONCILED',
-                'reconciled_payment_id' => $payment->id,
+                'reconciled_payment_id' => $payment ? $payment->id : null,
             ]);
 
             DB::commit();

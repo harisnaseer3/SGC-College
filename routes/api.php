@@ -115,6 +115,8 @@ Route::middleware('auth:api')->group(function () {
     // Suspense Entries
     Route::get('suspense-entries', [SuspenseEntryController::class, 'index']);
     Route::post('suspense-entries', [SuspenseEntryController::class, 'store']);
+    Route::put('suspense-entries/{suspenseEntry}', [SuspenseEntryController::class, 'update']);
+    Route::delete('suspense-entries/{suspenseEntry}', [SuspenseEntryController::class, 'destroy']);
     Route::post('suspense-entries/{suspenseEntry}/reconcile', [SuspenseEntryController::class, 'reconcile']);
 
     // Extra Income Module Routes

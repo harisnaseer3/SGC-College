@@ -19,6 +19,7 @@ const SuspenseEntries = () => {
 
     // Form states
     const [addForm, setAddForm] = useState({ amount: '', deposit_date: '', reference_number: '', notes: '', campus_bank_account_id: '' });
+    const [editForm, setEditForm] = useState(null);
     const [reconcileForm, setReconcileForm] = useState({ search_term: '', student_fee_id: '', voucher_number: '' });
     const [studentLookup, setStudentLookup] = useState(null);
     const [voucherData, setVoucherData] = useState(null);
@@ -79,9 +80,33 @@ const SuspenseEntries = () => {
             await axios.post('/api/suspense-entries', addForm);
             showSuccess('Suspense Entry created successfully.');
             setShowAddModal(false);
+            setAddForm({ amount: '', deposit_date: '', reference_number: '', notes: '', campus_bank_account_id: '' });
             fetchEntries();
         } catch (error) {
             showError(error.response?.data?.message || 'Error saving entry.');
+        }
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.put(`/api/suspense-entries/${editForm.id}`, editForm);
+            showSuccess('Suspense Entry updated successfully.');
+            setEditForm(null);
+            fetchEntries();
+        } catch (error) {
+            showError(error.response?.data?.message || 'Error updating entry.');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this pending entry?')) return;
+        try {
+            await axios.delete(`/api/suspense-entries/${id}`);
+            showSuccess('Entry deleted successfully.');
+            fetchEntries();
+        } catch (error) {
+            showError(error.response?.data?.message || 'Error deleting entry.');
         }
     };
 
@@ -196,12 +221,26 @@ const SuspenseEntries = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             {entry.status === 'PENDING' && (
-                                                <button
-                                                    onClick={() => { setSelectedEntry(entry); setShowReconcileModal(true); }}
-                                                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-lg transition-colors"
-                                                >
-                                                    Reconcile
-                                                </button>
+                                                <div className="flex justify-end gap-2 text-xs font-bold">
+                                                    <button
+                                                        onClick={() => { setSelectedEntry(entry); setShowReconcileModal(true); }}
+                                                        className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors"
+                                                    >
+                                                        Reconcile
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEditForm(entry)}
+                                                        className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition-colors"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(entry.id)}
+                                                        className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             )}
                                         </td>
                                     </tr>
@@ -252,6 +291,53 @@ const SuspenseEntries = () => {
                             <div className="mt-8 flex justify-end gap-3">
                                 <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700">Submit Record</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* EDIT MODAL */}
+            {editForm && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-6">
+                        <h3 className="text-xl font-bold text-slate-900 mb-6">Edit Suspense Entry</h3>
+                        <form onSubmit={handleEditSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Amount Deposit (Rs.)</label>
+                                <input type="number" required className="w-full p-3 bg-slate-50 border rounded-xl" value={editForm.amount} onChange={e => setEditForm({...editForm, amount: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Deposit Date</label>
+                                <input type="date" required className="w-full p-3 bg-slate-50 border rounded-xl" value={editForm.deposit_date} onChange={e => setEditForm({...editForm, deposit_date: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Reference Number / Details</label>
+                                <input type="text" className="w-full p-3 bg-slate-50 border rounded-xl" value={editForm.reference_number || ''} onChange={e => setEditForm({...editForm, reference_number: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Notes</label>
+                                <input type="text" className="w-full p-3 bg-slate-50 border rounded-xl" value={editForm.notes || ''} onChange={e => setEditForm({...editForm, notes: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Deposit Bank Account</label>
+                                <select 
+                                    required 
+                                    className="w-full p-3 bg-slate-50 border rounded-xl" 
+                                    value={editForm.campus_bank_account_id} 
+                                    onChange={e => setEditForm({...editForm, campus_bank_account_id: e.target.value})}
+                                >
+                                    <option value="">-- Select Bank Account --</option>
+                                    {bankAccounts.map(acc => (
+                                        <option key={acc.id} value={acc.id}>
+                                            {acc.bank_name} - {acc.account_number} ({acc.campus_name})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="mt-8 flex justify-end gap-3">
+                                <button type="button" onClick={() => setEditForm(null)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg shadow-md hover:bg-amber-700">Update Record</button>
                             </div>
                         </form>
                     </div>
