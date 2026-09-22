@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\AcademicBatchController;
 use App\Http\Controllers\Api\Reports\AdmissionReportController;
 use App\Http\Controllers\Api\StudentFeeController;
 use App\Http\Controllers\Api\StudentImportController;
+use App\Http\Controllers\Api\SuspenseEntryController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -111,6 +112,11 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('student-fees/payments/{payment}', [StudentFeeController::class, 'destroyPayment']);
     Route::get('student-fees/voucher-lookup/{voucherNumber}', [StudentFeeController::class, 'findByVoucher']);
     
+    // Suspense Entries
+    Route::get('suspense-entries', [SuspenseEntryController::class, 'index']);
+    Route::post('suspense-entries', [SuspenseEntryController::class, 'store']);
+    Route::post('suspense-entries/{suspenseEntry}/reconcile', [SuspenseEntryController::class, 'reconcile']);
+
     // Extra Income Module Routes
     Route::apiResource('income-categories', App\Http\Controllers\Api\IncomeCategoryController::class);
     Route::apiResource('extra-incomes', App\Http\Controllers\Api\ExtraIncomeController::class);

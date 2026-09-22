@@ -17,6 +17,7 @@ import ExtraExpenseByDateReport from './Reports/ExtraExpenseByDateReport';
 import FeeDefaultersReport from './Reports/FeeDefaultersReport';
 import FeeCollectionReport from './Reports/FeeCollectionReport';
 import StudentFeeSummaryReport from './Reports/StudentFeeSummaryReport';
+import SuspenseEntriesReport from './Reports/SuspenseEntriesReport';
 import FeeManagement from './Fees/FeeManagement';
 import FeeVoucher from './Fees/FeeVoucher';
 import FeePaymentReceipt from './Fees/FeePaymentReceipt';
@@ -80,6 +81,7 @@ const AppContent = () => {
                             <Route path="/reports/fee-defaulters" element={<FeeDefaultersReport />} />
                             <Route path="/reports/fee-collection" element={<FeeCollectionReport />} />
                             <Route path="/reports/student-fee-summary" element={<StudentFeeSummaryReport />} />
+                            <Route path="/reports/suspense-entries" element={<SuspenseEntriesReport />} />
                             <Route path="/extra-income/*" element={<ExtraIncomeManagement />} />
                             <Route path="/extra-expense/*" element={<ExtraExpenseManagement />} />
                             <Route path="/profile" element={<ProfileView />} />

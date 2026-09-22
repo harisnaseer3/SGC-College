@@ -9,6 +9,7 @@ import StudentLedgerDetail from './StudentLedgerDetail';
 import FeeDeposit from './FeeDeposit';
 import FeeReceiptList from './FeeReceiptList';
 import VoucherList from './VoucherList';
+import SuspenseEntries from './SuspenseEntries';
 
 const FeeManagement = () => {
     const location = useLocation();
@@ -21,6 +22,7 @@ const FeeManagement = () => {
         { name: 'Generated Vouchers', path: '/fees/vouchers-list' },
         { name: 'Fee Deposit', path: '/fees/deposit' },
         { name: 'Fee Receipts', path: '/fees/receipts' },
+        { name: 'Suspense Entries', path: '/fees/suspense' },
         { name: 'Misc Fee Operations', path: '/fees/billing' },
     ];
 
@@ -58,6 +60,7 @@ const FeeManagement = () => {
                         <Route path="ledger/:studentId" element={<StudentLedgerDetail />} />
                         <Route path="deposit" element={<FeeDeposit />} />
                         <Route path="receipts" element={<FeeReceiptList />} />
+                        <Route path="suspense" element={<SuspenseEntries />} />
                         <Route path="billing" element={<StudentFeeManagement />} />
                         <Route path="/" element={<Navigate to="heads" replace />} />
                     </Routes>

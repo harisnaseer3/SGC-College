@@ -39,6 +39,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                 { name: 'Generated Vouchers', path: '/fees/vouchers-list' },
                 { name: 'Fee Deposit', path: '/fees/deposit' },
                 { name: 'Fee Receipts', path: '/fees/receipts' },
+                { name: 'Suspense Entries', path: '/fees/suspense' },
                 { name: 'Misc Fee Operations', path: '/fees/billing' },
             ]
         },
@@ -62,7 +63,8 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                 { name: 'Extra Expense', path: '/reports/extra-expense-by-date' },
                 { name: 'Fee Defaulters', path: '/reports/fee-defaulters' },
                 { name: 'Fee Collection', path: '/reports/fee-collection' },
-                { name: 'Student Fee Summary', path: '/reports/student-fee-summary' }
+                { name: 'Student Fee Summary', path: '/reports/student-fee-summary' },
+                { name: 'Suspense Entries', path: '/reports/suspense-entries' }
             ]
         },
         { 
