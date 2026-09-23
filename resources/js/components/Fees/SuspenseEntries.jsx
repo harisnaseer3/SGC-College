@@ -49,12 +49,15 @@ const SuspenseEntries = () => {
             // Reusing this logic for fetching org details or just mock it since usually it's in context/auth user
             // We fetch the user's campuses and extract all related bank accounts
             let res;
-            if (user?.roles?.some(r => r.name === 'super_admin')) {
-                res = await axios.get('/api/campuses');
-            } else if (selectedOrganization) {
-                res = await axios.get(`/api/organizations/${selectedOrganization}/campuses`);
+            const orgId = selectedOrganization || user?.organization_id;
+            const isSuperAdmin = user?.roles?.some(r => r.name === 'super_admin');
+            
+            if (isSuperAdmin) {
+                res = await axios.get('/api/campuses?per_page=100');
+            } else if (orgId) {
+                res = await axios.get(`/api/organizations/${orgId}/campuses?per_page=100`);
             } else {
-                res = await axios.get('/api/campuses'); // fallback
+                res = await axios.get('/api/campuses?per_page=100'); // fallback
             }
             if (res && res.data && res.data.data) {
                 let banks = [];
