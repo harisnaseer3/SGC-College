@@ -138,8 +138,7 @@ class FeeService
         $generatedCount = 0;
 
         // Determine student's semester number for the current date
-        $semNumber = $this->getStudentSemesterNumber($student, $dueDate);
-        [$start, $end] = $this->getStudentSemesterRange($student, $semNumber);
+        $currentSemNumber = $this->getStudentSemesterNumber($student, $dueDate);
 
         $itemsToApply = [];
         foreach ($structures as $structure) {
@@ -151,41 +150,43 @@ class FeeService
             }
         }
 
-        foreach ($itemsToApply as $item) {
-            $feeHead = $item->feeHead;
-            $structureType = $student->program->structure_type ?? 'semester';
+        for ($s = 1; $s <= $currentSemNumber; $s++) {
+            foreach ($itemsToApply as $item) {
+                $feeHead = $item->feeHead;
+                $structureType = $student->program->structure_type ?? 'semester';
 
-            if (!$feeHead) {
-                continue;
-            }
+                if (!$feeHead) {
+                    continue;
+                }
 
-            if (!$this->shouldApplyFeeHead($feeHead, $semNumber, $structureType)) {
-                continue;
-            }
-            
-            if ($item->amount <= 0) {
-                continue;
-            }
-            $exists = StudentFee::where('student_id', $student->id)
-                ->whereHas('feeHead', function($q) use ($feeHead) {
-                    $q->where('name', $feeHead->name);
-                })
-                ->where('semester_number', $semNumber)
-                ->exists();
+                if (!$this->shouldApplyFeeHead($feeHead, $s, $structureType)) {
+                    continue;
+                }
+                
+                if ($item->amount <= 0) {
+                    continue;
+                }
+                $exists = StudentFee::where('student_id', $student->id)
+                    ->whereHas('feeHead', function($q) use ($feeHead) {
+                        $q->where('name', $feeHead->name);
+                    })
+                    ->where('semester_number', $s)
+                    ->exists();
 
-            if (!$exists) {
-                StudentFee::create([
-                    'organization_id' => $student->organization_id,
-                    'campus_id' => $student->campus_id,
-                    'student_id' => $student->id,
-                    'fee_head_id' => $item->fee_head_id,
-                    'amount' => $item->amount,
-                    'balance_amount' => $item->amount,
-                    'due_date' => $dueDate,
-                    'status' => 'unpaid',
-                    'semester_number' => $semNumber
-                ]);
-                $generatedCount++;
+                if (!$exists) {
+                    StudentFee::create([
+                        'organization_id' => $student->organization_id,
+                        'campus_id' => $student->campus_id,
+                        'student_id' => $student->id,
+                        'fee_head_id' => $item->fee_head_id,
+                        'amount' => $item->amount,
+                        'balance_amount' => $item->amount,
+                        'due_date' => $dueDate,
+                        'status' => 'unpaid',
+                        'semester_number' => $s
+                    ]);
+                    $generatedCount++;
+                }
             }
         }
 
