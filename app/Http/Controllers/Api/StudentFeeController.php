@@ -404,6 +404,11 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $count = $this->feeService->assignInitialFees($student);
             
             if ($count === 0) {
+                $alreadyHasFees = \App\Models\StudentFee::where('student_id', $student->id)->exists();
+                if ($alreadyHasFees) {
+                    return $this->sendError("Fees for all applicable semesters have already been assigned to this student.", [], 400);
+                }
+
                 $details = "Student Status: {$student->status}, Campus: {$student->campus_id}, Program: " . ($student->program_id ?? 'None') . ", Batch: " . ($student->academic_batch_id ?? 'None');
                 return $this->sendError("No matching fee structure found for this student. ({$details})", [], 404);
             }

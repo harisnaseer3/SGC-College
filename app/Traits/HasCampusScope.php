@@ -30,7 +30,11 @@ trait HasCampusScope
                           ->orWhereNull($table . '.campus_id');
                     });
                 } elseif ($user->hasAnyRole(['super_admin', 'org_admin']) && request()->header('X-Campus-ID')) {
-                    $builder->where($builder->getModel()->getTable() . '.campus_id', request()->header('X-Campus-ID'));
+                    $table = $builder->getModel()->getTable();
+                    $builder->where(function ($q) use ($table) {
+                        $q->where($table . '.campus_id', request()->header('X-Campus-ID'))
+                          ->orWhereNull($table . '.campus_id');
+                    });
                 }
             }
         });

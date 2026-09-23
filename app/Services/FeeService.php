@@ -151,6 +151,14 @@ class FeeService
         }
 
         for ($s = 1; $s <= $currentSemNumber; $s++) {
+            // Allocate historical due dates for past semesters so they aren't bundled together
+            if ($s < $currentSemNumber) {
+                [$start, $end] = $this->getStudentSemesterRange($student, $s);
+                $stepDueDate = $start->copy()->day(10);
+            } else {
+                $stepDueDate = $dueDate;
+            }
+
             foreach ($itemsToApply as $item) {
                 $feeHead = $item->feeHead;
                 $structureType = $student->program->structure_type ?? 'semester';
@@ -181,7 +189,7 @@ class FeeService
                         'fee_head_id' => $item->fee_head_id,
                         'amount' => $item->amount,
                         'balance_amount' => $item->amount,
-                        'due_date' => $dueDate,
+                        'due_date' => $stepDueDate,
                         'status' => 'unpaid',
                         'semester_number' => $s
                     ]);
