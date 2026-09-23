@@ -341,7 +341,7 @@ class StudentImportController extends BaseController
         $rules = [
             'first_name'          => 'required|string|max:255',
             'last_name'           => 'required|string|max:255',
-            'email'               => 'nullable|email|unique:students,email',
+            'email'               => ['nullable', 'email', \Illuminate\Validation\Rule::unique('students', 'email')->whereNull('deleted_at')],
             'phone'               => 'required|string',
             'gender'              => 'required|in:Male,Female,Other',
             'date_of_birth'       => 'nullable|date',
