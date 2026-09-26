@@ -16,6 +16,7 @@ const ProgramManagement = () => {
     const [editing, setEditing]       = useState(null);   // program being edited
     const [campuses, setCampuses]     = useState([]);
     const [formData, setFormData]     = useState(EMPTY);
+    const [newBranch, setNewBranch]   = useState('');
     const [saving, setSaving]         = useState(false);
     const { showError, showSuccess }  = useNotifications();
 
@@ -60,17 +61,22 @@ const ProgramManagement = () => {
             structure_type: p.structure_type || 'semester', campus_id: p.campus_id || '', branches: p.branches || [] });
         setShowForm(true);
     };
-    const closeForm = () => { setShowForm(false); setEditing(null); setFormData(EMPTY); };
+    const closeForm = () => { setShowForm(false); setEditing(null); setFormData(EMPTY); setNewBranch(''); };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
+            const finalData = { ...formData };
+            if (newBranch.trim()) {
+                finalData.branches = [...(finalData.branches || []), newBranch.trim()];
+            }
+
             if (editing) {
-                await axios.put(`/api/programs/${editing.id}`, formData);
+                await axios.put(`/api/programs/${editing.id}`, finalData);
                 showSuccess('Program updated successfully');
             } else {
-                await axios.post('/api/programs', formData);
+                await axios.post('/api/programs', finalData);
                 showSuccess('Program created successfully');
             }
             closeForm();
@@ -161,10 +167,42 @@ const ProgramManagement = () => {
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
                         </div>
                         <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Branches / Groups (Comma separated, optional)</label>
-                            <input type="text" className={inputCls} value={formData.branches ? formData.branches.join(', ') : ''}
-                                placeholder="e.g. Pre-Engineering, Pre-Medical, ICS"
-                                onChange={(e) => setFormData({ ...formData, branches: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} />
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Branches / Groups (optional)</label>
+                            <div className="flex gap-2">
+                                <input type="text" className={inputCls} value={newBranch}
+                                    placeholder="e.g. Pre-Engineering, Pre-Medical, ICS"
+                                    onChange={(e) => setNewBranch(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            if (newBranch.trim()) {
+                                                setFormData({ ...formData, branches: [...(formData.branches || []), newBranch.trim()] });
+                                                setNewBranch('');
+                                            }
+                                        }
+                                    }} />
+                                <Button type="button" onClick={() => {
+                                    if (newBranch.trim()) {
+                                        setFormData({ ...formData, branches: [...(formData.branches || []), newBranch.trim()] });
+                                        setNewBranch('');
+                                    }
+                                }}>Add More</Button>
+                            </div>
+                            {formData.branches && formData.branches.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-3">
+                                    {formData.branches.map((b, idx) => (
+                                        <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-50 text-indigo-700 text-sm rounded-full border border-indigo-100">
+                                            {b}
+                                            <button type="button" className="text-indigo-400 hover:text-indigo-600 focus:outline-none"
+                                                onClick={() => {
+                                                    setFormData({ ...formData, branches: formData.branches.filter((_, i) => i !== idx) });
+                                                }}>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div className="md:col-span-2">
                             <Button type="submit" loading={saving}>
