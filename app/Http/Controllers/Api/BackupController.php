@@ -80,7 +80,7 @@ class BackupController extends BaseController implements HasMiddleware
             $fileName = 'uploaded_' . time() . '_' . $originalName;
             
             // Move file to backups folder
-            $file->storeAs('backups', $fileName);
+            $file->move(storage_path('app/backups'), $fileName);
 
             $backup = Backup::create([
                 'name' => $fileName,

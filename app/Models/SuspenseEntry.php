@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class SuspenseEntry extends Model
 {
     use HasFactory;
+    use \App\Traits\LogsActivity;
 
     protected $fillable = [
         'campus_id',
