@@ -414,7 +414,7 @@ const AdmissionList = () => {
                         ),
                         width: '44px'
                     },
-                    'Student Name', 'Admission #', 'Program / Semester', 'Batch', 'Intake', 'Campus', 'Status', { name: 'Actions', align: 'left' }
+                    'Student ID', 'Student Name', 'Admission #', 'Program / Semester', 'Batch', 'Intake', 'Campus', 'Status', { name: 'Actions', align: 'left' }
                 ]}
                 data={filteredStudents}
                 loading={loading}
@@ -434,6 +434,9 @@ const AdmissionList = () => {
                                     checked={isChecked}
                                     onChange={() => toggleSelectOne(student.id)}
                                 />
+                            </td>
+                            <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                                {student.id}
                             </td>
                             <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
@@ -642,6 +645,7 @@ const AdmissionList = () => {
                             <div>
                                 <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Academic</h3>
                                 <div className="grid grid-cols-2 gap-4">
+                                    <DetailRow label="Student ID" value={selected.id} />
                                     <DetailRow label="Admission #" value={selected.admission_number} />
                                     <DetailRow label="Registration No" value={selected.registration_no} />
                                     <DetailRow label="Roll Number" value={selected.roll_number} />
