@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 use Illuminate\Database\Eloquent\Model;
 
 use App\Traits\HasOrganizationScope;
@@ -9,6 +11,8 @@ use App\Traits\HasCampusScope;
 
 class ExpenseCategory extends Model
 {
+    use SoftDeletes;
+
     use \App\Traits\LogsActivity;
 
     const LOG_MODULE = 'Finance';

@@ -25,6 +25,7 @@ import ExtraIncomeManagement from './ExtraIncome/ExtraIncomeManagement';
 import ExtraIncomeReceipt from './ExtraIncome/ExtraIncomeReceipt';
 import ExtraExpenseManagement from './ExtraExpense/ExtraExpenseManagement';
 import BackupManagement from './System/BackupManagement';
+import RecycleBin from './System/RecycleBin';
 import ActivityLogList from './ActivityLog/ActivityLogList';
 import AuthView from './Auth/AuthView';
 import InstituteSelection from './Auth/InstituteSelection';
@@ -70,6 +71,7 @@ const AppContent = () => {
                             <Route path="/roles/*" element={<RoleManagement />} />
                             <Route path="/academic/*" element={<AcademicManagement />} />
                             <Route path="/system/backups" element={<BackupManagement />} />
+                            <Route path="/system/recycle-bin" element={<RecycleBin />} />
                             {canViewLogs && <Route path="/activity-logs" element={<ActivityLogList />} />}
                             <Route path="/fees/*" element={<FeeManagement />} />
                             <Route path="/admissions" element={<AdmissionList />} />

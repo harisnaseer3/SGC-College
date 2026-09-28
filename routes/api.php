@@ -136,4 +136,9 @@ Route::middleware('auth:api')->group(function () {
     Route::get('backups/{backup}/download', [App\Http\Controllers\Api\BackupController::class, 'download']);
     Route::post('backups/{backup}/restore', [App\Http\Controllers\Api\BackupController::class, 'restore']);
     Route::delete('backups/{backup}', [App\Http\Controllers\Api\BackupController::class, 'destroy']);
+
+    // System Recycle Bin
+    Route::get('recycle-bin', [\App\Http\Controllers\Api\RecycleBinController::class, 'index']);
+    Route::post('recycle-bin/restore', [\App\Http\Controllers\Api\RecycleBinController::class, 'restore']);
+    Route::delete('recycle-bin/force-delete', [\App\Http\Controllers\Api\RecycleBinController::class, 'forceDelete']);
 });

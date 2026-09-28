@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasOrganizationScope;
 use App\Traits\HasCampusScope;
 
 class FeePayment extends Model
 {
+    use SoftDeletes;
+
     use \App\Traits\LogsActivity;
 
     use HasOrganizationScope, HasCampusScope;

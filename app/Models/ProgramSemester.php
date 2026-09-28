@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 use Illuminate\Database\Eloquent\Model;
 
 class ProgramSemester extends Model
 {
+    use SoftDeletes;
+
     use \App\Traits\LogsActivity;
 
     protected $fillable = [
