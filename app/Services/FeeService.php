@@ -798,16 +798,26 @@ class FeeService
                 ->filter(fn($v) => is_numeric($v->voucher_number))
                 ->max(fn($v) => (int)$v->voucher_number) ?? 0;
 
-            $maxVoucher = max($maxSf, $maxGv);
+            $maxVoucher = max((int)$maxSf, (int)$maxGv);
             return $maxVoucher ? $maxVoucher + 1 : 1001;
         }
 
-        $maxSf = \App\Models\StudentFee::withoutGlobalScopes()
-            ->whereRaw('voucher_number REGEXP "^[0-9]+$"')
-            ->max(DB::raw('CAST(voucher_number AS UNSIGNED)')) ?? 0;
+        // Fetch max numeric voucher_number from student_fees
+        $sfVouchers = \App\Models\StudentFee::withoutGlobalScopes()
+            ->whereNotNull('voucher_number')
+            ->pluck('voucher_number');
 
-        $maxGv = \App\Models\GeneratedVoucher::whereRaw('voucher_number REGEXP "^[0-9]+$"')
-            ->max(DB::raw('CAST(voucher_number AS UNSIGNED)')) ?? 0;
+        $maxSf = $sfVouchers
+            ->filter(fn($v) => is_numeric($v))
+            ->max(fn($v) => (int)$v) ?? 0;
+
+        // Fetch max numeric voucher_number from generated_vouchers
+        $gvVouchers = \App\Models\GeneratedVoucher::whereNotNull('voucher_number')
+            ->pluck('voucher_number');
+
+        $maxGv = $gvVouchers
+            ->filter(fn($v) => is_numeric($v))
+            ->max(fn($v) => (int)$v) ?? 0;
 
         $maxVoucher = max((int)$maxSf, (int)$maxGv);
         return $maxVoucher ? $maxVoucher + 1 : 1001;
