@@ -789,12 +789,14 @@ class FeeService
     public function generateNextVoucherNumber()
     {
         if (DB::connection()->getDriverName() === 'sqlite') {
-            $maxSf = \App\Models\StudentFee::withoutGlobalScopes()
+            $maxSf = \App\Models\StudentFee::withTrashed()
+                ->withoutGlobalScopes()
                 ->get()
                 ->filter(fn($f) => is_numeric($f->voucher_number))
                 ->max(fn($f) => (int)$f->voucher_number) ?? 0;
 
-            $maxGv = \App\Models\GeneratedVoucher::all()
+            $maxGv = \App\Models\GeneratedVoucher::withTrashed()
+                ->get()
                 ->filter(fn($v) => is_numeric($v->voucher_number))
                 ->max(fn($v) => (int)$v->voucher_number) ?? 0;
 
@@ -802,8 +804,9 @@ class FeeService
             return $maxVoucher ? $maxVoucher + 1 : 1001;
         }
 
-        // Fetch max numeric voucher_number from student_fees
-        $sfVouchers = \App\Models\StudentFee::withoutGlobalScopes()
+        // Fetch max numeric voucher_number from student_fees (including deleted)
+        $sfVouchers = \App\Models\StudentFee::withTrashed()
+            ->withoutGlobalScopes()
             ->whereNotNull('voucher_number')
             ->pluck('voucher_number');
 
@@ -811,8 +814,9 @@ class FeeService
             ->filter(fn($v) => is_numeric($v))
             ->max(fn($v) => (int)$v) ?? 0;
 
-        // Fetch max numeric voucher_number from generated_vouchers
-        $gvVouchers = \App\Models\GeneratedVoucher::whereNotNull('voucher_number')
+        // Fetch max numeric voucher_number from generated_vouchers (including deleted)
+        $gvVouchers = \App\Models\GeneratedVoucher::withTrashed()
+            ->whereNotNull('voucher_number')
             ->pluck('voucher_number');
 
         $maxGv = $gvVouchers
