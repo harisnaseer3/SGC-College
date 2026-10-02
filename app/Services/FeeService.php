@@ -789,13 +789,27 @@ class FeeService
     public function generateNextVoucherNumber()
     {
         if (DB::connection()->getDriverName() === 'sqlite') {
-            $maxVoucher = StudentFee::all()
+            $maxSf = \App\Models\StudentFee::withoutGlobalScopes()
+                ->get()
                 ->filter(fn($f) => is_numeric($f->voucher_number))
-                ->max(fn($f) => (int)$f->voucher_number);
+                ->max(fn($f) => (int)$f->voucher_number) ?? 0;
+
+            $maxGv = \App\Models\GeneratedVoucher::all()
+                ->filter(fn($v) => is_numeric($v->voucher_number))
+                ->max(fn($v) => (int)$v->voucher_number) ?? 0;
+
+            $maxVoucher = max($maxSf, $maxGv);
             return $maxVoucher ? $maxVoucher + 1 : 1001;
         }
 
-        $maxVoucher = StudentFee::whereRaw('voucher_number REGEXP "^[0-9]+$"')->max(DB::raw('CAST(voucher_number AS UNSIGNED)'));
+        $maxSf = \App\Models\StudentFee::withoutGlobalScopes()
+            ->whereRaw('voucher_number REGEXP "^[0-9]+$"')
+            ->max(DB::raw('CAST(voucher_number AS UNSIGNED)')) ?? 0;
+
+        $maxGv = \App\Models\GeneratedVoucher::whereRaw('voucher_number REGEXP "^[0-9]+$"')
+            ->max(DB::raw('CAST(voucher_number AS UNSIGNED)')) ?? 0;
+
+        $maxVoucher = max((int)$maxSf, (int)$maxGv);
         return $maxVoucher ? $maxVoucher + 1 : 1001;
     }
 

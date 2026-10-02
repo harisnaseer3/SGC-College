@@ -955,7 +955,11 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     // Get or create Arrears Fee Head
                     $arrearsHead = \App\Models\FeeHead::firstOrCreate(
                         ['name' => 'Arrears', 'organization_id' => $student->organization_id],
-                        ['description' => 'Carried forward unpaid fees from previous semesters', 'campus_id' => $student->campus_id]
+                        [
+                            'description' => 'Carried forward unpaid fees from previous semesters',
+                            'campus_id' => $student->campus_id,
+                            'frequency' => 'one_time',
+                        ]
                     );
 
                     $arrearsDescription = "Arrears: " . $arrears->map(function($f) {
@@ -1010,6 +1014,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
             return $this->sendResponse($vouchers, count($vouchers) . ' voucher(s) generated successfully.');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollback();
+            \Illuminate\Support\Facades\Log::error('generateVoucher failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return $this->sendError('Failed to generate voucher.', ['error' => $e->getMessage()], 500);
         }
     }
