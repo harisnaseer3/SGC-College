@@ -937,8 +937,39 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     $arrearsSum = $arrears->sum('balance_amount');
                 }
 
-                $voucherNumber = $this->feeService->generateNextVoucherNumber();
                 $dueDate = $request->due_date ?? ($groupFees->min('due_date') ?? now()->addDays(10));
+                $voucher = null;
+                $attempts = 0;
+
+                while (!$voucher && $attempts < 10) {
+                    $attempts++;
+                    $voucherNumber = $this->feeService->generateNextVoucherNumber();
+
+                    try {
+                        $voucher = \App\Models\GeneratedVoucher::create([
+                            'organization_id' => $student->organization_id,
+                            'campus_id' => $student->campus_id,
+                            'student_id' => $studentId,
+                            'voucher_number' => $voucherNumber,
+                            'due_date' => $dueDate,
+                            'semester_number' => $maxSem,
+                            'amount' => $groupFees->sum('amount'),
+                            'arrears_amount' => $arrearsSum,
+                            'fine_amount' => $groupFees->sum('fine_amount'),
+                            'discount_amount' => $groupFees->sum('discount_amount'),
+                            'paid_amount' => 0.00,
+                            'balance_amount' => $groupFees->sum('balance_amount') + $arrearsSum,
+                            'status' => 'unpaid',
+                        ]);
+                    } catch (\Illuminate\Database\QueryException $qe) {
+                        if ($qe->getCode() == 23000 && $attempts < 10) {
+                            // Retry with a fresh voucher number
+                            continue;
+                        } else {
+                            throw $qe;
+                        }
+                    }
+                }
 
                 if ($arrearsSum > 0) {
                     // Update original arrears status to carried_forward
@@ -983,41 +1014,6 @@ class StudentFeeController extends BaseController implements HasMiddleware
                         'semester_number' => $maxSem,
                         'voucher_number' => $voucherNumber,
                     ]);
-                }
-
-                $voucher = null;
-                $attempts = 0;
-                while (!$voucher && $attempts < 10) {
-                    $attempts++;
-                    try {
-                        $voucher = \App\Models\GeneratedVoucher::create([
-                            'organization_id' => $student->organization_id,
-                            'campus_id' => $student->campus_id,
-                            'student_id' => $studentId,
-                            'voucher_number' => $voucherNumber,
-                            'due_date' => $dueDate,
-                            'semester_number' => $maxSem,
-                            'amount' => $groupFees->sum('amount'),
-                            'arrears_amount' => $arrearsSum,
-                            'fine_amount' => $groupFees->sum('fine_amount'),
-                            'discount_amount' => $groupFees->sum('discount_amount'),
-                            'paid_amount' => 0.00,
-                            'balance_amount' => $groupFees->sum('balance_amount') + $arrearsSum,
-                            'status' => 'unpaid',
-                        ]);
-                    } catch (\Illuminate\Database\QueryException $qe) {
-                        if ($qe->getCode() == 23000 && $attempts < 10) {
-                            $voucherNumber = $this->feeService->generateNextVoucherNumber();
-                            if ($arrearsSum > 0) {
-                                StudentFee::where('student_id', $studentId)
-                                    ->where('remarks', $arrearsDescription)
-                                    ->where('semester_number', $maxSem)
-                                    ->update(['voucher_number' => $voucherNumber]);
-                            }
-                        } else {
-                            throw $qe;
-                        }
-                    }
                 }
 
                 foreach ($groupFees as $fee) {
