@@ -18,6 +18,39 @@ const DetailRow = ({ label, value }) => value ? (
     </div>
 ) : null;
 
+export const formatStudentTerm = (student) => {
+    if (!student) return 'N/A';
+    if (student.program_branch) return student.program_branch;
+
+    const sem = student.program_semester;
+    const prog = student.program;
+    const sType = prog?.structure_type;
+    const progName = (prog?.name || '').toLowerCase();
+
+    // Determine type: annual, weekly, monthly, or semester
+    const isAnnual = sType === 'annual' || /f\.?s\.?c|matric|inter|fa\b|ics|i\.?com|annual/i.test(progName);
+    const isWeekly = sType === 'weekly';
+    const isMonthly = sType === 'monthly' || (!isAnnual && (prog?.duration_unit === 'months' || prog?.duration_unit === 'weeks' || prog?.requires_batch === false || progName.includes('short course') || progName.includes('certificate') || progName.includes('web dev') || progName.includes('month')));
+
+    const num = sem?.semester_number || (sem?.name ? sem.name.replace(/\D/g, '') : 1);
+
+    if (isWeekly) {
+        return `Week ${num}`;
+    }
+    if (isMonthly) {
+        return `Month ${num}`;
+    }
+    if (isAnnual) {
+        return `Year ${num}`;
+    }
+
+    if (sem?.name && !sem.name.toLowerCase().startsWith('semester')) {
+        return sem.name;
+    }
+
+    return sem?.semester_number ? `Semester ${sem.semester_number}` : (sem?.name || 'N/A');
+};
+
 const AdmissionList = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -196,7 +229,7 @@ const AdmissionList = () => {
             'CNIC',
             'Address',
             'Program',
-            'Semester',
+            'Program / Term',
             'Batch',
             'Campus',
             'Intake Session',
@@ -230,10 +263,10 @@ const AdmissionList = () => {
             s.student_cnic ?? '',
             s.address ?? '',
             s.program?.name ?? '',
-            s.program_branch ? s.program_branch : (s.program_semester ? `Semester ${s.program_semester.semester_number}` : ''),
+            formatStudentTerm(s),
             s.academic_batch?.name ?? '',
             s.campus?.name ?? '',
-            s.program?.structure_type === 'monthly' ? '' : (s.intake_session ?? ''),
+            (!s.academic_batch_id || s.program?.requires_batch === false || s.program?.structure_type === 'monthly') ? '' : (s.intake_session ?? ''),
             s.admission_date ?? '',
             s.status ?? '',
             s.guardian_name ?? '',
@@ -362,6 +395,7 @@ const AdmissionList = () => {
 
                     <select name="academic_batch_id" value={filters.academic_batch_id} onChange={handleFilterChange} className={filterInputCls}>
                         <option value="">All Batches</option>
+                        <option value="rolling">Rolling Admission (No Batch)</option>
                         {formOptions.batches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                     </select>
 
@@ -414,7 +448,7 @@ const AdmissionList = () => {
                         ),
                         width: '44px'
                     },
-                    'Student ID', 'Student Name', 'Admission #', 'Program / Semester', 'Batch', 'Intake', 'Campus', 'Status', { name: 'Actions', align: 'left' }
+                    'Student ID', 'Student Name', 'Admission #', 'Program / Term', 'Batch', 'Intake', 'Campus', 'Status', { name: 'Actions', align: 'left' }
                 ]}
                 data={filteredStudents}
                 loading={loading}
@@ -457,12 +491,21 @@ const AdmissionList = () => {
                             <td className="px-6 py-4">
                                 <p className="text-sm font-bold text-slate-900">{student.program?.name}</p>
                                 <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                                    {student.program_branch ? student.program_branch : (student.program_semester ? `Semester ${student.program_semester.semester_number}` : 'N/A')}
+                                    {formatStudentTerm(student)}
                                 </p>
                             </td>
-                            <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.academic_batch?.name ?? '—'}</td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-600">
-                                {student.program?.structure_type === 'monthly' ? '—' : (student.intake_session ?? '—')}
+                                {student.academic_batch?.name ? (
+                                    student.academic_batch.name
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        Rolling
+                                    </span>
+                                )}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                                {!student.academic_batch_id || student.program?.requires_batch === false || student.program?.structure_type === 'monthly' || !student.intake_session ? '—' : student.intake_session}
                             </td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.campus?.name}</td>
                             <td className="px-6 py-4">
@@ -650,9 +693,9 @@ const AdmissionList = () => {
                                     <DetailRow label="Registration No" value={selected.registration_no} />
                                     <DetailRow label="Roll Number" value={selected.roll_number} />
                                     <DetailRow label="Program" value={selected.program?.name} />
-                                    <DetailRow label="Branch/Sem" value={selected.program_branch ? selected.program_branch : (selected.program_semester ? `Semester ${selected.program_semester.semester_number}` : null)} />
-                                    <DetailRow label="Batch" value={selected.academic_batch?.name} />
-                                    {selected.program?.structure_type !== 'monthly' && <DetailRow label="Intake" value={selected.intake_session} />}
+                                    <DetailRow label="Branch / Term" value={formatStudentTerm(selected)} />
+                                    <DetailRow label="Batch" value={selected.academic_batch?.name || 'Rolling Admission (No Batch)'} />
+                                    {selected.academic_batch_id && selected.program?.requires_batch !== false && selected.program?.structure_type !== 'monthly' && selected.intake_session && <DetailRow label="Intake" value={selected.intake_session} />}
                                     <DetailRow label="Campus" value={selected.campus?.name} />
                                     <DetailRow label="Admission Date" value={selected.admission_date} />
                                 </div>

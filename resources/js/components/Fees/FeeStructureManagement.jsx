@@ -170,11 +170,20 @@ const FeeStructureManagement = () => {
                                 <select
                                     className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                                     value={formData.program_id}
-                                    onChange={(e) => setFormData({ ...formData, program_id: e.target.value })}
+                                    onChange={(e) => {
+                                        const pId = e.target.value;
+                                        const prog = programs.find(p => p.id == pId);
+                                        setFormData({ 
+                                            ...formData, 
+                                            program_id: pId,
+                                            // If short course / rolling, default batch to empty (applicable to all open enrollments)
+                                            academic_batch_id: (prog && (prog.requires_batch === false || prog.requires_batch === 0)) ? '' : formData.academic_batch_id
+                                        });
+                                    }}
                                 >
                                     <option value="">All Programs</option>
                                     {programs.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name} ({p.structure_type ? (p.structure_type.charAt(0).toUpperCase() + p.structure_type.slice(1)) : 'Semester'})</option>
+                                        <option key={p.id} value={p.id}>{p.name} ({p.requires_batch === false || p.requires_batch === 0 ? 'Rolling / Short Course' : (p.structure_type ? (p.structure_type.charAt(0).toUpperCase() + p.structure_type.slice(1)) : 'Semester')})</option>
                                     ))}
                                 </select>
                             </div>
@@ -185,7 +194,14 @@ const FeeStructureManagement = () => {
                                     value={formData.academic_batch_id}
                                     onChange={(e) => setFormData({ ...formData, academic_batch_id: e.target.value })}
                                 >
-                                    <option value="">All Batches</option>
+                                    <option value="">
+                                        {(() => {
+                                            const prog = programs.find(p => p.id == formData.program_id);
+                                            return prog && (prog.requires_batch === false || prog.requires_batch === 0) 
+                                                ? 'Rolling Admissions / Open to All' 
+                                                : 'All Batches (Global)';
+                                        })()}
+                                    </option>
                                     {batches.map(b => (
                                         <option key={b.id} value={b.id}>{b.name}</option>
                                     ))}
@@ -283,7 +299,9 @@ const FeeStructureManagement = () => {
                                     </td>
                                     <td className="px-6 py-4 text-xs text-slate-500">
                                         {struct.program?.name || 'All Programs'} <br/>
-                                        <span className="text-[10px] text-slate-400">{struct.academic_batch?.name || 'All Batches'}</span>
+                                        <span className="text-[10px] text-slate-400">
+                                            {struct.academic_batch?.name || (struct.program?.requires_batch === false ? 'Rolling / Open Enrollment' : 'All Batches')}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-slate-500">
                                         {struct.items?.length || 0} Heads

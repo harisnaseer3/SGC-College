@@ -13,6 +13,7 @@ use App\Models\Program;
 use App\Models\ProgramSemester;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ProgramController extends BaseController implements HasMiddleware
 {
@@ -46,19 +47,49 @@ class ProgramController extends BaseController implements HasMiddleware
         DB::beginTransaction();
         try {
             $data = $request->validated();
+            
+            // Sync duration_value/duration_unit and duration_years
+            if (!isset($data['duration_unit']) || empty($data['duration_unit'])) {
+                $data['duration_unit'] = 'years';
+            }
+            if (!isset($data['duration_value']) || empty($data['duration_value'])) {
+                $data['duration_value'] = $data['duration_years'] ?? 1;
+            }
+            if (!isset($data['duration_years'])) {
+                if ($data['duration_unit'] === 'years') {
+                    $data['duration_years'] = (int)$data['duration_value'];
+                } elseif ($data['duration_unit'] === 'months') {
+                    $data['duration_years'] = (int)ceil($data['duration_value'] / 12);
+                } else { // weeks
+                    $data['duration_years'] = (int)ceil($data['duration_value'] / 52);
+                }
+            }
+
+            // Safe fallback if column has not been migrated yet
+            if (!Schema::hasColumn('programs', 'requires_batch')) {
+                unset($data['requires_batch']);
+            }
+
             $program = Program::create($data);
 
-            // Automatically create semesters for the program
+            $termPrefix = match($program->structure_type) {
+                'monthly' => 'Month',
+                'weekly' => 'Week',
+                'annual' => 'Year',
+                default => 'Semester'
+            };
+
+            // Automatically create terms/semesters for the program
             for ($i = 1; $i <= $program->total_semesters; $i++) {
                 ProgramSemester::create([
                     'program_id' => $program->id,
                     'semester_number' => $i,
-                    'name' => "Semester $i"
+                    'name' => "$termPrefix $i"
                 ]);
             }
 
             DB::commit();
-            return $this->sendResponse($program->load('semesters'), 'Program created successfully with semesters.', 201);
+            return $this->sendResponse($program->load('semesters'), 'Program created successfully.', 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->sendError('Failed to create program.', ['error' => $e->getMessage()], 500);
@@ -73,7 +104,24 @@ class ProgramController extends BaseController implements HasMiddleware
     public function update(StoreProgramRequest $request, Program $program): JsonResponse
     {
         try {
-            $program->update($request->validated());
+            $data = $request->validated();
+
+            if (isset($data['duration_unit']) && isset($data['duration_value'])) {
+                if ($data['duration_unit'] === 'years') {
+                    $data['duration_years'] = (int)$data['duration_value'];
+                } elseif ($data['duration_unit'] === 'months') {
+                    $data['duration_years'] = (int)ceil($data['duration_value'] / 12);
+                } else { // weeks
+                    $data['duration_years'] = (int)ceil($data['duration_value'] / 52);
+                }
+            }
+
+            // Safe fallback if column has not been migrated yet
+            if (!Schema::hasColumn('programs', 'requires_batch')) {
+                unset($data['requires_batch']);
+            }
+
+            $program->update($data);
             return $this->sendResponse($program, 'Program updated successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to update program.', ['error' => $e->getMessage()], 500);
@@ -99,8 +147,7 @@ class ProgramController extends BaseController implements HasMiddleware
             ]);
 
             $semester->courses()->sync($request->course_ids);
-
-            return $this->sendResponse($semester->load('courses'), 'Courses assigned to semester successfully.');
+            return $this->sendResponse($semester->load('courses'), 'Courses assigned successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to assign courses.', ['error' => $e->getMessage()], 500);
         }

@@ -15,6 +15,28 @@ class StoreStudentRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        $programId = $this->input('program_id');
+        $program = $programId ? \App\Models\Program::find($programId) : null;
+
+        $merge = [];
+        // When batch is not needed, neither batch nor intake session is needed
+        if (!$this->filled('academic_batch_id') || ($program && !$program->requires_batch)) {
+            $merge['academic_batch_id'] = null;
+        }
+        if (!$this->filled('intake_session') || ($program && !$program->requires_batch)) {
+            $merge['intake_session'] = null;
+        }
+
+        if (!empty($merge)) {
+            $this->merge($merge);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -29,7 +51,7 @@ class StoreStudentRequest extends FormRequest
             'program_id'          => 'required|exists:programs,id',
             'program_semester_id' => 'required|exists:program_semesters,id',
             'program_branch'      => 'nullable|string|max:255',
-            'academic_batch_id'   => 'required|exists:academic_batches,id',
+            'academic_batch_id'   => 'nullable|exists:academic_batches,id',
             'intake_session'      => 'nullable|string|max:50',
             'admission_number'    => ['nullable', 'string', \Illuminate\Validation\Rule::unique('students', 'admission_number')->ignore($studentId)->whereNull('deleted_at')],
             'registration_no'     => 'nullable|string|max:255',

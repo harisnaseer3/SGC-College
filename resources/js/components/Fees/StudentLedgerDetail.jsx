@@ -31,6 +31,10 @@ const getSemesterNumber = (admissionDateStr, dueDateStr, feeSemesterNumber, stru
     if (due < admission) return 1;
     const months = (due.getFullYear() - admission.getFullYear()) * 12 + (due.getMonth() - admission.getMonth());
     
+    if (structureType === 'weekly') {
+        const diffDays = Math.floor((due.getTime() - admission.getTime()) / (1000 * 60 * 60 * 24));
+        return Math.max(1, Math.floor(diffDays / 7) + 1);
+    }
     if (structureType === 'monthly') {
         return Math.max(1, months + 1);
     }
@@ -46,6 +50,17 @@ const getSemesterLabel = (student, semNum, dueDateStr) => {
     
     const baseDate = parseLocalDate(admissionDateStr) || parseLocalDate(dueDateStr);
     
+    if (sType === 'weekly') {
+        if (baseDate) {
+            const startD = new Date(baseDate.getTime() + (semNum - 1) * 7 * 24 * 60 * 60 * 1000);
+            const endD = new Date(startD.getTime() + 6 * 24 * 60 * 60 * 1000);
+            const sStr = startD.toLocaleDateString('default', { day: 'numeric', month: 'short' });
+            const eStr = endD.toLocaleDateString('default', { day: 'numeric', month: 'short', year: 'numeric' });
+            return `Week ${semNum} (${sStr} - ${eStr})`;
+        }
+        return `Week ${semNum}`;
+    }
+
     if (sType === 'monthly') {
         if (baseDate) {
             const date = new Date(baseDate.getFullYear(), baseDate.getMonth() + (semNum - 1), 1);
@@ -273,7 +288,7 @@ const StudentLedgerDetail = () => {
             <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
                 <Card className="p-6 bg-violet-50 border-violet-100">
                     <div className="text-xs font-bold text-violet-500 uppercase">
-                        {ledger?.student?.program?.structure_type === 'monthly' ? 'Total Months' : (ledger?.student?.program?.structure_type === 'annual' ? 'Total Years' : 'Total Semesters')}
+                        {ledger?.student?.program?.structure_type === 'weekly' ? 'Total Weeks' : (ledger?.student?.program?.structure_type === 'monthly' ? 'Total Months' : (ledger?.student?.program?.structure_type === 'annual' ? 'Total Years' : 'Total Semesters'))}
                     </div>
                     <div className="text-2xl font-bold text-violet-700">
                         {ledger ? new Set([...(ledger.fees || []), ...(ledger.paid_fees || [])].map(fee => getSemesterNumber(ledger.student?.admission_date, fee.due_date, fee.semester_number, ledger?.student?.program?.structure_type || 'semester'))).size : 0}
@@ -877,3 +892,4 @@ const StudentLedgerDetail = () => {
 };
 
 export default StudentLedgerDetail;
+

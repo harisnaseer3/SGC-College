@@ -4,9 +4,36 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Button from '../UI/Button';
 import Pagination from '../UI/Pagination';
 
-const EMPTY = { name: '', code: '', description: '', duration_years: 4, total_semesters: 8, structure_type: 'semester', campus_id: '', branches: [] };
+const EMPTY = { 
+    name: '', 
+    code: '', 
+    description: '', 
+    duration_value: 1, 
+    duration_unit: 'years', 
+    duration_years: 1, 
+    total_semesters: 2, 
+    structure_type: 'semester', 
+    campus_id: '', 
+    branches: [] 
+};
 
 const inputCls = 'w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm';
+
+const formatDuration = (p) => {
+    if (p.duration_unit && p.duration_value) {
+        return `${p.duration_value} ${p.duration_unit}`;
+    }
+    return `${p.duration_years || 1} yrs`;
+};
+
+const getPeriodUnitLabel = (structureType) => {
+    switch (structureType) {
+        case 'weekly': return 'weeks';
+        case 'monthly': return 'months';
+        case 'annual': return 'years';
+        default: return 'semesters';
+    }
+};
 
 const ProgramManagement = () => {
     const [programs, setPrograms]     = useState([]);
@@ -54,14 +81,95 @@ const ProgramManagement = () => {
     };
 
     const openNew = () => { setEditing(null); setFormData(EMPTY); setShowForm(true); };
+    
     const openEdit = (p) => {
         setEditing(p);
-        setFormData({ name: p.name, code: p.code || '', description: p.description || '',
-            duration_years: p.duration_years, total_semesters: p.total_semesters,
-            structure_type: p.structure_type || 'semester', campus_id: p.campus_id || '', branches: p.branches || [] });
+        const unit = p.duration_unit || 'years';
+        const val = p.duration_value ?? (unit === 'years' ? p.duration_years : (unit === 'months' ? (p.duration_years * 12) : 1));
+        
+        setFormData({ 
+            name: p.name, 
+            code: p.code || '', 
+            description: p.description || '',
+            duration_unit: unit,
+            duration_value: val,
+            duration_years: p.duration_years ?? 1, 
+            total_semesters: p.total_semesters,
+            structure_type: p.structure_type || 'semester', 
+            campus_id: p.campus_id || '', 
+            branches: p.branches || [] 
+        });
         setShowForm(true);
     };
+
     const closeForm = () => { setShowForm(false); setEditing(null); setFormData(EMPTY); setNewBranch(''); };
+
+    // Handler when structure_type changes: suggest sane default duration and period count
+    const handleStructureChange = (newType) => {
+        let suggestedUnit = formData.duration_unit;
+        let suggestedVal = formData.duration_value;
+        let suggestedTerms = formData.total_semesters;
+
+        if (newType === 'weekly') {
+            suggestedUnit = 'weeks';
+            suggestedVal = 4;
+            suggestedTerms = 4;
+        } else if (newType === 'monthly') {
+            suggestedUnit = 'months';
+            suggestedVal = 3;
+            suggestedTerms = 3;
+        } else if (newType === 'annual') {
+            suggestedUnit = 'years';
+            suggestedVal = 2;
+            suggestedTerms = 2;
+        } else if (newType === 'semester') {
+            suggestedUnit = 'years';
+            suggestedVal = 4;
+            suggestedTerms = 8;
+        }
+
+        setFormData({
+            ...formData,
+            structure_type: newType,
+            duration_unit: suggestedUnit,
+            duration_value: suggestedVal,
+            total_semesters: suggestedTerms
+        });
+    };
+
+    const handleDurationUnitChange = (unit) => {
+        let terms = formData.total_semesters;
+        const val = parseInt(formData.duration_value) || 1;
+        if (formData.structure_type === 'monthly' && unit === 'months') {
+            terms = val;
+        } else if (formData.structure_type === 'weekly' && unit === 'weeks') {
+            terms = val;
+        } else if (formData.structure_type === 'semester' && unit === 'years') {
+            terms = val * 2;
+        }
+        setFormData({
+            ...formData,
+            duration_unit: unit,
+            total_semesters: terms
+        });
+    };
+
+    const handleDurationValueChange = (valStr) => {
+        const val = parseInt(valStr) || 1;
+        let terms = formData.total_semesters;
+        if (formData.structure_type === 'monthly' && formData.duration_unit === 'months') {
+            terms = val;
+        } else if (formData.structure_type === 'weekly' && formData.duration_unit === 'weeks') {
+            terms = val;
+        } else if (formData.structure_type === 'semester' && formData.duration_unit === 'years') {
+            terms = val * 2;
+        }
+        setFormData({
+            ...formData,
+            duration_value: val,
+            total_semesters: terms
+        });
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -70,6 +178,16 @@ const ProgramManagement = () => {
             const finalData = { ...formData };
             if (newBranch.trim()) {
                 finalData.branches = [...(finalData.branches || []), newBranch.trim()];
+            }
+
+            // Calculate duration_years representation for legacy backwards compatibility
+            const dVal = parseInt(finalData.duration_value) || 1;
+            if (finalData.duration_unit === 'years') {
+                finalData.duration_years = dVal;
+            } else if (finalData.duration_unit === 'months') {
+                finalData.duration_years = Math.max(1, Math.ceil(dVal / 12));
+            } else if (finalData.duration_unit === 'weeks') {
+                finalData.duration_years = Math.max(1, Math.ceil(dVal / 52));
             }
 
             if (editing) {
@@ -105,28 +223,30 @@ const ProgramManagement = () => {
         <div>
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800">Programs</h2>
-                    <p className="text-slate-500 text-sm">Manage academic programs and their structure.</p>
+                    <h2 className="text-xl font-bold text-slate-800">Programs & Courses</h2>
+                    <p className="text-slate-500 text-sm">Manage degree programs, short courses, and academic tenure structures.</p>
                 </div>
                 <Button onClick={showForm ? closeForm : openNew}>
-                    {showForm ? 'Cancel' : 'New Program'}
+                    {showForm ? 'Cancel' : 'New Program / Course'}
                 </Button>
             </div>
 
             {showForm && (
                 <div className="mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-4 duration-300">
                     <h3 className="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-4">
-                        {editing ? `Editing: ${editing.name}` : 'New Program'}
+                        {editing ? `Editing: ${editing.name}` : 'New Program / Short Course'}
                     </h3>
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Program Name</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Course / Program Name</label>
                             <input type="text" className={inputCls} value={formData.name}
+                                placeholder="e.g. Web Development Bootcamp / F.Sc / 3-Month English Diploma"
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Code</label>
                             <input type="text" className={inputCls} value={formData.code}
+                                placeholder="e.g. SC-01"
                                 onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
                         </div>
                         <div>
@@ -140,27 +260,65 @@ const ProgramManagement = () => {
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Structure Type (Fee & Term System)</label>
                             <select className={inputCls} value={formData.structure_type}
-                                onChange={(e) => setFormData({ ...formData, structure_type: e.target.value,
-                                    total_semesters: e.target.value === 'monthly' ? 12 : (e.target.value === 'annual' ? 4 : 8) })} required>
+                                onChange={(e) => handleStructureChange(e.target.value)} required>
                                 <option value="semester">Semester-wise (Every 6 Months)</option>
-                                <option value="monthly">Monthly System (Every Month)</option>
+                                <option value="monthly">Monthly System (Every Month - Short & Regular Courses)</option>
+                                <option value="weekly">Weekly System (Short Courses in Weeks)</option>
                                 <option value="annual">Annual System (Every Year)</option>
                             </select>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 md:col-span-2">
+
+                        {/* Tenure / Duration Configuration */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Duration (Years)</label>
-                                <input type="number" className={inputCls} value={formData.duration_years}
-                                    onChange={(e) => setFormData({ ...formData, duration_years: e.target.value })} required />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    {formData.structure_type === 'monthly' ? 'Total Months' : (formData.structure_type === 'annual' ? 'Total Years' : 'Total Semesters')}
+                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                                    Duration & Tenure
                                 </label>
-                                <input type="number" className={inputCls} value={formData.total_semesters}
-                                    onChange={(e) => setFormData({ ...formData, total_semesters: e.target.value })} required />
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        className={`${inputCls} w-1/2`} 
+                                        value={formData.duration_value}
+                                        onChange={(e) => handleDurationValueChange(e.target.value)} 
+                                        required 
+                                    />
+                                    <select 
+                                        className={`${inputCls} w-1/2`} 
+                                        value={formData.duration_unit}
+                                        onChange={(e) => handleDurationUnitChange(e.target.value)}
+                                        required
+                                    >
+                                        <option value="weeks">Weeks</option>
+                                        <option value="months">Months</option>
+                                        <option value="years">Years</option>
+                                    </select>
+                                </div>
+                                <span className="text-[11px] text-slate-400 mt-1 block">
+                                    Supports short courses (e.g. 6 weeks, 3 months, 6 months) or multi-year degrees.
+                                </span>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                                    {formData.structure_type === 'weekly' ? 'Total Weeks / Batches' : 
+                                     formData.structure_type === 'monthly' ? 'Total Months' : 
+                                     formData.structure_type === 'annual' ? 'Total Years' : 'Total Semesters'}
+                                </label>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    className={inputCls} 
+                                    value={formData.total_semesters}
+                                    onChange={(e) => setFormData({ ...formData, total_semesters: e.target.value })} 
+                                    required 
+                                />
+                                <span className="text-[11px] text-slate-400 mt-1 block">
+                                    Number of fee billing terms and course breakdown intervals.
+                                </span>
                             </div>
                         </div>
+
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
                             <textarea className={inputCls} rows="2" value={formData.description}
@@ -170,7 +328,7 @@ const ProgramManagement = () => {
                             <label className="block text-sm font-medium text-slate-700 mb-1">Branches / Groups (optional)</label>
                             <div className="flex gap-2">
                                 <input type="text" className={inputCls} value={newBranch}
-                                    placeholder="e.g. Pre-Engineering, Pre-Medical, ICS"
+                                    placeholder="e.g. Morning, Evening, or Pre-Engineering, Pre-Medical"
                                     onChange={(e) => setNewBranch(e.target.value)}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
@@ -206,7 +364,7 @@ const ProgramManagement = () => {
                         </div>
                         <div className="md:col-span-2">
                             <Button type="submit" loading={saving}>
-                                {editing ? 'Save Changes' : 'Create Program'}
+                                {editing ? 'Save Changes' : 'Create Program / Course'}
                             </Button>
                         </div>
                     </form>
@@ -227,7 +385,7 @@ const ProgramManagement = () => {
                     </thead>
                     <tbody>
                         {programs.length === 0 ? (
-                            <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400 italic">No programs defined yet.</td></tr>
+                            <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-400 italic">No programs or courses defined yet.</td></tr>
                         ) : programs.map((p) => (
                             <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                                 <td className="px-6 py-4">
@@ -236,12 +394,14 @@ const ProgramManagement = () => {
                                         <div className="text-[10.5px] text-slate-400 mt-0.5">Branches: {p.branches.join(', ')}</div>
                                     )}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-slate-500 font-mono">{p.code || 'â€”'}</td>
-                                <td className="px-6 py-4 text-sm text-slate-500">{p.campus?.name || 'â€”'}</td>
+                                <td className="px-6 py-4 text-sm text-slate-500 font-mono">{p.code || '—'}</td>
+                                <td className="px-6 py-4 text-sm text-slate-500">{p.campus?.name || '—'}</td>
                                 <td className="px-6 py-4 text-xs">
                                     <span className={`px-2 py-1 rounded-md font-bold uppercase ${
                                         p.structure_type === 'monthly'
                                             ? 'bg-purple-100 text-purple-700'
+                                            : p.structure_type === 'weekly'
+                                            ? 'bg-emerald-100 text-emerald-700'
                                             : p.structure_type === 'annual'
                                             ? 'bg-amber-100 text-amber-700'
                                             : 'bg-blue-100 text-blue-700'
@@ -249,8 +409,8 @@ const ProgramManagement = () => {
                                         {p.structure_type || 'semester'}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-slate-500">
-                                    {p.duration_years} yrs ({p.total_semesters} {p.structure_type === 'monthly' ? 'months' : (p.structure_type === 'annual' ? 'years' : 'semesters')})
+                                <td className="px-6 py-4 text-sm text-slate-600 font-medium">
+                                    {formatDuration(p)} <span className="text-slate-400 font-normal">({p.total_semesters} {getPeriodUnitLabel(p.structure_type)})</span>
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center justify-end gap-1">

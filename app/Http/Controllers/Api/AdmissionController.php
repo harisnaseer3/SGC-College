@@ -76,7 +76,11 @@ class AdmissionController extends BaseController implements HasMiddleware
             }
 
             if ($request->filled('academic_batch_id')) {
-                $query->where('academic_batch_id', $request->academic_batch_id);
+                if ($request->academic_batch_id === 'rolling' || $request->academic_batch_id === 'none') {
+                    $query->whereNull('academic_batch_id');
+                } else {
+                    $query->where('academic_batch_id', $request->academic_batch_id);
+                }
             }
 
             if ($request->filled('status')) {
@@ -147,6 +151,12 @@ class AdmissionController extends BaseController implements HasMiddleware
                 $data['attachments'] = $attachments;
             }
 
+            $program = !empty($data['program_id']) ? Program::find($data['program_id']) : null;
+            if ($program && !$program->requires_batch) {
+                $data['academic_batch_id'] = null;
+                $data['intake_session'] = null;
+            }
+
             $data['status'] = $request->boolean('is_enrolled') ? 'Enrolled' : 'Pending';
 
             $student = Student::create($data);
@@ -207,6 +217,15 @@ class AdmissionController extends BaseController implements HasMiddleware
             // Keep status logic consistent
             if ($request->has('is_enrolled')) {
                 $data['status'] = $request->boolean('is_enrolled') ? 'Enrolled' : 'Pending';
+            }
+
+            if ($request->has('program_id') || $admission->program_id) {
+                $progId = $data['program_id'] ?? $admission->program_id;
+                $program = Program::find($progId);
+                if ($program && !$program->requires_batch) {
+                    $data['academic_batch_id'] = null;
+                    $data['intake_session'] = null;
+                }
             }
 
             $admission->update($data);

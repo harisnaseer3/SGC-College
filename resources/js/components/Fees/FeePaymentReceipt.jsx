@@ -153,7 +153,7 @@ const FeePaymentReceipt = () => {
                         </div>
                         <div>
                             <span className="text-slate-500 block text-[11px]">Batch / Session:</span>
-                            <span className="font-bold text-slate-900">{data.student?.academic_batch?.name || data.student?.intake_session || '-'}</span>
+                            <span className="font-bold text-slate-900">{data.student?.academic_batch?.name || data.student?.intake_session || (data.student?.program?.requires_batch === false ? 'Rolling Admission' : '-')}</span>
                         </div>
                         <div>
                             <span className="text-slate-500 block text-[11px]">Class / Semester:</span>

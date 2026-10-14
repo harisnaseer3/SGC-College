@@ -845,9 +845,15 @@ class FeeService
             if ($isOneTime) return false;
         }
 
-        if ($freq === 'monthly') return true;
+                if ($freq === 'monthly') return true;
+        if ($freq === 'weekly') return true;
 
-        if ($structureType === 'monthly') {
+        if ($structureType === 'weekly') {
+            if ($freq === 'weekly') return true;
+            if ($freq === 'monthly') return ($periodNumber - 1) % 4 === 0;
+            if ($freq === 'semester') return ($periodNumber - 1) % 24 === 0;
+            if ($freq === 'annual') return ($periodNumber - 1) % 52 === 0;
+        } elseif ($structureType === 'monthly') {
             if ($freq === 'semester') return true;
             if ($freq === 'annual') return ($periodNumber - 1) % 12 === 0;
         } elseif ($structureType === 'annual') {
@@ -872,6 +878,19 @@ class FeeService
         $admissionDate = Carbon::parse($student->admission_date)->startOfMonth();
         $targetDate = $date->copy()->startOfMonth();
         $structureType = $student->program->structure_type ?? 'semester';
+
+        if ($structureType === 'weekly') {
+            $admDay = Carbon::parse($student->admission_date)->startOfDay();
+            $targetDay = $date->copy()->startOfDay();
+            if ($targetDay->lt($admDay)) {
+                return 1;
+            }
+            $weekNumber = (int) $admDay->diffInWeeks($targetDay) + 1;
+            if ($student->program && $student->program->total_semesters) {
+                $weekNumber = min($weekNumber, $student->program->total_semesters);
+            }
+            return $weekNumber;
+        }
 
         if ($structureType === 'monthly') {
             if ($targetDate->lt($admissionDate)) {
@@ -925,6 +944,13 @@ class FeeService
 
         $structureType = $student->program->structure_type ?? 'semester';
 
+        if ($structureType === 'weekly') {
+            $adm = $student->admission_date ? Carbon::parse($student->admission_date)->startOfDay() : Carbon::now()->startOfDay();
+            $start = $adm->copy()->addWeeks($semesterNumber - 1);
+            $end = $start->copy()->addDays(6)->endOfDay();
+            return [$start, $end];
+        }
+
         if ($structureType === 'monthly') {
             $start = $admissionDate->copy()->addMonths($semesterNumber - 1)->startOfMonth();
             $end = $start->copy()->endOfMonth();
@@ -955,6 +981,10 @@ class FeeService
     {
         [$start, $end] = $this->getStudentSemesterRange($student, $semesterNumber);
         $structureType = $student->program->structure_type ?? 'semester';
+
+        if ($structureType === 'weekly') {
+            return "Week {$semesterNumber} (" . $start->format('d M') . " - " . $end->format('d M Y') . ")";
+        }
 
         if ($structureType === 'monthly') {
             return "Month {$semesterNumber} (" . $start->format('M Y') . ")";
@@ -1005,3 +1035,4 @@ class FeeService
         }
     }
 }
+

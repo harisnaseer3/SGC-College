@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import ProgramManagement from './ProgramManagement';
+import ProgramManagement from './ProgramCourseManagement';
 import CourseManagement from './CourseManagement';
 import BatchManagement from './BatchManagement';
 

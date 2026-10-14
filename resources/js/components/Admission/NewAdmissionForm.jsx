@@ -31,6 +31,29 @@ const CardSectionHeader = ({ icon, title, subtitle, color = "indigo" }) => {
     );
 };
 
+export const isShortCourseRolling = (prog) => {
+    if (!prog) return false;
+    // 1. Explicit setting on program
+    if (prog.requires_batch === false || prog.requires_batch === 0 || prog.requires_batch === '0') return true;
+    if (prog.requires_batch === true || prog.requires_batch === 1 || prog.requires_batch === '1') return false;
+    // 2. Degrees require batches
+    const name = (prog.name || '').toLowerCase();
+    const isDegree = /f\.?s\.?c|matric|degree|bachelor|bs\b|master|inter/i.test(name);
+    if (isDegree) return false;
+
+    // 3. Structure type & duration checks
+    if (prog.duration_unit === 'weeks' || prog.structure_type === 'weekly' || prog.structure_type === 'monthly') return true;
+    if (prog.duration_unit === 'months') {
+        const months = Number(prog.duration_value || prog.total_semesters || 0);
+        if (months <= 12) return true;
+    }
+    // 4. Keywords
+    if (name.includes('short course') || name.includes('certificate') || name.includes('month') || name.includes('web dev') || name.includes('bootcamp')) {
+        return true;
+    }
+    return false;
+};
+
 const NewAdmissionForm = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -163,6 +186,10 @@ const NewAdmissionForm = () => {
                 updated.program_semester_id = '';
                 updated.program_branch = '';
                 updated.academic_batch_id = '';
+                const selectedProg = formOptions.programs.find(p => p.id == value);
+                if (isShortCourseRolling(selectedProg)) {
+                    updated.intake_session = '';
+                }
             }
             return updated;
         });
@@ -205,7 +232,14 @@ const NewAdmissionForm = () => {
                 payload.append('_method', 'PUT');
             }
 
+            const selectedProg = formOptions.programs.find(p => p.id == formData.program_id);
+            const isRolling = isShortCourseRolling(selectedProg);
+
             Object.entries(formData).forEach(([key, val]) => {
+                if (isRolling && (key === 'academic_batch_id' || key === 'intake_session')) {
+                    // Batch and intake cycle are not needed for rolling admissions
+                    return;
+                }
                 if (key === 'qualifications') {
                     val.forEach((q, idx) => {
                         Object.entries(q).forEach(([qKey, qVal]) => {
@@ -331,7 +365,7 @@ const NewAdmissionForm = () => {
                                 <option value="">Select Program</option>
                                 {formOptions.programs.map(p => (
                                     <option key={p.id} value={p.id}>
-                                        {p.name} ({p.structure_type ? (p.structure_type.charAt(0).toUpperCase() + p.structure_type.slice(1)) : 'Semester'})
+                                        {p.name} ({isShortCourseRolling(p) ? 'Rolling / Short Course' : (p.structure_type ? (p.structure_type.charAt(0).toUpperCase() + p.structure_type.slice(1)) : 'Semester')})
                                     </option>
                                 ))}
                             </select>
@@ -354,8 +388,13 @@ const NewAdmissionForm = () => {
                                 {(() => {
                                     const prog = formOptions.programs.find(p => p.id == formData.program_id);
                                     const sType = prog?.structure_type || 'semester';
-                                    const termLabel = sType === 'monthly' ? 'Month' : (sType === 'annual' ? 'Year' : 'Semester');
-                                    const totalSems = prog?.total_semesters || (sType === 'monthly' ? 12 : (sType === 'annual' ? 4 : 8));
+                                    const progName = (prog?.name || '').toLowerCase();
+                                    const isAnnual = sType === 'annual' || /f\.?s\.?c|matric|inter|fa\b|ics|i\.?com|annual/i.test(progName);
+                                    const isWeekly = sType === 'weekly';
+                                    const isMonthly = sType === 'monthly' || (!isAnnual && (prog?.duration_unit === 'months' || prog?.duration_unit === 'weeks' || isShortCourseRolling(prog)));
+
+                                    const termLabel = isWeekly ? 'Week' : (isMonthly ? 'Month' : (isAnnual ? 'Year' : 'Semester'));
+                                    const totalSems = prog?.total_semesters || (isMonthly ? 12 : (isAnnual ? 4 : 8));
                                     
                                     return (
                                         <div>
@@ -365,9 +404,12 @@ const NewAdmissionForm = () => {
                                                 {prog?.semesters && prog.semesters.length > 0 ? (
                                                     prog.semesters
                                                         .filter(s => s.semester_number <= totalSems)
-                                                        .map(s => (
-                                                            <option key={s.id} value={s.id}>{termLabel} {s.semester_number}</option>
-                                                        ))
+                                                        .map(s => {
+                                                            const optName = s.name && !s.name.startsWith('Semester') ? s.name : `${termLabel} ${s.semester_number}`;
+                                                            return (
+                                                                <option key={s.id} value={s.id}>{optName}</option>
+                                                            );
+                                                        })
                                                 ) : (
                                                     [...Array(totalSems)].map((_, i) => (
                                                         <option key={i + 1} value={i + 1}>{termLabel} {i + 1}</option>
@@ -378,15 +420,50 @@ const NewAdmissionForm = () => {
                                     );
                                 })()}
 
-                                <div>
-                                    <label className={labelCls}>Academic Batch <span className="text-rose-500">*</span></label>
-                                    <select name="academic_batch_id" value={formData.academic_batch_id} onChange={handleChange} className={inputCls} required>
-                                        <option value="">Select Batch</option>
-                                        {formOptions.batches
-                                            .filter(b => b.campus_id == formOptions.programs.find(p => p.id == formData.program_id)?.campus_id)
-                                            .map(b => <option key={b.id} value={b.id}>{b.name}{b.is_active ? ' (Active)' : ''}</option>)}
-                                    </select>
-                                </div>
+                                {(() => {
+                                    const prog = formOptions.programs.find(p => p.id == formData.program_id);
+                                    const isRolling = isShortCourseRolling(prog);
+
+                                    if (isRolling) {
+                                        return (
+                                            <div>
+                                                <label className={labelCls}>Academic Batch</label>
+                                                <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                    <span>Rolling Admission (No Batch Needed)</span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-400 mt-1">Short courses start on the student's admission date.</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    const sType = prog?.structure_type || 'semester';
+
+                                    return (
+                                        <>
+                                            <div>
+                                                <label className={labelCls}>Academic Batch <span className="text-rose-500">*</span></label>
+                                                <select name="academic_batch_id" value={formData.academic_batch_id} onChange={handleChange} className={inputCls} required>
+                                                    <option value="">Select Batch</option>
+                                                    {formOptions.batches
+                                                        .filter(b => b.campus_id == formOptions.programs.find(p => p.id == formData.program_id)?.campus_id)
+                                                        .map(b => <option key={b.id} value={b.id}>{b.name}{b.is_active ? ' (Active)' : ''}</option>)}
+                                                </select>
+                                            </div>
+
+                                            {sType === 'semester' && (
+                                                <div>
+                                                    <label className={labelCls}>Intake Cycle / Session <span className="text-rose-500">*</span></label>
+                                                    <select name="intake_session" value={formData.intake_session} onChange={handleChange} className={inputCls} required>
+                                                        <option value="">Select Intake</option>
+                                                        <option value="Fall">Fall</option>
+                                                        <option value="Spring">Spring</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </>
                         ) : (
                             <div className="col-span-1 sm:col-span-2 text-slate-400 italic text-xs flex items-center p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
@@ -394,21 +471,17 @@ const NewAdmissionForm = () => {
                             </div>
                         )}
 
-                        {(() => {
+                        {formData.program_id && (() => {
                             const prog = formOptions.programs.find(p => p.id == formData.program_id);
-                            const sType = prog?.structure_type || 'semester';
-                            if (sType !== 'semester') return null;
-
-                            return (
-                                <div>
-                                    <label className={labelCls}>Intake Session <span className="text-rose-500">*</span></label>
-                                    <select name="intake_session" value={formData.intake_session} onChange={handleChange} className={inputCls} required>
-                                        <option value="">Select Intake</option>
-                                        <option value="Fall">Fall</option>
-                                        <option value="Spring">Spring</option>
-                                    </select>
-                                </div>
-                            );
+                            if (isShortCourseRolling(prog)) {
+                                return (
+                                    <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4 p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs text-emerald-800">
+                                        <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        <span><strong>Continuous / Rolling Admission:</strong> This short course does not require an academic batch or intake cycle. Classes begin directly from the student's <strong>Admission Date</strong>.</span>
+                                    </div>
+                                );
+                            }
+                            return null;
                         })()}
                     </div>
                 </Card>
@@ -799,16 +872,29 @@ const NewAdmissionForm = () => {
                         </div>
                         <div className="flex flex-col gap-2">
                             <div className="flex items-baseline gap-2">
-                                <span className="font-bold text-slate-700">Semester / Year:</span>
+                                <span className="font-bold text-slate-700">Semester / Term:</span>
                                 <span className="border-b border-slate-400 flex-1 border-dashed">&nbsp;</span>
                             </div>
-                            <div className="flex items-center gap-3 flex-wrap mt-1">
-                                <span className="font-bold text-slate-700">Intake / Shift:</span>
-                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Morning</span>
-                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Evening</span>
-                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Fall</span>
-                                <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Spring</span>
-                            </div>
+                            {(() => {
+                                const prog = formOptions.programs.find(p => p.id == formData.program_id);
+                                if (isShortCourseRolling(prog)) {
+                                    return (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="font-bold text-slate-700">Admission Mode:</span>
+                                            <span className="text-emerald-700 font-semibold">Continuous / Rolling (No Batch / Intake Cycle Required)</span>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div className="flex items-center gap-3 flex-wrap mt-1">
+                                        <span className="font-bold text-slate-700">Intake / Shift:</span>
+                                        <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Morning</span>
+                                        <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Evening</span>
+                                        <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Fall</span>
+                                        <span className="flex items-center gap-1"><span className="w-3.5 h-3.5 border border-slate-600 inline-block rounded-sm"></span> Spring</span>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -1003,4 +1089,5 @@ const NewAdmissionForm = () => {
 };
 
 export default NewAdmissionForm;
+
 

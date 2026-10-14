@@ -138,15 +138,17 @@ class StudentImportController extends BaseController
             ->toArray();
 
         // Program: name → id  and  code → id
-        $programByName = Program::withoutGlobalScopes()
-            ->select('id', 'name', 'code')
-            ->get()
+        $programsList = Program::withoutGlobalScopes()
+            ->select('id', 'name', 'code', 'requires_batch', 'duration_unit', 'duration_value', 'total_semesters', 'structure_type')
+            ->get();
+        $programByName = $programsList
             ->mapWithKeys(fn($p) => [strtolower(trim($p->name)) => $p->id])
             ->toArray();
-        $programByCode = Program::withoutGlobalScopes()
-            ->select('id', 'name', 'code')
-            ->get()
+        $programByCode = $programsList
             ->mapWithKeys(fn($p) => [strtolower(trim($p->code ?? '')) => $p->id])
+            ->toArray();
+        $programRequiresBatch = $programsList
+            ->mapWithKeys(fn($p) => [$p->id => $p->requires_batch])
             ->toArray();
 
         // ProgramSemester: [program_id, semester_number] → semester_id
@@ -175,7 +177,7 @@ class StudentImportController extends BaseController
             $data = array_map(fn($v) => is_string($v) ? trim($v) : $v, $data);
 
             // ── Resolve human-readable values → IDs ─────────────────────────
-            $resolved = $this->resolveRow($data, $campusMap, $programByName, $programByCode, $semesterMap, $batchMap);
+            $resolved = $this->resolveRow($data, $campusMap, $programByName, $programByCode, $semesterMap, $batchMap, $programRequiresBatch);
             $errors   = $this->validateRow($resolved, $rowIndex);
 
             if (!empty($errors)) {
@@ -261,6 +263,7 @@ class StudentImportController extends BaseController
         array $programByCode,
         array $semesterMap,
         array $batchMap,
+        array $programRequiresBatch = [],
     ): array {
         $out = $data;
 
@@ -326,12 +329,18 @@ class StudentImportController extends BaseController
                 $month = (int) date('m', strtotime($out['admission_date']));
                 $out['intake_session'] = $month >= 7 ? 'Fall' : 'Spring';
             } else {
-                $out['intake_session'] = ucfirst($intakeLower);
+                $out['intake_session'] = ucfirst($intakeLower) ?: 'Open Enrollment';
             }
         }
 
         // ── Normalise status ─────────────────────────────────────────────────
         $out['status'] = $this->normaliseStatus($data['status'] ?? 'Pending');
+
+        // When batch is not needed, neither batch nor intake cycle is needed
+        if (isset($out['program_id']) && !($programRequiresBatch[$out['program_id']] ?? true)) {
+            $out['academic_batch_id'] = null;
+            $out['intake_session'] = null;
+        }
 
         return $out;
     }
@@ -346,11 +355,11 @@ class StudentImportController extends BaseController
             'gender'              => 'required|in:Male,Female,Other',
             'date_of_birth'       => 'nullable|date',
             'admission_date'      => 'required|date',
-            'intake_session'      => 'required|in:Fall,Spring',
+            'intake_session'      => 'nullable|string',
             'campus_id'           => 'required|integer|exists:campuses,id',
             'program_id'          => 'required|integer|exists:programs,id',
             'program_semester_id' => 'required|integer|exists:program_semesters,id',
-            'academic_batch_id'   => 'required|integer|exists:academic_batches,id',
+            'academic_batch_id'   => 'nullable|integer|exists:academic_batches,id',
         ];
 
         $validator = Validator::make($data, $rules);
