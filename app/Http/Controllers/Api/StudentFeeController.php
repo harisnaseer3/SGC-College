@@ -971,6 +971,11 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     }
                 }
 
+                // Immediately associate group fees with this voucher number so recalculations see its fees
+                foreach ($groupFees as $fee) {
+                    $fee->update(['voucher_number' => $voucherNumber]);
+                }
+
                 if ($arrearsSum > 0) {
                     // Update original arrears status to carried_forward
                     foreach ($arrears as $arrFee) {
@@ -1014,10 +1019,6 @@ class StudentFeeController extends BaseController implements HasMiddleware
                         'semester_number' => $maxSem,
                         'voucher_number' => $voucherNumber,
                     ]);
-                }
-
-                foreach ($groupFees as $fee) {
-                    $fee->update(['voucher_number' => $voucherNumber]);
                 }
 
                 $vouchers[] = $voucher;

@@ -50,7 +50,7 @@ class GeneratedVoucher extends Model
     {
         if (!$voucherNumber) return;
 
-        $voucher = self::where('voucher_number', $voucherNumber)->first();
+        $voucher = self::withoutGlobalScopes()->withTrashed()->where('voucher_number', $voucherNumber)->first();
         if (!$voucher) return;
 
         // Use withoutGlobalScopes to bypass user-context filters in model hooks
@@ -60,8 +60,16 @@ class GeneratedVoucher extends Model
             ->get();
 
         if ($fees->isEmpty()) {
-            $voucher->delete();
+            // Never delete vouchers that were created in the last 60 seconds (prevents deleting vouchers during batch creation)
+            if ($voucher->created_at && $voucher->created_at->diffInSeconds(now()) >= 60) {
+                $voucher->delete();
+            }
             return;
+        }
+
+        // If the voucher was previously soft-deleted but now has associated fees, restore it
+        if ($voucher->trashed()) {
+            $voucher->restore();
         }
 
         $maxSem = $voucher->semester_number;

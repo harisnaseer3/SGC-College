@@ -377,8 +377,18 @@ class FeeService
                 throw new \Exception("Voucher not found.");
             }
 
-            $voucherRecord = \App\Models\GeneratedVoucher::where('voucher_number', $voucherNumber)->first();
-            if (!$voucherRecord) {
+            $voucherRecord = \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                ->withTrashed()
+                ->where('voucher_number', $voucherNumber)
+                ->first();
+
+            if ($voucherRecord) {
+                if ($voucherRecord->trashed()) {
+                    $voucherRecord->restore();
+                }
+                \App\Models\GeneratedVoucher::recalculateVoucher($voucherNumber);
+                $voucherRecord->refresh();
+            } else {
                 // Auto-heal: Backfill the GeneratedVoucher record from the student fees!
                 $maxSem = $allPendingFees->max('semester_number') ?: 1;
                 $currentFees = $allPendingFees->filter(function($fee) use ($maxSem) {
@@ -392,24 +402,34 @@ class FeeService
                     return $fee->semester_number < $maxSem;
                 })->sum('balance_amount');
 
-                $voucherRecord = \App\Models\GeneratedVoucher::create([
-                    'organization_id' => $student->organization_id,
-                    'campus_id' => $student->campus_id,
-                    'student_id' => $studentId,
-                    'voucher_number' => $voucherNumber,
-                    'due_date' => $allPendingFees->min('due_date') ?? now(),
-                    'semester_number' => $maxSem,
-                    'amount' => $currentFees->sum('amount'),
-                    'arrears_amount' => $arrearsAmount,
-                    'fine_amount' => $allPendingFees->sum('fine_amount'),
-                    'discount_amount' => $allPendingFees->sum('discount_amount'),
-                    'paid_amount' => $allPendingFees->sum('paid_amount'),
-                    'balance_amount' => $allPendingFees->sum('balance_amount'),
-                    'status' => $allPendingFees->sum('balance_amount') <= 0 ? 'paid' : ($allPendingFees->sum('paid_amount') > 0 ? 'partial' : 'unpaid'),
-                ]);
+                try {
+                    $voucherRecord = \App\Models\GeneratedVoucher::create([
+                        'organization_id' => $student->organization_id,
+                        'campus_id' => $student->campus_id,
+                        'student_id' => $studentId,
+                        'voucher_number' => $voucherNumber,
+                        'due_date' => $allPendingFees->min('due_date') ?? now(),
+                        'semester_number' => $maxSem,
+                        'amount' => $currentFees->sum('amount'),
+                        'arrears_amount' => $arrearsAmount,
+                        'fine_amount' => $allPendingFees->sum('fine_amount'),
+                        'discount_amount' => $allPendingFees->sum('discount_amount'),
+                        'paid_amount' => $allPendingFees->sum('paid_amount'),
+                        'balance_amount' => $allPendingFees->sum('balance_amount'),
+                        'status' => $allPendingFees->sum('balance_amount') <= 0 ? 'paid' : ($allPendingFees->sum('paid_amount') > 0 ? 'partial' : 'unpaid'),
+                    ]);
+                } catch (\Illuminate\Database\QueryException $qe) {
+                    $voucherRecord = \App\Models\GeneratedVoucher::withoutGlobalScopes()->withTrashed()->where('voucher_number', $voucherNumber)->first();
+                    if ($voucherRecord && $voucherRecord->trashed()) {
+                        $voucherRecord->restore();
+                    }
+                }
             }
 
-            $dueDate = $voucherRecord->due_date;
+            $dueDate = $voucherRecord->due_date ?? ($allPendingFees->min('due_date') ?? now());
+            if (is_string($dueDate)) {
+                $dueDate = \Carbon\Carbon::parse($dueDate);
+            }
             $validDate = $dueDate->copy()->endOfMonth();
             $semNumber = $voucherRecord->semester_number;
             $feeMonth = $this->getStudentSemesterLabel($student, $semNumber);

@@ -45,7 +45,7 @@ class StudentFee extends Model
         });
 
         static::saved(function ($model) {
-            $vouchers = \App\Models\GeneratedVoucher::where('student_id', $model->student_id)->get();
+            $vouchers = \App\Models\GeneratedVoucher::withoutGlobalScopes()->withTrashed()->where('student_id', $model->student_id)->get();
             foreach ($vouchers as $voucher) {
                 \App\Models\GeneratedVoucher::recalculateVoucher($voucher->voucher_number);
             }
@@ -58,7 +58,7 @@ class StudentFee extends Model
         });
 
         static::deleted(function ($model) {
-            $vouchers = \App\Models\GeneratedVoucher::where('student_id', $model->student_id)->get();
+            $vouchers = \App\Models\GeneratedVoucher::withoutGlobalScopes()->withTrashed()->where('student_id', $model->student_id)->get();
             foreach ($vouchers as $voucher) {
                 \App\Models\GeneratedVoucher::recalculateVoucher($voucher->voucher_number);
             }

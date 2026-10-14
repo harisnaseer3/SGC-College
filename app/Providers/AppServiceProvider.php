@@ -119,6 +119,18 @@ class AppServiceProvider extends ServiceProvider
                     }
                 }
             }
+
+            // Auto-restore any soft-deleted GeneratedVoucher that has active student fees
+            if (Schema::hasTable('generated_vouchers') && Schema::hasTable('student_fees')) {
+                DB::table('generated_vouchers')
+                    ->whereNotNull('deleted_at')
+                    ->whereExists(function($q) {
+                        $q->select(DB::raw(1))
+                          ->from('student_fees')
+                          ->whereColumn('student_fees.voucher_number', 'generated_vouchers.voucher_number');
+                    })
+                    ->update(['deleted_at' => null]);
+            }
         } catch (\Throwable $e) {
             // Ignore during early setup
         }
