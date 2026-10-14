@@ -424,8 +424,22 @@ class StudentFeeController extends BaseController implements HasMiddleware
     public function split(\Illuminate\Http\Request $request, StudentFee $studentFee)
     {
         try {
+            $studentFee->loadMissing('student.program');
+            $structureType = strtolower($studentFee->student->program->structure_type ?? '');
+            $programName = strtolower($studentFee->student->program->name ?? '');
+
+            $isAnnual = $structureType === 'annual'
+                || str_contains($programName, 'annual')
+                || str_contains($programName, 'f.s.c')
+                || str_contains($programName, 'fsc')
+                || str_contains($programName, 'fa')
+                || str_contains($programName, 'ics')
+                || str_contains($programName, 'matric');
+
+            $maxInstallments = $isAnnual ? 12 : 4;
+
             $request->validate([
-                'installments' => 'required|array|min:2|max:4',
+                'installments' => "required|array|min:2|max:$maxInstallments",
                 'installments.*.amount' => 'required|numeric|min:1',
                 'installments.*.due_date' => 'required|date',
             ]);

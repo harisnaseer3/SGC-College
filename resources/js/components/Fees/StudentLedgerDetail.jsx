@@ -104,25 +104,40 @@ const isSplittableFee = (fee) => {
         return true;
     }
 
-    if (headName.includes('monthly') || headName.includes('tuition') || headName.includes('tution') || headName.includes('semester') || headName.includes('program') || headName.includes('course')) {
+    if (headName.includes('monthly') || headName.includes('tuition') || headName.includes('tution') || headName.includes('semester') || headName.includes('annual') || headName.includes('program') || headName.includes('course')) {
         return true;
     }
 
     return false;
 };
 
-const getInstallmentDueDate = (baseDueDateStr, installmentIndex = 0) => {
+const getInstallmentDueDate = (baseDueDateStr, installmentIndex = 0, isAnnual = false) => {
     let baseDate = parseLocalDate(baseDueDateStr);
     if (!baseDate || baseDate.getFullYear() < 2020) {
         baseDate = new Date();
         baseDate.setDate(baseDate.getDate() + 15);
     }
     const d = new Date(baseDate);
-    d.setDate(d.getDate() + (installmentIndex * 15));
+    if (isAnnual) {
+        d.setMonth(d.getMonth() + installmentIndex);
+    } else {
+        d.setDate(d.getDate() + (installmentIndex * 15));
+    }
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
+};
+
+const calculateEqualInstallments = (totalAmount, count, baseDate, isAnnual = false) => {
+    const total = parseFloat(totalAmount) || 0;
+    const equalAmount = Math.floor((total / count) * 100) / 100;
+    const remainder = parseFloat((total - (equalAmount * count)).toFixed(2));
+
+    return Array(count).fill(0).map((_, i) => ({
+        amount: (i === count - 1 ? (equalAmount + remainder).toFixed(2) : equalAmount.toFixed(2)),
+        due_date: getInstallmentDueDate(baseDate, i, isAnnual)
+    }));
 };
 
 const StudentLedgerDetail = () => {
@@ -219,6 +234,17 @@ const StudentLedgerDetail = () => {
 
     if (loading) return <div className="py-20 text-center animate-pulse text-slate-500 font-bold uppercase tracking-widest text-xs">Loading Ledger...</div>;
     if (!ledger) return null;
+
+    const isAnnualProgram = (ledger?.student?.program?.structure_type || '').toLowerCase() === 'annual' 
+        || (ledger?.student?.program?.name || '').toLowerCase().includes('annual')
+        || (ledger?.student?.program?.name || '').toLowerCase().includes('f.s.c')
+        || (ledger?.student?.program?.name || '').toLowerCase().includes('fsc')
+        || (ledger?.student?.program?.name || '').toLowerCase().includes('fa')
+        || (ledger?.student?.program?.name || '').toLowerCase().includes('ics')
+        || (ledger?.student?.program?.name || '').toLowerCase().includes('i.com')
+        || (ledger?.student?.program?.name || '').toLowerCase().includes('matric');
+
+    const maxInstallments = isAnnualProgram ? 12 : 4;
 
     return (
         <div className="p-8 space-y-6">
@@ -478,10 +504,7 @@ const StudentLedgerDetail = () => {
                                                     <button 
                                                         onClick={() => {
                                                             setSplittingFee(fee);
-                                                            setInstallments([
-                                                                { amount: (fee.balance_amount / 2).toFixed(2), due_date: getInstallmentDueDate(fee.due_date, 0) },
-                                                                { amount: (fee.balance_amount / 2).toFixed(2), due_date: getInstallmentDueDate(fee.due_date, 1) }
-                                                            ]);
+                                                            setInstallments(calculateEqualInstallments(fee.balance_amount, 2, fee.due_date, isAnnualProgram));
                                                         }}
                                                         className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 underline decoration-emerald-200 underline-offset-4"
                                                     >
@@ -721,7 +744,29 @@ const StudentLedgerDetail = () => {
                             </button>
                         </div>
                         <form onSubmit={handleSplitFee} className="p-6">
-                            <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 mb-6">
+                            <div className="flex items-center gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Quick Split:</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {(isAnnualProgram ? [2, 3, 4, 6, 8, 10, 12] : [2, 3, 4]).map(count => (
+                                        <button
+                                            key={count}
+                                            type="button"
+                                            onClick={() => {
+                                                setInstallments(calculateEqualInstallments(splittingFee.balance_amount, count, splittingFee.due_date, isAnnualProgram));
+                                            }}
+                                            className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                                                installments.length === count 
+                                                    ? 'bg-indigo-600 text-white shadow-sm' 
+                                                    : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'
+                                            }`}
+                                        >
+                                            {count} Inst.
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 max-h-[48vh] overflow-y-auto pr-2 mb-6">
                                 {installments.map((inst, idx) => (
                                     <div key={idx} className="flex gap-4 items-end bg-slate-50 p-3 rounded-xl border border-slate-100">
                                         <div className="flex-1">
@@ -757,11 +802,7 @@ const StudentLedgerDetail = () => {
                                                 type="button"
                                                 onClick={() => {
                                                     const newCount = installments.length - 1;
-                                                    const equalAmount = (splittingFee.balance_amount / newCount).toFixed(2);
-                                                    setInstallments(Array(newCount).fill(0).map((_, i) => ({
-                                                        amount: equalAmount,
-                                                        due_date: getInstallmentDueDate(splittingFee.due_date, i)
-                                                    })));
+                                                    setInstallments(calculateEqualInstallments(splittingFee.balance_amount, newCount, splittingFee.due_date, isAnnualProgram));
                                                 }}
                                                 className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"
                                             >
@@ -773,16 +814,12 @@ const StudentLedgerDetail = () => {
                             </div>
 
                             <div className="flex justify-between items-center mb-6 px-2">
-                                {installments.length < 4 ? (
+                                {installments.length < maxInstallments ? (
                                     <button 
                                         type="button"
                                         onClick={() => {
                                             const newCount = installments.length + 1;
-                                            const equalAmount = (splittingFee.balance_amount / newCount).toFixed(2);
-                                            setInstallments(Array(newCount).fill(0).map((_, i) => ({
-                                                amount: equalAmount,
-                                                due_date: getInstallmentDueDate(splittingFee.due_date, i)
-                                            })));
+                                            setInstallments(calculateEqualInstallments(splittingFee.balance_amount, newCount, splittingFee.due_date, isAnnualProgram));
                                         }}
                                         className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
                                     >
@@ -790,7 +827,7 @@ const StudentLedgerDetail = () => {
                                         Add Installment
                                     </button>
                                 ) : (
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider italic">Max 4 installments reached</div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider italic">Max {maxInstallments} installments reached</div>
                                 )}
                                 <div className="text-right">
                                     <div className="text-[10px] font-bold text-slate-500 uppercase">Total Allocated</div>
