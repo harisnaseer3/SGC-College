@@ -42,7 +42,8 @@ class ExtraIncomeController extends BaseController implements HasMiddleware
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('form_number', 'like', "%{$search}%")
-                  ->orWhere('payment_method', 'like', "%{$search}%");
+                  ->orWhere('payment_method', 'like', "%{$search}%")
+                  ->orWhere('remarks', 'like', "%{$search}%");
             });
         }
         

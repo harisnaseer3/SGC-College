@@ -129,7 +129,7 @@ const ExtraIncomeList = () => {
                         </span>
                         <input
                             type="text"
-                            placeholder="Search form no, method..."
+                            placeholder="Search form no, method, remarks..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
@@ -192,13 +192,14 @@ const ExtraIncomeList = () => {
                                 <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Payment Method</th>
                                 <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Form No</th>
                                 <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Collected By</th>
+                                <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Remarks</th>
                                 <th className="py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                             {incomes.length === 0 ? (
                                 <tr>
-                                    <td colSpan="8" className="py-8 text-center text-slate-500">
+                                    <td colSpan="9" className="py-8 text-center text-slate-500">
                                         No income records found.
                                     </td>
                                 </tr>
@@ -222,6 +223,9 @@ const ExtraIncomeList = () => {
                                         <td className="py-3 px-4 text-slate-600">{income.payment_method}</td>
                                         <td className="py-3 px-4 text-slate-600 font-medium">{income.form_number}</td>
                                         <td className="py-3 px-4 text-slate-600">{income.collected_by?.name}</td>
+                                        <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={income.remarks || ''}>
+                                            {income.remarks || '—'}
+                                        </td>
                                         <td className="py-3 px-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <button
