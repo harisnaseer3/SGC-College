@@ -857,6 +857,14 @@ class FeeService
         }
 
         $freq = $feeHead->frequency ?? 'semester';
+        if ($freq === 'annually') {
+            $freq = 'annual';
+        }
+        if (in_array(strtolower(trim($feeHead->frequency_name ?? '')), ['semester wise', 'semester-wise'])) {
+            $freq = 'semester';
+        } elseif (in_array(strtolower(trim($feeHead->frequency_name ?? '')), ['annual fee', 'annual', 'annually'])) {
+            $freq = 'annual';
+        }
         $isOneTime = ($freq === 'one_time' || ($feeHead->frequency_name ?? '') === 'Once at First Fee');
         
         if ($periodNumber === 1) {

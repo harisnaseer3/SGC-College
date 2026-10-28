@@ -375,7 +375,7 @@ const FeeStructureManagement = () => {
                                             <td className="py-4 text-sm font-medium text-slate-700">{item.fee_head?.name}</td>
                                             <td className="py-4 text-xs">
                                                 <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold uppercase">
-                                                    {item.fee_head?.frequency.replace('_', ' ')}
+                                                    {item.fee_head?.frequency === 'annual' ? 'Annually' : item.fee_head?.frequency?.replace('_', ' ') || '-'}
                                                 </span>
                                             </td>
                                             <td className="py-4 text-sm font-bold text-slate-900 text-right">Rs. {item.amount}</td>

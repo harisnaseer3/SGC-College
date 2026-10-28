@@ -142,6 +142,7 @@ const FeeHeadManagement = () => {
                                 <option value="one_time">One-time</option>
                                 <option value="monthly">Monthly</option>
                                 <option value="semester">Semester-wise</option>
+                                <option value="annual">Annually</option>
                             </select>
                         </div>
                         <div>
@@ -149,12 +150,26 @@ const FeeHeadManagement = () => {
                             <select
                                 className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
                                 value={formData.frequency_name}
-                                onChange={(e) => setFormData({ ...formData, frequency_name: e.target.value })}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        frequency_name: val,
+                                        ...(val === 'Semester Wise' ? { frequency: 'semester' } :
+                                            val === 'Monthly Fee' ? { frequency: 'monthly' } :
+                                            val === 'Once at First Fee' ? { frequency: 'one_time' } :
+                                            val === 'Annual Fee' ? { frequency: 'annual' } : {})
+                                    }));
+                                }}
                             >
                                 <option value="">Select Frequency Name</option>
                                 <option value="Once at First Fee">Once at First Fee</option>
                                 <option value="Monthly Fee">Monthly Fee</option>
+                                <option value="Semester Wise">Semester Wise</option>
                                 <option value="Annual Fee">Annual Fee</option>
+                                {formData.frequency_name && !['', 'Once at First Fee', 'Monthly Fee', 'Semester Wise', 'Annual Fee'].includes(formData.frequency_name) && (
+                                    <option value={formData.frequency_name}>{formData.frequency_name}</option>
+                                )}
                             </select>
                         </div>
                         <div>
@@ -210,9 +225,10 @@ const FeeHeadManagement = () => {
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${
                                             head.frequency === 'monthly' ? 'bg-blue-100 text-blue-700' :
                                             head.frequency === 'semester' ? 'bg-emerald-100 text-emerald-700' :
+                                            (head.frequency === 'annual' || head.frequency === 'annually') ? 'bg-purple-100 text-purple-700' :
                                             'bg-slate-100 text-slate-700'
                                         }`}>
-                                            {head.frequency.replace('_', ' ')}
+                                            {head.frequency === 'annual' ? 'Annually' : head.frequency?.replace('_', ' ')}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-slate-500">{head.frequency_name || '-'}</td>

@@ -21,7 +21,7 @@ class UpdateFeeHeadRequest extends FormRequest
     {
         return [
             'name'           => 'required|string|max:255',
-            'frequency'      => 'required|in:one_time,monthly,semester',
+            'frequency'      => 'required|in:one_time,monthly,semester,annual,annually',
             'frequency_name' => 'nullable|string|max:255',
             'priority'       => 'nullable|integer',
             'description'    => 'nullable|string',

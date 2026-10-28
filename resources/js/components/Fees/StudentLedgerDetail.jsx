@@ -100,7 +100,7 @@ const isSplittableFee = (fee) => {
         return false;
     }
 
-    if (freq === 'monthly' || freq === 'per_semester' || freq === 'annual' || type === 'recurring') {
+    if (freq === 'monthly' || freq === 'per_semester' || freq === 'annual' || freq === 'annually' || type === 'recurring') {
         return true;
     }
 
