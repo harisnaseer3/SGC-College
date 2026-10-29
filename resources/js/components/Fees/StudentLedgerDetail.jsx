@@ -44,10 +44,15 @@ const getSemesterNumber = (admissionDateStr, dueDateStr, feeSemesterNumber, stru
     return Math.max(1, Math.floor(months / 6) + 1);
 };
 
+const getBatchStartYear = (batchName) => {
+    if (!batchName) return null;
+    const match = String(batchName).match(/\b(19\d\d|20\d\d)\b/);
+    return match ? parseInt(match[1], 10) : null;
+};
+
 const getSemesterLabel = (student, semNum, dueDateStr) => {
     const sType = student?.program?.structure_type || 'semester';
     const admissionDateStr = student?.admission_date;
-    
     const baseDate = parseLocalDate(admissionDateStr) || parseLocalDate(dueDateStr);
     
     if (sType === 'weekly') {
@@ -71,17 +76,45 @@ const getSemesterLabel = (student, semNum, dueDateStr) => {
     }
 
     if (sType === 'annual') {
-        if (baseDate) {
-            const startYear = baseDate.getFullYear() + (semNum - 1);
+        const batchStartYear = (student?.program?.requires_batch !== false) 
+            ? getBatchStartYear(student?.academic_batch?.name) 
+            : null;
+        const startYearBase = batchStartYear || (baseDate ? baseDate.getFullYear() : null);
+        if (startYearBase) {
+            const startYear = startYearBase + (semNum - 1);
             return `Year ${semNum} (${startYear}-${startYear + 1})`;
         }
         return `Year ${semNum}`;
     }
 
     // Default: Semester-wise
-    if (!baseDate) return `Semester ${semNum}`;
-    const startMonth = baseDate.getMonth() >= 6 ? 6 : 0;
-    const semStartDate = new Date(baseDate.getFullYear(), startMonth, 1);
+    if (!baseDate && !student?.academic_batch?.name) return `Semester ${semNum}`;
+
+    const batchStartYear = (student?.program?.requires_batch !== false) 
+        ? getBatchStartYear(student?.academic_batch?.name) 
+        : null;
+
+    // Use batch start year if assigned (e.g. Batch 2027-2031 => 2027), otherwise admission year
+    const startYear = batchStartYear || (baseDate ? baseDate.getFullYear() : new Date().getFullYear());
+    
+    // Check student's intake_session first (e.g. 'Spring' or 'Fall'), then batch name, then admission date
+    const intakeSession = (student?.intake_session || '').toLowerCase();
+    const batchNameLower = (student?.academic_batch?.name || '').toLowerCase();
+    let startMonth = 6; // Default to Fall (July)
+
+    if (intakeSession === 'spring') {
+        startMonth = 0;
+    } else if (intakeSession === 'fall') {
+        startMonth = 6;
+    } else if (batchNameLower.includes('spring')) {
+        startMonth = 0;
+    } else if (batchNameLower.includes('fall')) {
+        startMonth = 6;
+    } else if (baseDate) {
+        startMonth = baseDate.getMonth() >= 6 ? 6 : 0;
+    }
+
+    const semStartDate = new Date(startYear, startMonth, 1);
     semStartDate.setMonth(semStartDate.getMonth() + (semNum - 1) * 6);
     const term = semStartDate.getMonth() >= 6 ? 'Fall' : 'Spring';
     return `${term} ${semStartDate.getFullYear()}`;
