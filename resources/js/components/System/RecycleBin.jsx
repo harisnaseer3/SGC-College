@@ -84,11 +84,8 @@ const RecycleBin = () => {
     };
 
     const handleForceDelete = async (recordId, recordModule) => {
-        const pin = window.prompt('WARNING: This will permanently delete the record. Enter Security PIN (42747) to proceed:');
-        if (pin !== '42747') {
-            if (pin !== null) alert('Invalid PIN.');
-            return;
-        }
+        const pin = window.prompt('WARNING: This will permanently delete the record. Please enter the Security PIN to proceed:');
+        if (!pin) return;
 
         setActionLoading(true);
         try {
@@ -98,7 +95,7 @@ const RecycleBin = () => {
             fetchRecords(pagination.current_page);
         } catch (error) {
             console.error('Force delete failed:', error);
-            alert(error.response?.data?.message || 'Permanent delete failed.');
+            alert(error.response?.data?.message || 'Permanent delete failed. Check your security PIN.');
         } finally {
             setActionLoading(false);
         }
