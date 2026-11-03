@@ -22,6 +22,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Enforce strict token expiration: access tokens expire in 8 hours, refresh tokens in 24 hours
+        \Laravel\Passport\Passport::tokensExpireIn(now()->addHours(8));
+        \Laravel\Passport\Passport::refreshTokensExpireIn(now()->addHours(24));
+
         // Implicitly grant "Super Admin" role all permissions
         // This works in the app by using gate-related functions like auth()->user->can() and @can()
         Gate::before(function ($user, $ability) {

@@ -15,11 +15,15 @@ class PasswordController extends BaseController
     public function update(UpdatePasswordRequest $request)
     {
         try {
-            $request->user()->update([
+            $user = $request->user();
+            $user->update([
                 'password' => Hash::make($request->validated(['password'])),
             ]);
 
-            return $this->sendResponse([], 'Password changed successfully.');
+            // Immediately revoke all active tokens/sessions across all devices
+            $user->tokens()->update(['revoked' => true]);
+
+            return $this->sendResponse([], 'Password changed successfully. All active sessions have been logged out.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to change password.', ['error' => $e->getMessage()], 500);
         }
