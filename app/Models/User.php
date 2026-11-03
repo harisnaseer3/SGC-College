@@ -72,4 +72,16 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Campus::class);
     }
+
+    /**
+     * Retrieve the model for a bound value, bypassing organization/campus scopes for Super Admin.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $currentUser = auth()->user();
+        if ($currentUser && $currentUser->hasRole('super_admin', 'web')) {
+            return $this->withoutGlobalScopes()->where($field ?? $this->getRouteKeyName(), $value)->first();
+        }
+        return parent::resolveRouteBinding($value, $field);
+    }
 }

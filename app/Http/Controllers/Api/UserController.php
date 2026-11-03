@@ -32,10 +32,18 @@ class UserController extends BaseController implements HasMiddleware
     public function index(Request $request): JsonResponse
     {
         try {
+            $currentUser = auth()->user();
             $query = User::with(['roles', 'campus']);
 
+            // If a search query is provided, allow Super Admins to search across all users including other Super Admins
             if (request()->filled('search')) {
                 $search = trim(request('search'));
+
+                if ($currentUser && $currentUser->hasRole('super_admin', 'web')) {
+                    // Bypass organization/campus scoping when super admin searches
+                    $query = User::withoutGlobalScopes()->with(['roles', 'campus']);
+                }
+
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%")
