@@ -10,9 +10,13 @@ export const AuthProvider = ({ children }) => {
     const [selectedCampus, setSelectedCampus] = useState(null);
 
     useEffect(() => {
-        const token = localStorage.getItem('auth_token');
-        const orgId = localStorage.getItem('selected_org_id');
-        const campusId = localStorage.getItem('selected_campus_id');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('selected_org_id');
+        localStorage.removeItem('selected_campus_id');
+
+        const token = sessionStorage.getItem('auth_token');
+        const orgId = sessionStorage.getItem('selected_org_id');
+        const campusId = sessionStorage.getItem('selected_campus_id');
 
         if (token) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -46,7 +50,7 @@ export const AuthProvider = ({ children }) => {
         const response = await axios.post('/api/login', credentials);
         const { user, access_token } = response.data.data;
         
-        localStorage.setItem('auth_token', access_token);
+        sessionStorage.setItem('auth_token', access_token);
         axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
         setUser(user);
         return user;
@@ -56,31 +60,31 @@ export const AuthProvider = ({ children }) => {
         const response = await axios.post('/api/register', data);
         const { user, access_token } = response.data.data;
         
-        localStorage.setItem('auth_token', access_token);
+        sessionStorage.setItem('auth_token', access_token);
         axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
         setUser(user);
         return user;
     };
 
     const setOrganization = (orgId) => {
-        localStorage.setItem('selected_org_id', orgId);
+        sessionStorage.setItem('selected_org_id', orgId);
         axios.defaults.headers.common['X-Organization-ID'] = orgId;
         setSelectedOrganization(orgId);
         
         // Reset campus when switching orgs
-        localStorage.removeItem('selected_campus_id');
+        sessionStorage.removeItem('selected_campus_id');
         delete axios.defaults.headers.common['X-Campus-ID'];
         setSelectedCampus(null);
     };
 
     const setCampus = (campusId) => {
         if (campusId) {
-            localStorage.setItem('selected_campus_id', campusId);
+            sessionStorage.setItem('selected_campus_id', campusId);
             axios.defaults.headers.common['X-Campus-ID'] = campusId;
             setSelectedCampus(campusId);
         } else {
             // "All Campuses" case
-            localStorage.removeItem('selected_campus_id');
+            sessionStorage.removeItem('selected_campus_id');
             delete axios.defaults.headers.common['X-Campus-ID'];
             setSelectedCampus(null);
         }
@@ -92,9 +96,9 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('selected_org_id');
-            localStorage.removeItem('selected_campus_id');
+            sessionStorage.removeItem('auth_token');
+            sessionStorage.removeItem('selected_org_id');
+            sessionStorage.removeItem('selected_campus_id');
             delete axios.defaults.headers.common['Authorization'];
             delete axios.defaults.headers.common['X-Organization-ID'];
             delete axios.defaults.headers.common['X-Campus-ID'];
@@ -116,3 +120,5 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+

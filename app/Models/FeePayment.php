@@ -16,6 +16,38 @@ class FeePayment extends Model
 
     use HasOrganizationScope, HasCampusScope;
 
+    protected static function booted()
+    {
+        static::restored(function ($payment) {
+            $remaining = (float) $payment->amount;
+            if ($remaining <= 0) return;
+
+            $fees = \App\Models\StudentFee::where('student_id', $payment->student_id)
+                ->when($payment->voucher_number, function ($q, $v) {
+                    $q->where('voucher_number', $v);
+                })
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->orderBy('due_date', 'asc')
+                ->get();
+
+            if ($fees->isEmpty() && $payment->voucher_number) {
+                $fees = \App\Models\StudentFee::where('student_id', $payment->student_id)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->orderBy('due_date', 'asc')
+                    ->get();
+            }
+
+            foreach ($fees as $fee) {
+                if ($remaining <= 0) break;
+                $payable = (float) $fee->balance_amount;
+                $apply = min($remaining, $payable);
+                $fee->paid_amount += $apply;
+                $fee->save();
+                $remaining -= $apply;
+            }
+        });
+    }
+
     protected $fillable = [
         'organization_id',
         'campus_id',

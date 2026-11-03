@@ -765,39 +765,51 @@ class FeeService
             ]);
 
             // 2. Distribute among pending fees
-            $query = StudentFee::where('student_id', $studentId)
-                ->whereIn('status', ['unpaid', 'partial']);
-
-            if (isset($details['voucher_number']) && $details['voucher_number']) {
-                $vNum = $details['voucher_number'];
-                
-                $pendingFees = StudentFee::where('student_id', $studentId)
-                    ->where('voucher_number', $vNum)
-                    ->whereIn('status', ['unpaid', 'partial'])
-                    ->orderBy('due_date', 'asc')
-                    ->get();
-            } else {
-                $pendingFees = StudentFee::where('student_id', $studentId)
-                    ->whereIn('status', ['unpaid', 'partial'])
-                    ->orderBy('due_date', 'asc')
-                    ->get();
-            }
-
-            foreach ($pendingFees as $fee) {
-                if ($remainingAmount <= 0) break;
-
-                $payable = $fee->balance_amount;
-                $paymentForThisFee = min($remainingAmount, $payable);
-
-                $fee->paid_amount += $paymentForThisFee;
-                $fee->save(); // Model boot method handles status and balance recalculation
-
-                $remainingAmount -= $paymentForThisFee;
-            }
+            $this->applyPaymentToPendingFees($studentId, $amount, $details['voucher_number'] ?? null);
 
             DB::commit();
             return $receiptNumber;
         } catch (\Exception $e) {
+            DB::rollback();
+            throw $e;
+        }
+    }
+
+    /**
+     * Distribute an amount against pending student fees for a voucher (or overall).
+     */
+    public function applyPaymentToPendingFees($studentId, $amount, $voucherNumber = null): float
+    {
+        $remainingAmount = (float) $amount;
+        if ($remainingAmount <= 0) return 0;
+
+        if ($voucherNumber) {
+            $pendingFees = StudentFee::where('student_id', $studentId)
+                ->where('voucher_number', $voucherNumber)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->orderBy('due_date', 'asc')
+                ->get();
+        } else {
+            $pendingFees = StudentFee::where('student_id', $studentId)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->orderBy('due_date', 'asc')
+                ->get();
+        }
+
+        foreach ($pendingFees as $fee) {
+            if ($remainingAmount <= 0) break;
+
+            $payable = (float) $fee->balance_amount;
+            $paymentForThisFee = min($remainingAmount, $payable);
+
+            $fee->paid_amount += $paymentForThisFee;
+            $fee->save(); // Model boot method handles status and balance recalculation
+
+            $remainingAmount -= $paymentForThisFee;
+        }
+
+        return $remainingAmount;
+    }
             DB::rollback();
             throw $e;
         }

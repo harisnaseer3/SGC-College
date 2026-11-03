@@ -40,7 +40,7 @@ const AdmissionByDateReport = () => {
 
     const fetchDetails = async () => {
         try {
-            const orgId = localStorage.getItem('selected_org_id');
+            const orgId = sessionStorage.getItem('selected_org_id');
             if (!orgId) return;
 
             // Fetch Organization Details
@@ -281,3 +281,4 @@ const AdmissionByDateReport = () => {
 };
 
 export default AdmissionByDateReport;
+

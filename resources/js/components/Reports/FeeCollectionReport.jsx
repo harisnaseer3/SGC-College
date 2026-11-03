@@ -64,7 +64,7 @@ const FeeCollectionReport = () => {
 
     const fetchDetails = async () => {
         try {
-            const orgId = localStorage.getItem('selected_org_id');
+            const orgId = sessionStorage.getItem('selected_org_id');
             if (!orgId) return;
 
             const orgRes = await axios.get(`/api/organizations/${orgId}`);
@@ -452,3 +452,4 @@ const FeeCollectionReport = () => {
 };
 
 export default FeeCollectionReport;
+
