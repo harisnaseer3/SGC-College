@@ -810,10 +810,6 @@ class FeeService
 
         return $remainingAmount;
     }
-            DB::rollback();
-            throw $e;
-        }
-    }
 
     /**
      * Generate the next available numeric voucher number.
