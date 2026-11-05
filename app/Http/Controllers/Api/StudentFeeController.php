@@ -322,12 +322,19 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 ->orderBy('payment_date', 'desc')
                 ->get();
 
+            $activeVoucher = \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                ->where('student_id', $studentId)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+
             return $this->sendResponse([
                 'fees'      => $unpaidFees,
                 'paid_fees' => $paidFees,
                 'payments'  => $payments,
                 'summary'   => $summary,
                 'student'   => $student,
+                'voucher_issue_date' => $activeVoucher && $activeVoucher->created_at ? $activeVoucher->created_at->format('Y-m-d') : null,
             ], 'Student ledger retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve ledger.', ['error' => $e->getMessage()], 500);
@@ -350,6 +357,27 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 'apply_due_date_to_all' => 'nullable|boolean'
             ]);
 
+            // Validate that due_date is not earlier than the voucher generation date (or today if unissued)
+            if ($request->filled('due_date')) {
+                $requestedDueDate = \Carbon\Carbon::parse($request->due_date)->startOfDay();
+                $minAllowedDate = now()->startOfDay();
+                if ($studentFee->voucher_number) {
+                    $voucherRecord = \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                        ->where('voucher_number', $studentFee->voucher_number)
+                        ->first();
+                    if ($voucherRecord && $voucherRecord->created_at) {
+                        $minAllowedDate = $voucherRecord->created_at->copy()->startOfDay();
+                    }
+                }
+                if ($requestedDueDate->lt($minAllowedDate)) {
+                    return $this->sendError(
+                        'Due date cannot be earlier than the voucher generation date (' . $minAllowedDate->format('d M Y') . ').',
+                        [],
+                        422
+                    );
+                }
+            }
+
             $discountVal = $request->discount_amount ?? 0;
             $discountType = $request->discount_type ?? 'fixed';
 
@@ -357,6 +385,11 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $currentFeeUpdates = [];
             if ($request->filled('due_date')) {
                 $currentFeeUpdates['due_date'] = $request->due_date;
+                if ($studentFee->voucher_number) {
+                    \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                        ->where('voucher_number', $studentFee->voucher_number)
+                        ->update(['due_date' => $request->due_date]);
+                }
             }
             if ($request->filled('fine_amount')) {
                 $currentFeeUpdates['fine_amount'] = $request->fine_amount;
@@ -386,6 +419,11 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     // Apply due date to all other fees if requested
                     if ($request->apply_due_date_to_all && $request->filled('due_date')) {
                         $updates['due_date'] = $request->due_date;
+                        if ($fee->voucher_number) {
+                            \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                                ->where('voucher_number', $fee->voucher_number)
+                                ->update(['due_date' => $request->due_date]);
+                        }
                     }
 
                     // Apply discount/fine only to the SAME fee head in other semesters
@@ -538,6 +576,33 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 'attachment.max' => 'Receipt attachment file size must not exceed 5MB.',
             ]);
 
+            // Ensure payment_date is not earlier than the voucher's generated date
+            $paymentDate = \Carbon\Carbon::parse($request->payment_date)->startOfDay();
+            $targetVoucher = null;
+            if ($request->filled('voucher_number')) {
+                $targetVoucher = \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                    ->where('voucher_number', trim($request->voucher_number))
+                    ->first();
+            } else {
+                // Find the active unpaid/partial voucher for this student
+                $targetVoucher = \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                    ->where('student_id', $request->student_id)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+            }
+
+            if ($targetVoucher && $targetVoucher->created_at) {
+                $voucherGeneratedDate = $targetVoucher->created_at->copy()->startOfDay();
+                if ($paymentDate->lt($voucherGeneratedDate)) {
+                    return $this->sendError(
+                        'Payment date cannot be earlier than the voucher generation date (' . $voucherGeneratedDate->format('d M Y') . ').',
+                        [],
+                        422
+                    );
+                }
+            }
+
             $attachmentPath = null;
             if ($request->hasFile('attachment')) {
                 $attachmentPath = $this->compressAndStoreFile($request->file('attachment'), 'receipts');
@@ -609,7 +674,8 @@ class StudentFeeController extends BaseController implements HasMiddleware
             return $this->sendResponse([
                 'student' => $student,
                 'fees' => $fees,
-                'total_balance' => $totalBalance
+                'total_balance' => $totalBalance,
+                'voucher_issue_date' => $voucherRecord->created_at ? $voucherRecord->created_at->format('Y-m-d') : null,
             ], 'Voucher found.');
         } catch (\Exception $e) {
             return $this->sendError('Error finding voucher.', ['error' => $e->getMessage()], 500);
@@ -959,6 +1025,19 @@ class StudentFeeController extends BaseController implements HasMiddleware
 
             $vouchers = [];
             $isFirstGroup = true;
+            $generationDate = now()->startOfDay();
+
+            if ($request->filled('due_date')) {
+                $customDueDate = \Carbon\Carbon::parse($request->due_date)->startOfDay();
+                if ($customDueDate->lt($generationDate)) {
+                    \Illuminate\Support\Facades\DB::rollBack();
+                    return $this->sendError(
+                        'Voucher due date cannot be earlier than the voucher generation date (' . $generationDate->format('d M Y') . ').',
+                        [],
+                        422
+                    );
+                }
+            }
 
             foreach ($groupedFees as $groupKey => $groupFees) {
                 $maxSem = $groupFees->max('semester_number') ?: 1;
@@ -973,7 +1052,24 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     $arrearsSum = $arrears->sum('balance_amount');
                 }
 
-                $dueDate = $request->due_date ?? ($groupFees->min('due_date') ?? now()->addDays(10));
+                // Default due date is the 20th of the generation month, and never before generation date
+                $defaultDueDate = $generationDate->day <= 20
+                    ? $generationDate->copy()->day(20)
+                    : $generationDate->copy();
+
+                $hasInstallmentInGroup = $groupFees->contains(function($f) {
+                    return str_contains($f->remarks ?? '', '(Installment');
+                });
+
+                if ($request->filled('due_date')) {
+                    $dueDate = \Carbon\Carbon::parse($request->due_date)->startOfDay();
+                } elseif (!$isFirstGroup && $hasInstallmentInGroup && $groupFees->min('due_date')) {
+                    $instDueDate = \Carbon\Carbon::parse($groupFees->min('due_date'))->startOfDay();
+                    $dueDate = $instDueDate->lt($generationDate) ? $defaultDueDate : $instDueDate;
+                } else {
+                    $dueDate = $defaultDueDate;
+                }
+
                 $voucher = null;
                 $attempts = 0;
 
@@ -1007,9 +1103,12 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     }
                 }
 
-                // Immediately associate group fees with this voucher number so recalculations see its fees
+                // Immediately associate group fees with this voucher number and sync due_date so recalculations see its fees
                 foreach ($groupFees as $fee) {
-                    $fee->update(['voucher_number' => $voucherNumber]);
+                    $fee->update([
+                        'voucher_number' => $voucherNumber,
+                        'due_date' => $dueDate,
+                    ]);
                 }
 
                 if ($arrearsSum > 0) {

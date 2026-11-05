@@ -16,7 +16,7 @@ class FeeService
      */
     public function generateFees($campusId, $programId = null, $batchId = null, $dueDate = null)
     {
-        $dueDate = $dueDate ? Carbon::parse($dueDate) : Carbon::now()->addDays(10);
+        $dueDate = $dueDate ? Carbon::parse($dueDate) : (Carbon::now()->day <= 20 ? Carbon::now()->day(20) : Carbon::now());
         
         // 1. Fetch relevant structures
         $structureQuery = FeeStructure::where('campus_id', $campusId);
@@ -120,7 +120,7 @@ class FeeService
             return 0;
         }
 
-        $dueDate = Carbon::now()->addDays(10);
+        $dueDate = Carbon::now()->day <= 20 ? Carbon::now()->day(20) : Carbon::now();
         
         // Fetch structures that apply to this student (Campus + Program)
         $structures = FeeStructure::where('campus_id', $student->campus_id)
@@ -154,7 +154,7 @@ class FeeService
             // Allocate historical due dates for past semesters so they aren't bundled together
             if ($s < $currentSemNumber) {
                 [$start, $end] = $this->getStudentSemesterRange($student, $s);
-                $stepDueDate = $start->copy()->day(10);
+                $stepDueDate = $start->copy()->day(20);
             } else {
                 $stepDueDate = $dueDate;
             }
@@ -253,7 +253,7 @@ class FeeService
 
         for ($s = 1; $s <= $currentSem; $s++) {
             [$start, $end] = $this->getStudentSemesterRange($student, $s);
-            $dueDate = $start->copy()->day(10);
+            $dueDate = $start->copy()->day(20);
 
             $itemsToApply = [];
             foreach ($structures as $structure) {
@@ -426,11 +426,27 @@ class FeeService
                 }
             }
 
-            $dueDate = $voucherRecord->due_date ?? ($allPendingFees->min('due_date') ?? now());
+            $issueDate = ($voucherRecord && $voucherRecord->created_at)
+                ? $voucherRecord->created_at->copy()->startOfDay()
+                : Carbon::now()->startOfDay();
+
+            $dueDate = $voucherRecord->due_date ?? ($allPendingFees->min('due_date') ?? ($issueDate->day <= 20 ? $issueDate->copy()->day(20) : $issueDate->copy()));
             if (is_string($dueDate)) {
-                $dueDate = \Carbon\Carbon::parse($dueDate);
+                $dueDate = \Carbon\Carbon::parse($dueDate)->startOfDay();
+            } else {
+                $dueDate = $dueDate->copy()->startOfDay();
             }
-            $validDate = $dueDate->copy()->endOfMonth();
+
+            // Ensure due_date is never earlier than the voucher generation date
+            if ($dueDate->lt($issueDate)) {
+                $dueDate = $issueDate->day <= 20 ? $issueDate->copy()->day(20) : $issueDate->copy();
+            }
+
+            // Default validity date is the 25th of the due date's month, and never earlier than due_date or issue_date
+            $validDate = $dueDate->copy()->day(25);
+            if ($validDate->lt($dueDate)) {
+                $validDate = $dueDate->copy();
+            }
             $semNumber = $voucherRecord->semester_number;
             $feeMonth = $this->getStudentSemesterLabel($student, $semNumber);
 
@@ -658,8 +674,21 @@ class FeeService
         $isFirstGroup = true;
 
         foreach ($groupedFees as $groupKey => $groupFees) {
-            $dueDate = $groupFees->isNotEmpty() ? $groupFees->first()->due_date : $targetMonth->copy()->day(10);
-            $validDate = $dueDate->copy()->endOfMonth();
+            $issueDate = Carbon::now()->startOfDay();
+            $defaultDueDate = $issueDate->day <= 20 ? $issueDate->copy()->day(20) : $issueDate->copy();
+
+            $dueDate = $groupFees->isNotEmpty() && $groupFees->first()->due_date
+                ? Carbon::parse($groupFees->first()->due_date)->startOfDay()
+                : $defaultDueDate;
+
+            if ($dueDate->lt($issueDate)) {
+                $dueDate = $defaultDueDate;
+            }
+
+            $validDate = $dueDate->copy()->day(25);
+            if ($validDate->lt($dueDate)) {
+                $validDate = $dueDate->copy();
+            }
 
             // Only apply previous semester arrears to the FIRST voucher generated in this batch
             $groupArrearsAmount = $isFirstGroup ? $arrearsFees->sum('balance_amount') : 0;
@@ -747,7 +776,29 @@ class FeeService
 
         DB::beginTransaction();
         try {
-            // 1. Create the payment record
+            // 1. Validate that payment_date is not earlier than the voucher's generated date
+            $paymentDate = isset($details['payment_date']) ? Carbon::parse($details['payment_date'])->startOfDay() : Carbon::now()->startOfDay();
+            $targetVoucher = null;
+            if (!empty($details['voucher_number'])) {
+                $targetVoucher = \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                    ->where('voucher_number', trim($details['voucher_number']))
+                    ->first();
+            } else {
+                $targetVoucher = \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                    ->where('student_id', $student->id)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+            }
+
+            if ($targetVoucher && $targetVoucher->created_at) {
+                $voucherGeneratedDate = $targetVoucher->created_at->copy()->startOfDay();
+                if ($paymentDate->lt($voucherGeneratedDate)) {
+                    throw new \Exception('Payment date cannot be earlier than the voucher generation date (' . $voucherGeneratedDate->format('d M Y') . ').');
+                }
+            }
+
+            // 2. Create the payment record
             $receiptNumber = $details['receipt_number'] ?? 'REC-' . strtoupper(dechex(time())) . '-' . rand(100, 999);
             
             \App\Models\FeePayment::create([
@@ -824,6 +875,7 @@ class FeeService
                 ->max(fn($f) => (int)$f->voucher_number) ?? 0;
 
             $maxGv = \App\Models\GeneratedVoucher::withTrashed()
+                ->withoutGlobalScopes()
                 ->get()
                 ->filter(fn($v) => is_numeric($v->voucher_number))
                 ->max(fn($v) => (int)$v->voucher_number) ?? 0;
@@ -844,6 +896,7 @@ class FeeService
 
         // Fetch max numeric voucher_number from generated_vouchers (including deleted)
         $gvVouchers = \App\Models\GeneratedVoucher::withTrashed()
+            ->withoutGlobalScopes()
             ->whereNotNull('voucher_number')
             ->pluck('voucher_number');
 

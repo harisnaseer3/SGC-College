@@ -61,7 +61,10 @@ const FeeDeposit = () => {
         setLoading(true);
         try {
             const response = await axios.get(`/api/student-fees/ledger/${fee.student_id}`);
-            setVoucherData({ fees: response.data.data.fees || [] });
+            setVoucherData({
+                fees: response.data.data.fees || [],
+                voucher_issue_date: response.data.data.voucher_issue_date || null
+            });
         } catch (error) {
             console.error('Failed to fetch pending fees:', error);
         } finally {
@@ -451,6 +454,7 @@ const FeeDeposit = () => {
                                     <input 
                                         type="date"
                                         required
+                                        min={voucherData?.voucher_issue_date || undefined}
                                         className="w-full p-4 bg-slate-50 border border-slate-300 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-sm text-slate-800"
                                         value={formData.payment_date}
                                         onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}

@@ -229,7 +229,7 @@ const StudentLedgerDetail = () => {
             setEditingFee(null);
             fetchLedger();
         } catch (error) {
-            showError('Failed to update fee record');
+            showError(error.response?.data?.message || 'Failed to update fee record');
         }
     };
 
@@ -497,6 +497,8 @@ const StudentLedgerDetail = () => {
                                                     onClick={() => {
                                                         setEditingFee(fee);
                                                         
+                                                        const now = new Date();
+                                                        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                                                         let defaultDueDate = '';
                                                         if (fee.due_date) {
                                                             const parsed = parseLocalDate(fee.due_date);
@@ -504,15 +506,17 @@ const StudentLedgerDetail = () => {
                                                                 const y = parsed.getFullYear();
                                                                 const m = String(parsed.getMonth() + 1).padStart(2, '0');
                                                                 const d = String(parsed.getDate()).padStart(2, '0');
-                                                                defaultDueDate = `${y}-${m}-${d}`;
+                                                                const candidate = `${y}-${m}-${d}`;
+                                                                if (candidate >= todayStr) {
+                                                                    defaultDueDate = candidate;
+                                                                }
                                                             }
                                                         }
                                                         if (!defaultDueDate) {
-                                                            const future = new Date();
-                                                            future.setDate(future.getDate() + 15);
-                                                            const y = future.getFullYear();
-                                                            const m = String(future.getMonth() + 1).padStart(2, '0');
-                                                            const d = String(future.getDate()).padStart(2, '0');
+                                                            const targetDay = now.getDate() <= 20 ? 20 : now.getDate();
+                                                            const y = now.getFullYear();
+                                                            const m = String(now.getMonth() + 1).padStart(2, '0');
+                                                            const d = String(targetDay).padStart(2, '0');
                                                             defaultDueDate = `${y}-${m}-${d}`;
                                                         }
 
@@ -727,6 +731,10 @@ const StudentLedgerDetail = () => {
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Due Date</label>
                                 <input 
                                     type="date" 
+                                    min={(() => {
+                                        const now = new Date();
+                                        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                                    })()}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
                                     value={adjustment.due_date || ''}
                                     onChange={(e) => setAdjustment({ ...adjustment, due_date: e.target.value })}
