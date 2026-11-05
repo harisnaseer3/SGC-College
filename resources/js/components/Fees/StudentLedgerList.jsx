@@ -213,7 +213,10 @@ const StudentLedgerList = () => {
                     >
                         <span className="truncate max-w-[150px]">
                             {filterData.academic_batch_id.length === 0 ? 'All Batches' : 
-                                batches.filter(b => filterData.academic_batch_id.includes(b.id.toString())).map(b => b.name).join(', ') || 'Multiple Selected'}
+                                [
+                                    ...(filterData.academic_batch_id.includes('rolling') ? ['Rolling Admission'] : []),
+                                    ...batches.filter(b => filterData.academic_batch_id.includes(b.id.toString())).map(b => b.name)
+                                ].join(', ') || 'Multiple Selected'}
                         </span>
                         <svg className={`w-4 h-4 transition-transform duration-200 ${showBatchDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -223,6 +226,20 @@ const StudentLedgerList = () => {
                         <>
                             <div className="fixed inset-0 z-10" onClick={() => setShowBatchDropdown(false)}></div>
                             <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl p-2 space-y-1 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto">
+                                <label className="flex items-center gap-3 p-2 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors group border-b border-slate-100 pb-2 mb-1">
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                                        checked={filterData.academic_batch_id.includes('rolling')}
+                                        onChange={(e) => {
+                                            const newBatches = e.target.checked 
+                                                ? [...filterData.academic_batch_id, 'rolling']
+                                                : filterData.academic_batch_id.filter(x => x !== 'rolling');
+                                            setFilterData({ ...filterData, academic_batch_id: newBatches });
+                                        }}
+                                    />
+                                    <span className="text-sm font-bold text-emerald-700 group-hover:text-emerald-800">Rolling Admission (No Batch)</span>
+                                </label>
                                 {batches.map(b => (
                                     <label key={b.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors group">
                                         <input 

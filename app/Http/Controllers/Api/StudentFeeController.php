@@ -57,11 +57,33 @@ class StudentFeeController extends BaseController implements HasMiddleware
             }
             if ($request->filled('academic_batch_id')) {
                 $batchIds = is_array($request->academic_batch_id) ? $request->academic_batch_id : explode(',', $request->academic_batch_id);
-                $query->whereIn('academic_batch_id', $batchIds);
+                $hasRolling = in_array('rolling', $batchIds) || in_array('none', $batchIds);
+                $numericBatchIds = array_filter($batchIds, fn($id) => is_numeric($id));
+
+                $query->where(function ($q) use ($hasRolling, $numericBatchIds) {
+                    if ($hasRolling && !empty($numericBatchIds)) {
+                        $q->whereNull('academic_batch_id')
+                          ->orWhereIn('academic_batch_id', $numericBatchIds);
+                    } elseif ($hasRolling) {
+                        $q->whereNull('academic_batch_id');
+                    } elseif (!empty($numericBatchIds)) {
+                        $q->whereIn('academic_batch_id', $numericBatchIds);
+                    }
+                });
             }
             if ($request->filled('month') && $request->filled('year')) {
-                $date = \Illuminate\Support\Carbon::createFromDate($request->year, $request->month, 1)->endOfMonth();
-                $query->where('admission_date', '<=', $date->toDateString());
+                // Fall Semester (7) covers July-Dec (end of Dec), Spring Semester (1) covers Jan-Jun (end of Jun)
+                $endMonth = (int)$request->month >= 7 ? 12 : 6;
+                $date = \Illuminate\Support\Carbon::createFromDate($request->year, $endMonth, 1)->endOfMonth();
+                $query->where(function ($q) use ($date) {
+                    // Always include rolling / short course admissions (no academic batch) regardless of semester filter
+                    $q->whereNull('academic_batch_id')
+                      ->orWhere('admission_date', '<=', $date->toDateString())
+                      ->orWhereHas('program', function ($pq) {
+                          $pq->where('requires_batch', false)
+                             ->orWhereIn('structure_type', ['monthly', 'weekly']);
+                      });
+                });
             }
 
             if ($request->filled('search')) {
