@@ -4,9 +4,7 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Modal from '../UI/Modal';
 
 const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isViewOnly = false }) => {
-    const [categories, setCategories] = useState([]);
-    const [programs, setPrograms] = useState([]);
-    const [formData, setFormData] = useState({
+    const initialFormState = {
         income_category_id: '',
         program_id: '',
         amount: '',
@@ -14,7 +12,11 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
         payment_method: 'Cash',
         form_number: '',
         remarks: ''
-    });
+    };
+
+    const [categories, setCategories] = useState([]);
+    const [programs, setPrograms] = useState([]);
+    const [formData, setFormData] = useState(initialFormState);
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showSuccess, showError } = useNotifications();
@@ -46,8 +48,11 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
                 form_number: income.form_number || '',
                 remarks: income.remarks || ''
             });
+        } else {
+            setFormData(initialFormState);
         }
-    }, [income]);
+        setErrors({});
+    }, [income, isOpen]);
 
     if (!isOpen) return null;
 
@@ -68,11 +73,12 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
             if (income) {
                 const response = await axios.put(`/api/extra-incomes/${income.id}`, formData);
                 showSuccess('Income record updated successfully');
-                onSuccess(response.data.data.id);
+                onSuccess(response.data.data.id, true);
             } else {
                 const response = await axios.post('/api/extra-incomes', formData);
                 showSuccess('Income record created successfully');
-                onSuccess(response.data.data.id);
+                setFormData(initialFormState);
+                onSuccess(response.data.data.id, false);
             }
         } catch (error) {
             if (error.response?.data?.errors) {

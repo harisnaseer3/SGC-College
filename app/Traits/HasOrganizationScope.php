@@ -14,10 +14,29 @@ trait HasOrganizationScope
             if (!empty($model->organization_id)) {
                 return;
             }
-            if ($user && empty($model->organization_id) && !$user->hasRole('super_admin')) {
+
+            // 1. If user has an organization_id assigned, use it
+            if ($user && !empty($user->organization_id)) {
                 $model->organization_id = $user->organization_id;
-            } elseif ($user && $user->hasRole('super_admin') && request()->hasHeader('X-Organization-ID')) {
+                return;
+            }
+
+            // 2. If organization_id is passed via header, use it
+            if (request()->hasHeader('X-Organization-ID') && request()->header('X-Organization-ID')) {
                 $model->organization_id = request()->header('X-Organization-ID');
+                return;
+            }
+
+            // 3. Fallback: Derive organization_id from campus_id if available on model, user, or header
+            $campusId = $model->campus_id
+                ?? ($user ? $user->campus_id : null)
+                ?? request()->header('X-Campus-ID');
+
+            if ($campusId) {
+                $campusOrgId = \App\Models\Campus::withoutGlobalScopes()->where('id', $campusId)->value('organization_id');
+                if ($campusOrgId) {
+                    $model->organization_id = $campusOrgId;
+                }
             }
         });
 
