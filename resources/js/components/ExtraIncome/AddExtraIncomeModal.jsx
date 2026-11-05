@@ -4,7 +4,9 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import Modal from '../UI/Modal';
 
 const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isViewOnly = false }) => {
-    const initialFormState = {
+    const [categories, setCategories] = useState([]);
+    const [programs, setPrograms] = useState([]);
+    const [formData, setFormData] = useState({
         income_category_id: '',
         program_id: '',
         amount: '',
@@ -12,11 +14,7 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
         payment_method: 'Cash',
         form_number: '',
         remarks: ''
-    };
-
-    const [categories, setCategories] = useState([]);
-    const [programs, setPrograms] = useState([]);
-    const [formData, setFormData] = useState(initialFormState);
+    });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showSuccess, showError } = useNotifications();
@@ -48,11 +46,8 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
                 form_number: income.form_number || '',
                 remarks: income.remarks || ''
             });
-        } else {
-            setFormData(initialFormState);
         }
-        setErrors({});
-    }, [income, isOpen]);
+    }, [income]);
 
     if (!isOpen) return null;
 
@@ -73,12 +68,11 @@ const AddExtraIncomeModal = ({ isOpen, onClose, onSuccess, income = null, isView
             if (income) {
                 const response = await axios.put(`/api/extra-incomes/${income.id}`, formData);
                 showSuccess('Income record updated successfully');
-                onSuccess(response.data.data.id, true);
+                onSuccess(response.data.data.id);
             } else {
                 const response = await axios.post('/api/extra-incomes', formData);
                 showSuccess('Income record created successfully');
-                setFormData(initialFormState);
-                onSuccess(response.data.data.id, false);
+                onSuccess(response.data.data.id);
             }
         } catch (error) {
             if (error.response?.data?.errors) {

@@ -295,26 +295,10 @@ const ExtraIncomeList = () => {
             {isModalOpen && (
                 <AddExtraIncomeModal
                     isOpen={isModalOpen}
-                    onClose={() => {
+                    onClose={() => setIsModalOpen(false)}
+                    onSuccess={() => {
                         setIsModalOpen(false);
-                        setEditingIncome(null);
-                        setIsViewOnly(false);
-                    }}
-                    onSuccess={(id, isUpdate) => {
-                        setIsModalOpen(false);
-                        setEditingIncome(null);
-                        setIsViewOnly(false);
-                        if (!isUpdate) {
-                            // Reset filters and navigate to page 1 so newly created record is immediately shown at the top
-                            setSearchQuery('');
-                            setFilterCategory('');
-                            setStartDate('');
-                            setEndDate('');
-                            setPagination(prev => ({ ...prev, current_page: 1 }));
-                            fetchIncomes(1);
-                        } else {
-                            fetchIncomes(pagination.current_page);
-                        }
+                        fetchIncomes(pagination.current_page);
                     }}
                     income={editingIncome}
                     isViewOnly={isViewOnly}
