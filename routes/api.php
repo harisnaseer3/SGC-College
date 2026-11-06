@@ -65,6 +65,8 @@ Route::middleware('auth:api')->group(function () {
 
     // User & Role Routes
     Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
+    Route::post('users/{id}/restore', [UserController::class, 'restore']);
+    Route::delete('users/{id}/force-delete', [UserController::class, 'forceDestroy']);
     Route::apiResource('users', UserController::class);
     Route::get('activity-logs', [\App\Http\Controllers\Api\ActivityLogController::class, 'index']);
     Route::get('activity-logs/{activityLog}', [\App\Http\Controllers\Api\ActivityLogController::class, 'show']);

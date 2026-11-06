@@ -21,8 +21,8 @@ class UserController extends BaseController implements HasMiddleware
         return [
             new Middleware('permission:view_users', only: ['index', 'show', 'getFormData', 'studentLedger', 'voucher', 'findByVoucher', 'allPayments']),
             new Middleware('permission:create_users', only: ['store', 'generate', 'manualAssign']),
-            new Middleware('permission:edit_users', only: ['update', 'toggleStatus', 'assignCourses']),
-            new Middleware('permission:delete_users', only: ['destroy', 'bulkDelete']),
+            new Middleware('permission:edit_users', only: ['update', 'toggleStatus', 'assignCourses', 'restore']),
+            new Middleware('permission:delete_users', only: ['destroy', 'bulkDelete', 'forceDestroy']),
         ];
     }
 
@@ -33,13 +33,22 @@ class UserController extends BaseController implements HasMiddleware
     {
         try {
             $currentUser = auth()->user();
-            $query = User::with(['roles', 'campus']);
+            $isSuperAdmin = $currentUser && $currentUser->hasRole('super_admin', 'web');
+            $trashedMode = $request->get('trashed');
+
+            if ($isSuperAdmin && $trashedMode === 'only') {
+                $query = User::withoutGlobalScopes()->onlyTrashed()->with(['roles', 'campus']);
+            } elseif ($isSuperAdmin && $trashedMode === 'with') {
+                $query = User::withoutGlobalScopes()->withTrashed()->with(['roles', 'campus']);
+            } else {
+                $query = User::with(['roles', 'campus']);
+            }
 
             // If a search query is provided, allow Super Admins to search across all users including other Super Admins
             if (request()->filled('search')) {
                 $search = trim(request('search'));
 
-                if ($currentUser && $currentUser->hasRole('super_admin', 'web')) {
+                if ($isSuperAdmin && !$trashedMode) {
                     // Bypass organization/campus scoping when super admin searches
                     $query = User::withoutGlobalScopes()->with(['roles', 'campus']);
                 }
@@ -57,6 +66,14 @@ class UserController extends BaseController implements HasMiddleware
             }
 
             $users = $query->paginate(request('per_page', 10));
+
+            if ($isSuperAdmin) {
+                $trashedCount = User::withoutGlobalScopes()->onlyTrashed()->count();
+                $responsePayload = $users->toArray();
+                $responsePayload['trashed_count'] = $trashedCount;
+                return $this->sendResponse($responsePayload, 'Users retrieved successfully.');
+            }
+
             return $this->sendResponse($users, 'Users retrieved successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to retrieve users.', ['error' => $e->getMessage()], 500);
@@ -189,6 +206,7 @@ class UserController extends BaseController implements HasMiddleware
             $userEmail = $user->email;
             $userId = $user->id;
 
+            $user->tokens()->update(['revoked' => true]);
             $user->delete();
 
             ActivityLogger::log('DELETED', 'Users', "Deleted user account {$userName} ({$userEmail})", [
@@ -198,6 +216,64 @@ class UserController extends BaseController implements HasMiddleware
             return $this->sendResponse(null, 'User deleted successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Failed to delete user.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Restore a soft-deleted user (Super Admin only).
+     */
+    public function restore($id): JsonResponse
+    {
+        try {
+            $currentUser = auth()->user();
+            if (!$currentUser || !$currentUser->hasRole('super_admin', 'web')) {
+                return $this->sendError('Unauthorized. Only Super Admins can restore deleted users.', [], 403);
+            }
+
+            $user = User::withoutGlobalScopes()->onlyTrashed()->findOrFail($id);
+            $user->restore();
+
+            ActivityLogger::log('RESTORED', 'Users', "Restored soft-deleted user account {$user->name} ({$user->email})", [
+                'restored_user_id' => $user->id,
+            ]);
+
+            return $this->sendResponse($user->load(['roles', 'campus']), 'User restored successfully.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to restore user.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Permanently delete a soft-deleted user (Super Admin only).
+     */
+    public function forceDestroy($id): JsonResponse
+    {
+        try {
+            $currentUser = auth()->user();
+            if (!$currentUser || !$currentUser->hasRole('super_admin', 'web')) {
+                return $this->sendError('Unauthorized. Only Super Admins can permanently delete users.', [], 403);
+            }
+
+            $user = User::withoutGlobalScopes()->withTrashed()->findOrFail($id);
+            if ($currentUser->id === $user->id) {
+                return $this->sendError('Action forbidden. You cannot permanently delete your own account.', [], 403);
+            }
+
+            $userName = $user->name;
+            $userEmail = $user->email;
+            $userId = $user->id;
+
+            $user->tokens()->delete();
+            $user->roles()->detach();
+            $user->forceDelete();
+
+            ActivityLogger::log('FORCE_DELETED', 'Users', "Permanently deleted user account {$userName} ({$userEmail})", [
+                'force_deleted_user_id' => $userId,
+            ]);
+
+            return $this->sendResponse(null, 'User permanently deleted.');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to permanently delete user.', ['error' => $e->getMessage()], 500);
         }
     }
 
