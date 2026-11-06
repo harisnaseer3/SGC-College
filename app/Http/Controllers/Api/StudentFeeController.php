@@ -18,7 +18,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
         return [
             (new Middleware('role_or_permission:super_admin|view_student_fees'))->only(['index', 'studentLedger', 'voucher', 'bulkVouchers', 'findByVoucher', 'vouchersList']),
             (new Middleware('role_or_permission:super_admin|create_student_fees'))->only(['generate', 'manualAssign', 'generateVoucher']),
-            (new Middleware('role_or_permission:super_admin|edit_student_fees'))->only(['update', 'destroyVoucher', 'bulkDestroyVouchers']),
+            (new Middleware('role_or_permission:super_admin|edit_student_fees'))->only(['update', 'updateVoucher', 'destroyVoucher', 'bulkDestroyVouchers']),
             (new Middleware('role_or_permission:super_admin|pay_student_fees|create_fee_receipts|manage_fee_receipts'))->only(['deposit']),
             (new Middleware('role_or_permission:super_admin|split_student_fees'))->only(['split', 'revertSplit']),
             (new Middleware('role_or_permission:super_admin|apply_fines'))->only(['applyFines']),
@@ -328,12 +328,18 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 ->orderBy('created_at', 'desc')
                 ->first();
 
+            $vouchers = \App\Models\GeneratedVoucher::withoutGlobalScopes()
+                ->where('student_id', $studentId)
+                ->get()
+                ->keyBy('voucher_number');
+
             return $this->sendResponse([
                 'fees'      => $unpaidFees,
                 'paid_fees' => $paidFees,
                 'payments'  => $payments,
                 'summary'   => $summary,
                 'student'   => $student,
+                'vouchers'  => $vouchers,
                 'voucher_issue_date' => $activeVoucher && $activeVoucher->created_at ? $activeVoucher->created_at->format('Y-m-d') : null,
             ], 'Student ledger retrieved successfully.');
         } catch (\Exception $e) {
@@ -365,6 +371,9 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     $voucherRecord = \App\Models\GeneratedVoucher::withoutGlobalScopes()
                         ->where('voucher_number', $studentFee->voucher_number)
                         ->first();
+                    if ($voucherRecord && $voucherRecord->status !== 'unpaid') {
+                        return $this->sendError('Due date can only be edited for unpaid vouchers.', [], 422);
+                    }
                     if ($voucherRecord && $voucherRecord->created_at) {
                         $minAllowedDate = $voucherRecord->created_at->copy()->startOfDay();
                     }
@@ -872,7 +881,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $sortBy = $request->get('sort_by', 'id');
             $sortOrder = strtolower($request->get('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-            $allowedSorts = ['id', 'voucher_number', 'due_date', 'amount', 'balance_amount', 'status'];
+            $allowedSorts = ['id', 'voucher_number', 'due_date', 'created_at', 'amount', 'balance_amount', 'status'];
             if (!in_array($sortBy, $allowedSorts)) {
                 $sortBy = 'id';
             }
@@ -965,6 +974,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
             'fee_ids' => 'nullable|array',
             'fee_ids.*' => 'exists:student_fees,id',
             'semester_number' => 'nullable|integer',
+            'generated_date' => 'nullable|date',
             'due_date' => 'nullable|date',
         ]);
 
@@ -1025,7 +1035,9 @@ class StudentFeeController extends BaseController implements HasMiddleware
 
             $vouchers = [];
             $isFirstGroup = true;
-            $generationDate = now()->startOfDay();
+            $generationDate = $request->filled('generated_date')
+                ? \Carbon\Carbon::parse($request->generated_date)->startOfDay()
+                : now()->startOfDay();
 
             if ($request->filled('due_date')) {
                 $customDueDate = \Carbon\Carbon::parse($request->due_date)->startOfDay();
@@ -1092,6 +1104,7 @@ class StudentFeeController extends BaseController implements HasMiddleware
                             'paid_amount' => 0.00,
                             'balance_amount' => $groupFees->sum('balance_amount') + $arrearsSum,
                             'status' => 'unpaid',
+                            'created_at' => $generationDate,
                         ]);
                     } catch (\Illuminate\Database\QueryException $qe) {
                         if ($qe->getCode() == 23000 && $attempts < 10) {
@@ -1167,6 +1180,84 @@ class StudentFeeController extends BaseController implements HasMiddleware
             \Illuminate\Support\Facades\DB::rollback();
             \Illuminate\Support\Facades\Log::error('generateVoucher failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return $this->sendError('Failed to generate voucher.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function updateVoucher(\Illuminate\Http\Request $request, $id)
+    {
+        $request->validate([
+            'generated_date' => 'nullable|date',
+            'due_date' => 'nullable|date',
+        ]);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $voucher = \App\Models\GeneratedVoucher::findOrFail($id);
+
+            if ($voucher->status !== 'unpaid') {
+                \Illuminate\Support\Facades\DB::rollBack();
+                return $this->sendError('Dates can only be edited for unpaid vouchers.', [], 422);
+            }
+
+            $generatedDate = $request->filled('generated_date')
+                ? \Carbon\Carbon::parse($request->generated_date)->startOfDay()
+                : ($voucher->created_at ? $voucher->created_at->copy()->startOfDay() : now()->startOfDay());
+
+            if ($request->filled('due_date')) {
+                $dueDate = \Carbon\Carbon::parse($request->due_date)->startOfDay();
+                if ($dueDate->lt($generatedDate)) {
+                    \Illuminate\Support\Facades\DB::rollBack();
+                    return $this->sendError(
+                        'Voucher due date cannot be earlier than the voucher generated date (' . $generatedDate->format('d M Y') . ').',
+                        [],
+                        422
+                    );
+                }
+            } else {
+                $currentDueDate = $voucher->due_date ? \Carbon\Carbon::parse($voucher->due_date)->startOfDay() : null;
+                if (!$currentDueDate || $currentDueDate->lt($generatedDate)) {
+                    $dueDate = $generatedDate->day <= 20
+                        ? $generatedDate->copy()->day(20)
+                        : $generatedDate->copy();
+                } else {
+                    $dueDate = $currentDueDate;
+                }
+            }
+
+            // Ensure generated_date is not set after an existing payment date on this voucher
+            $earliestPayment = \App\Models\FeePayment::withoutGlobalScopes()
+                ->where('voucher_number', $voucher->voucher_number)
+                ->orderBy('payment_date', 'asc')
+                ->first();
+
+            if ($earliestPayment && $earliestPayment->payment_date) {
+                $paymentDate = \Carbon\Carbon::parse($earliestPayment->payment_date)->startOfDay();
+                if ($paymentDate->lt($generatedDate)) {
+                    \Illuminate\Support\Facades\DB::rollBack();
+                    return $this->sendError(
+                        'Voucher generated date cannot be later than an existing payment date (' . $paymentDate->format('d M Y') . ').',
+                        [],
+                        422
+                    );
+                }
+            }
+
+            $voucher->created_at = $generatedDate;
+            $voucher->due_date = $dueDate;
+            $voucher->save();
+
+            // Sync due_date on associated student fees
+            StudentFee::withoutGlobalScopes()
+                ->where('voucher_number', $voucher->voucher_number)
+                ->update(['due_date' => $dueDate->toDateString()]);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return $this->sendResponse($voucher->fresh(), 'Voucher dates updated successfully.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('updateVoucher failed: ' . $e->getMessage());
+            return $this->sendError('Failed to update voucher dates.', ['error' => $e->getMessage()], 500);
         }
     }
 

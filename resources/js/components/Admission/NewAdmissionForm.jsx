@@ -497,15 +497,14 @@ const NewAdmissionForm = () => {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         <div>
-                            <label className={labelCls}>Admission No.</label>
+                            <label className={labelCls}>Admission No. <span className="text-slate-400 text-[10px] normal-case">(auto if blank)</span></label>
                             <input 
                                 type="text" 
                                 name="admission_number" 
-                                placeholder="Auto-generated" 
+                                placeholder="Auto-generated if left blank" 
                                 value={formData.admission_number} 
                                 onChange={handleChange} 
-                                className={`${inputCls} bg-slate-100/80 text-slate-500 font-bold cursor-not-allowed`} 
-                                readOnly 
+                                className={inputCls} 
                             />
                         </div>
 

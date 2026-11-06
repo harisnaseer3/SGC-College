@@ -30,6 +30,7 @@ class GeneratedVoucher extends Model
         'paid_amount',
         'balance_amount',
         'status',
+        'created_at',
     ];
 
     protected $casts = [

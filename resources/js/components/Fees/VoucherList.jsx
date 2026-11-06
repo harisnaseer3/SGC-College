@@ -19,6 +19,31 @@ const VoucherList = () => {
     const [programs, setPrograms] = useState([]);
     const [sortBy, setSortBy] = useState('id');
     const [sortOrder, setSortOrder] = useState('desc');
+    const [editingVoucher, setEditingVoucher] = useState(null);
+
+    const getDefaultDueDate = (genDateStr) => {
+        const now = genDateStr ? new Date(`${genDateStr}T00:00:00`) : new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const dueDay = String(now.getDate() <= 20 ? 20 : now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dueDay}`;
+    };
+
+    const handleUpdateVoucherDates = async (e) => {
+        e.preventDefault();
+        if (!editingVoucher) return;
+        try {
+            await axios.put(`/api/student-fees/vouchers/${editingVoucher.id}`, {
+                generated_date: editingVoucher.generated_date,
+                due_date: editingVoucher.due_date
+            });
+            showSuccess('Voucher dates updated successfully');
+            setEditingVoucher(null);
+            fetchVouchers(currentPage);
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to update voucher dates');
+        }
+    };
 
     const handleSort = (column) => {
         if (sortBy === column) {
@@ -335,6 +360,19 @@ const VoucherList = () => {
                                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Student</th>
                                 <th 
                                     className="px-6 py-4 text-[10px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest cursor-pointer select-none"
+                                    onClick={() => handleSort('created_at')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        <span className={sortBy === 'created_at' ? 'text-indigo-600 font-extrabold' : ''}>Generated Date</span>
+                                        {sortBy === 'created_at' && (
+                                            <svg className={`w-3.5 h-3.5 text-indigo-600 transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/>
+                                            </svg>
+                                        )}
+                                    </div>
+                                </th>
+                                <th 
+                                    className="px-6 py-4 text-[10px] font-bold text-slate-400 hover:text-indigo-600 uppercase tracking-widest cursor-pointer select-none"
                                     onClick={() => handleSort('due_date')}
                                 >
                                     <div className="flex items-center gap-1">
@@ -394,7 +432,7 @@ const VoucherList = () => {
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="12" className="px-6 py-20 text-center">
+                                    <td colSpan="13" className="px-6 py-20 text-center">
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Vouchers...</span>
@@ -441,6 +479,9 @@ const VoucherList = () => {
                                                 <div className="text-[10px] text-slate-400 font-bold uppercase">Roll: {v.student?.roll_number}</div>
                                             </td>
                                             <td className="px-6 py-4 text-slate-600 text-sm font-medium">
+                                                {v.created_at ? new Date(v.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-600 text-sm font-medium">
                                                 {new Date(v.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </td>
                                             <td className="px-6 py-4 text-slate-600 font-black text-right">Rs. {voucherAmount.toLocaleString()}</td>
@@ -453,7 +494,25 @@ const VoucherList = () => {
                                                     {v.status === 'carried_forward' ? 'carried fwd' : v.status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-center">
+                                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                {v.status === 'unpaid' && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            const genStr = v.created_at ? v.created_at.split('T')[0] : '';
+                                                            const dueStr = v.due_date ? v.due_date.split('T')[0] : '';
+                                                            setEditingVoucher({
+                                                                id: v.id,
+                                                                voucher_number: v.voucher_number,
+                                                                generated_date: genStr,
+                                                                due_date: dueStr
+                                                            });
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all mr-1" 
+                                                        title="Edit Voucher Dates"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                    </button>
+                                                )}
                                                 <button 
                                                     onClick={() => window.open(`/fees/voucher/${v.student_id}?voucher_number=${v.voucher_number}`, '_blank')}
                                                     className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 
@@ -476,7 +535,7 @@ const VoucherList = () => {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="12" className="px-6 py-20 text-center">
+                                    <td colSpan="13" className="px-6 py-20 text-center">
                                         <div className="text-slate-400 italic text-sm">No vouchers found matching your criteria.</div>
                                     </td>
                                 </tr>
@@ -485,7 +544,7 @@ const VoucherList = () => {
                         {aggregates && (
                             <tfoot className="bg-slate-50 border-t-2 border-slate-200">
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-4 text-right text-xs font-black text-slate-600 uppercase tracking-widest">
+                                    <td colSpan="6" className="px-6 py-4 text-right text-xs font-black text-slate-600 uppercase tracking-widest">
                                         Total Amounts for Current Filter
                                     </td>
                                     <td className="px-6 py-4 text-slate-800 font-black text-right">Rs. {aggregates.expected.toLocaleString()}</td>
@@ -509,6 +568,70 @@ const VoucherList = () => {
                     />
                 )}
             </Card>
+
+            {/* Edit Voucher Dates Modal */}
+            {editingVoucher && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                    <Card className="w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-slate-50">
+                            <div>
+                                <h3 className="font-bold text-slate-800 text-lg">Edit Voucher #{editingVoucher.voucher_number}</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Update voucher generated date and due date.</p>
+                            </div>
+                            <button onClick={() => setEditingVoucher(null)} className="text-slate-400 hover:text-slate-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <form onSubmit={handleUpdateVoucherDates} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Voucher Generated Date (Issue Date)</label>
+                                <input
+                                    type="date"
+                                    required
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold text-slate-800"
+                                    value={editingVoucher.generated_date}
+                                    onChange={(e) => {
+                                        const newGen = e.target.value;
+                                        const defaultDue = getDefaultDueDate(newGen);
+                                        setEditingVoucher(prev => ({
+                                            ...prev,
+                                            generated_date: newGen,
+                                            due_date: (!prev.due_date || prev.due_date < newGen) ? defaultDue : prev.due_date
+                                        }));
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Due Date</label>
+                                <input
+                                    type="date"
+                                    required
+                                    min={editingVoucher.generated_date || undefined}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold text-slate-800"
+                                    value={editingVoucher.due_date}
+                                    onChange={(e) => setEditingVoucher(prev => ({ ...prev, due_date: e.target.value }))}
+                                />
+                                <p className="text-[11px] text-slate-400 mt-1">Due date cannot be earlier than the generated date. Validity date defaults to the 25th.</p>
+                            </div>
+                            <div className="pt-2 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingVoucher(null)}
+                                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm"
+                                >
+                                    Save Dates
+                                </button>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 };

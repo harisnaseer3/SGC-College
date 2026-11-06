@@ -185,7 +185,20 @@ const StudentLedgerDetail = () => {
     const [selectedPeriods, setSelectedPeriods] = useState([]);
     const [voucherModal, setVoucherModal] = useState(null); // { semNum, fees }
     const [voucherModalSelected, setVoucherModalSelected] = useState([]);
+    const [voucherDates, setVoucherDates] = useState({ generated_date: '', due_date: '' });
+    const [editingVoucher, setEditingVoucher] = useState(null); // { id, voucher_number, generated_date, due_date }
     const { showSuccess, showError } = useNotifications();
+
+    const getDefaultVoucherDates = (genDateStr) => {
+        const now = genDateStr ? new Date(`${genDateStr}T00:00:00`) : new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const genDay = String(now.getDate()).padStart(2, '0');
+        const generated_date = `${y}-${m}-${genDay}`;
+        const dueDay = String(now.getDate() <= 20 ? 20 : now.getDate()).padStart(2, '0');
+        const due_date = `${y}-${m}-${dueDay}`;
+        return { generated_date, due_date };
+    };
 
     useEffect(() => {
         fetchLedger();
@@ -206,7 +219,12 @@ const StudentLedgerDetail = () => {
 
     const handleGenerateVoucher = async (feeIds) => {
         try {
-            const payload = { student_id: studentId, fee_ids: feeIds };
+            const payload = {
+                student_id: studentId,
+                fee_ids: feeIds,
+                generated_date: voucherDates.generated_date || undefined,
+                due_date: voucherDates.due_date || undefined
+            };
             await axios.post('/api/student-fees/vouchers/generate', payload);
             showSuccess('Voucher generated successfully!');
             fetchLedger();
@@ -219,6 +237,23 @@ const StudentLedgerDetail = () => {
         const eligible = fees.filter(f => f.status !== 'paid' && f.status !== 'carried_forward' && !f.voucher_number);
         setVoucherModal({ semNum, fees: eligible });
         setVoucherModalSelected(eligible.map(f => f.id));
+        setVoucherDates(getDefaultVoucherDates());
+    };
+
+    const handleUpdateVoucherDates = async (e) => {
+        e.preventDefault();
+        if (!editingVoucher) return;
+        try {
+            await axios.put(`/api/student-fees/vouchers/${editingVoucher.id}`, {
+                generated_date: editingVoucher.generated_date,
+                due_date: editingVoucher.due_date
+            });
+            showSuccess('Voucher dates updated successfully');
+            setEditingVoucher(null);
+            fetchLedger();
+        } catch (error) {
+            showError(error.response?.data?.message || 'Failed to update voucher dates');
+        }
     };
 
     const handleUpdateFee = async (e) => {
@@ -413,19 +448,42 @@ const StudentLedgerDetail = () => {
                                 />
                                 <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">{group.label}</h3>
                             </div>
-                            {group.fees.some(f => f.voucher_number) ? (
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-slate-500">Voucher: #{group.fees.find(f => f.voucher_number)?.voucher_number}</span>
-                                    <Button 
-                                        onClick={() => window.open(`/fees/voucher/${studentId}?voucher_number=${group.fees.find(f => f.voucher_number)?.voucher_number}`, '_blank')} 
-                                        variant="secondary" 
-                                        size="sm"
-                                        className="text-[10px] py-1 px-3"
-                                    >
-                                        Print Voucher
-                                    </Button>
-                                </div>
-                            ) : (
+                            {group.fees.some(f => f.voucher_number) ? (() => {
+                                const vNum = group.fees.find(f => f.voucher_number)?.voucher_number;
+                                const vObj = ledger.vouchers?.[vNum];
+                                return (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold text-slate-500">Voucher: #{vNum}</span>
+                                        {vObj && vObj.status === 'unpaid' && (
+                                            <Button 
+                                                onClick={() => {
+                                                    const genStr = vObj.created_at ? vObj.created_at.split('T')[0] : '';
+                                                    const dueStr = vObj.due_date ? vObj.due_date.split('T')[0] : '';
+                                                    setEditingVoucher({
+                                                        id: vObj.id,
+                                                        voucher_number: vNum,
+                                                        generated_date: genStr,
+                                                        due_date: dueStr
+                                                    });
+                                                }} 
+                                                variant="secondary" 
+                                                size="sm"
+                                                className="text-[10px] py-1 px-3"
+                                            >
+                                                Edit Dates
+                                            </Button>
+                                        )}
+                                        <Button 
+                                            onClick={() => window.open(`/fees/voucher/${studentId}?voucher_number=${vNum}`, '_blank')} 
+                                            variant="secondary" 
+                                            size="sm"
+                                            className="text-[10px] py-1 px-3"
+                                        >
+                                            Print Voucher
+                                        </Button>
+                                    </div>
+                                );
+                            })() : (
                                 <Button 
                                     onClick={() => openVoucherModal(group.semNum, group.fees)} 
                                     variant="primary" 
@@ -731,11 +789,15 @@ const StudentLedgerDetail = () => {
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Due Date</label>
                                 <input 
                                     type="date" 
+                                    disabled={editingFee.status !== 'unpaid' || (editingFee.voucher_number && ledger.vouchers?.[editingFee.voucher_number]?.status && ledger.vouchers?.[editingFee.voucher_number]?.status !== 'unpaid')}
                                     min={(() => {
+                                        if (editingFee.voucher_number && ledger.vouchers?.[editingFee.voucher_number]?.created_at) {
+                                            return ledger.vouchers[editingFee.voucher_number].created_at.split('T')[0];
+                                        }
                                         const now = new Date();
                                         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                                     })()}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                     value={adjustment.due_date || ''}
                                     onChange={(e) => setAdjustment({ ...adjustment, due_date: e.target.value })}
                                 />
@@ -904,6 +966,34 @@ const StudentLedgerDetail = () => {
                             </button>
                         </div>
                         <div className="p-6 space-y-3 max-h-[55vh] overflow-y-auto">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 border-b border-slate-100">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Voucher Generated Date</label>
+                                    <input
+                                        type="date"
+                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-semibold text-slate-800"
+                                        value={voucherDates.generated_date}
+                                        onChange={(e) => {
+                                            const newGen = e.target.value;
+                                            const defaults = getDefaultVoucherDates(newGen);
+                                            setVoucherDates(prev => ({
+                                                generated_date: newGen,
+                                                due_date: (!prev.due_date || prev.due_date < newGen) ? defaults.due_date : prev.due_date
+                                            }));
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Due Date (Default 20th)</label>
+                                    <input
+                                        type="date"
+                                        min={voucherDates.generated_date || undefined}
+                                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-xs font-semibold text-slate-800"
+                                        value={voucherDates.due_date}
+                                        onChange={(e) => setVoucherDates(prev => ({ ...prev, due_date: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
                             {voucherModal.fees.length === 0 ? (
                                 <p className="text-sm text-slate-400 italic text-center py-4">No eligible unpaid fees found for this semester.</p>
                             ) : (
@@ -962,6 +1052,59 @@ const StudentLedgerDetail = () => {
                                 </Button>
                             </div>
                         </div>
+                    </Card>
+                </div>
+            )}
+
+            {/* Edit Voucher Dates Modal */}
+            {editingVoucher && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                    <Card className="w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-slate-50">
+                            <div>
+                                <h3 className="font-bold text-slate-800 text-lg">Edit Voucher #{editingVoucher.voucher_number}</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Update voucher generated date and due date.</p>
+                            </div>
+                            <button onClick={() => setEditingVoucher(null)} className="text-slate-400 hover:text-slate-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <form onSubmit={handleUpdateVoucherDates} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Voucher Generated Date (Issue Date)</label>
+                                <input
+                                    type="date"
+                                    required
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold text-slate-800"
+                                    value={editingVoucher.generated_date}
+                                    onChange={(e) => {
+                                        const newGen = e.target.value;
+                                        const defaults = getDefaultVoucherDates(newGen);
+                                        setEditingVoucher(prev => ({
+                                            ...prev,
+                                            generated_date: newGen,
+                                            due_date: (!prev.due_date || prev.due_date < newGen) ? defaults.due_date : prev.due_date
+                                        }));
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Due Date</label>
+                                <input
+                                    type="date"
+                                    required
+                                    min={editingVoucher.generated_date || undefined}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold text-slate-800"
+                                    value={editingVoucher.due_date}
+                                    onChange={(e) => setEditingVoucher(prev => ({ ...prev, due_date: e.target.value }))}
+                                />
+                                <p className="text-[11px] text-slate-400 mt-1">Due date cannot be earlier than the generated date. Validity date defaults to the 25th.</p>
+                            </div>
+                            <div className="pt-2 flex gap-3">
+                                <Button type="button" variant="secondary" className="flex-1" onClick={() => setEditingVoucher(null)}>Cancel</Button>
+                                <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold">Save Dates</Button>
+                            </div>
+                        </form>
                     </Card>
                 </div>
             )}

@@ -57,54 +57,7 @@ class Student extends Model
         parent::boot();
 
         static::creating(function ($student) {
-            // Determine organization_id for sequence generation
-            $orgId = $student->organization_id;
-            if (empty($orgId)) {
-                $user = auth()->user();
-                if ($user && !$user->hasRole('super_admin')) {
-                    $orgId = $user->organization_id;
-                } elseif ($user && $user->hasRole('super_admin')) {
-                    $orgId = request()->header('X-Organization-ID');
-                }
-            }
-
-            // Auto-generate admission_number with format: ORG-PROG-YEAR-SEQ
-            if (empty($student->admission_number) && $orgId) {
-                $org = Organization::find($orgId);
-                $orgCode = $org ? strtoupper($org->slug ?: substr($org->name, 0, 3)) : 'ORG';
-
-                $program = Program::find($student->program_id);
-                $programCode = 'PROG';
-                if ($program) {
-                    $programCode = strtoupper(str_replace(' ', '-', $program->name));
-                    $programCode = preg_replace('/[^A-Z0-9\-]/', '', $programCode);
-                }
-
-                $batch = AcademicBatch::find($student->academic_batch_id);
-                $batchYear = date('y');
-                if ($batch && preg_match('/(\d{4})/', $batch->name, $matches)) {
-                    $batchYear = substr($matches[1], -2);
-                }
-
-                $prefix = "{$orgCode}-{$programCode}-{$batchYear}-";
-
-                // Find the maximum existing sequence number for this prefix
-                $maxAdmissionNumber = static::withoutGlobalScopes()
-                    ->where('organization_id', $orgId)
-                    ->where('admission_number', 'LIKE', "{$prefix}%")
-                    ->max('admission_number');
-
-                $nextSequence = 1;
-                if ($maxAdmissionNumber) {
-                    $parts = explode('-', $maxAdmissionNumber);
-                    $lastPart = end($parts);
-                    if (is_numeric($lastPart)) {
-                        $nextSequence = (int)$lastPart + 1;
-                    }
-                }
-
-                $student->admission_number = $prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
-            }
+            static::populateAdmissionNumber($student);
 
             // Auto-generate roll_number per campus starting from 100
             if (empty($student->roll_number)) {
@@ -117,6 +70,146 @@ class Student extends Model
                 $student->status = 'Pending';
             }
         });
+
+        static::updating(function ($student) {
+            if (empty($student->admission_number)) {
+                static::populateAdmissionNumber($student);
+            }
+        });
+    }
+
+    /**
+     * Auto-generate admission_number with format: ORG-PROG-YEAR-SEQ when empty.
+     */
+    public static function populateAdmissionNumber(self $student): void
+    {
+        // Determine organization_id for sequence generation
+        $orgId = $student->organization_id;
+        if (empty($orgId)) {
+            $user = auth()->user();
+            if ($user && !$user->hasRole('super_admin')) {
+                $orgId = $user->organization_id;
+            } elseif ($user && $user->hasRole('super_admin')) {
+                $orgId = request()->header('X-Organization-ID');
+            }
+            if (empty($orgId) && !empty($student->campus_id)) {
+                $orgId = Campus::withoutGlobalScopes()->where('id', $student->campus_id)->value('organization_id');
+            }
+        }
+
+        if (empty($student->admission_number) && $orgId) {
+            $org = Organization::withoutGlobalScopes()->find($orgId);
+            $orgCode = $org ? strtoupper($org->slug ?: substr($org->name, 0, 3)) : 'ORG';
+
+            $program = Program::withoutGlobalScopes()->find($student->program_id);
+            $programCode = 'PROG';
+            if ($program) {
+                $programCode = strtoupper(str_replace(' ', '-', $program->name));
+                $programCode = preg_replace('/[^A-Z0-9\-]/', '', $programCode);
+            }
+
+            $batch = $student->academic_batch_id
+                ? AcademicBatch::withoutGlobalScopes()->find($student->academic_batch_id)
+                : null;
+
+            $batchYear = null;
+            if ($batch && preg_match('/(\d{4})/', $batch->name, $matches)) {
+                $batchYear = substr($matches[1], -2);
+            } elseif (!empty($student->admission_date)) {
+                try {
+                    $batchYear = \Carbon\Carbon::parse($student->admission_date)->format('y');
+                } catch (\Exception $e) {
+                    $batchYear = date('y');
+                }
+            } else {
+                $batchYear = date('y');
+            }
+
+            $prefix = "{$orgCode}-{$programCode}-{$batchYear}-";
+
+            // Find the maximum existing sequence number for this prefix (including soft-deleted students)
+            $query = static::withoutGlobalScopes()
+                ->withTrashed()
+                ->where('organization_id', $orgId)
+                ->where('admission_number', 'LIKE', "{$prefix}%");
+
+            if ($student->id) {
+                $query->where('id', '!=', $student->id);
+            }
+
+            $existingNumbers = $query->pluck('admission_number');
+
+            $maxSequence = 0;
+            foreach ($existingNumbers as $admNo) {
+                $parts = explode('-', $admNo);
+                $lastPart = end($parts);
+                if (is_numeric($lastPart)) {
+                    $maxSequence = max($maxSequence, (int)$lastPart);
+                }
+            }
+
+            $nextSequence = $maxSequence + 1;
+            $student->admission_number = $prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
+        }
+    }
+
+    /**
+     * Re-aligns an auto-generated admission_number's year segment if the student's batch or admission_date year changes.
+     */
+    public function syncAdmissionNumberYear(): void
+    {
+        if (empty($this->admission_number)) {
+            return;
+        }
+
+        // Only update auto-generated numbers matching prefix-YY-NNN
+        if (!preg_match('/^(.+)-(\d{2})-(\d+)$/', $this->admission_number, $m)) {
+            return;
+        }
+
+        $basePrefix = $m[1];
+        $currentYearCode = $m[2];
+
+        $batch = $this->academic_batch_id
+            ? AcademicBatch::withoutGlobalScopes()->find($this->academic_batch_id)
+            : null;
+
+        $targetYear = null;
+        if ($batch && preg_match('/(\d{4})/', $batch->name, $matches)) {
+            $targetYear = substr($matches[1], -2);
+        } elseif (!empty($this->admission_date)) {
+            try {
+                $targetYear = \Carbon\Carbon::parse($this->admission_date)->format('y');
+            } catch (\Exception $e) {
+                return;
+            }
+        }
+
+        if (!$targetYear || $targetYear === $currentYearCode) {
+            return;
+        }
+
+        $newPrefix = "{$basePrefix}-{$targetYear}-";
+
+        $existingNumbers = static::withoutGlobalScopes()
+            ->withTrashed()
+            ->where('organization_id', $this->organization_id)
+            ->where('id', '!=', $this->id)
+            ->where('admission_number', 'LIKE', "{$newPrefix}%")
+            ->pluck('admission_number');
+
+        $maxSequence = 0;
+        foreach ($existingNumbers as $admNo) {
+            $parts = explode('-', $admNo);
+            $lastPart = end($parts);
+            if (is_numeric($lastPart)) {
+                $maxSequence = max($maxSequence, (int)$lastPart);
+            }
+        }
+
+        $nextSequence = $maxSequence + 1;
+        $this->admission_number = $newPrefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
+        $this->saveQuietly();
     }
 
     public function campus()

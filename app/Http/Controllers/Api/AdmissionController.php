@@ -228,7 +228,14 @@ class AdmissionController extends BaseController implements HasMiddleware
                 }
             }
 
+            $originalAdmissionNumber = $admission->getOriginal('admission_number');
+
             $admission->update($data);
+
+            // If admission_number was not manually changed by the user, sync its year segment with the student's batch/admission_date
+            if (!$request->filled('admission_number') || trim($request->input('admission_number')) === $originalAdmissionNumber) {
+                $admission->syncAdmissionNumberYear();
+            }
 
             if ($admission->status === 'Enrolled') {
                 $this->feeService->assignInitialFees($admission);
@@ -284,8 +291,14 @@ class AdmissionController extends BaseController implements HasMiddleware
         ]);
 
         try {
-            $updated = Student::whereIn('id', $request->student_ids)
-                ->update(['academic_batch_id' => $request->academic_batch_id]);
+            $students = Student::whereIn('id', $request->student_ids)->get();
+            $updated = 0;
+            foreach ($students as $student) {
+                $student->academic_batch_id = $request->academic_batch_id;
+                $student->save();
+                $student->syncAdmissionNumberYear();
+                $updated++;
+            }
                 
             return $this->sendResponse(
                 ['updated' => $updated],

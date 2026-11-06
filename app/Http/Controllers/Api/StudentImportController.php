@@ -156,19 +156,19 @@ class StudentImportController extends BaseController
             ->mapWithKeys(fn($s) => ["{$s->program_id}_{$s->semester_number}" => $s->id])
             ->toArray();
 
-        // AcademicBatch: keyed by "{campus_id}_{year_range}" → batch_id
-        // e.g. "5_2024-2028" => 3
-        // Extracts the first YYYY-YYYY pattern found in the batch name.
-        $batchMap = AcademicBatch::withoutGlobalScopes()
+        // AcademicBatch: keyed by "{campus_id}_{year_range}" → batch_id and "{campus_id}_{lower_name}" → batch_id
+        $batchesList = AcademicBatch::withoutGlobalScopes()
             ->select('id', 'name', 'campus_id')
-            ->get()
-            ->mapWithKeys(function ($b) {
-                if (preg_match('/\d{4}-\d{4}/', $b->name, $m)) {
-                    return ["{$b->campus_id}_{$m[0]}" => $b->id];
-                }
-                return []; // batch name has no year range — skip
-            })
-            ->toArray();
+            ->get();
+        $batchMap = [];
+        foreach ($batchesList as $b) {
+            $batchMap[$b->campus_id . '_' . strtolower(trim($b->name))] = $b->id;
+            $batchMap['any_' . strtolower(trim($b->name))] = $b->id;
+            if (preg_match('/\d{4}-\d{4}/', $b->name, $m)) {
+                $batchMap["{$b->campus_id}_{$m[0]}"] = $b->id;
+                $batchMap["any_{$m[0]}"] = $b->id;
+            }
+        }
 
         while (($raw = fgetcsv($handle)) !== false) {
             if (count(array_filter($raw)) === 0) continue; // skip blank lines
@@ -291,13 +291,18 @@ class StudentImportController extends BaseController
         //   2. Otherwise extract the YYYY-YYYY year range from the value and
         //      look up the batch that belongs to the resolved campus.
         $batchRaw = trim($data['batch'] ?? $data['academic_batch_id'] ?? '');
+        $campusId = $out['campus_id'] ?? '';
+        $batchLower = strtolower($batchRaw);
         if (is_numeric($batchRaw)) {
             $out['academic_batch_id'] = (int) $batchRaw;
+        } elseif (!empty($batchLower) && isset($batchMap["{$campusId}_{$batchLower}"])) {
+            $out['academic_batch_id'] = $batchMap["{$campusId}_{$batchLower}"];
+        } elseif (!empty($batchLower) && isset($batchMap["any_{$batchLower}"])) {
+            $out['academic_batch_id'] = $batchMap["any_{$batchLower}"];
         } elseif (preg_match('/(\d{4}-\d{4})/', $batchRaw, $ym)) {
             $yearRange  = $ym[1];
-            $campusId   = $out['campus_id'] ?? '';
             $batchKey   = "{$campusId}_{$yearRange}";
-            $out['academic_batch_id'] = $batchMap[$batchKey] ?? null;
+            $out['academic_batch_id'] = $batchMap[$batchKey] ?? $batchMap["any_{$yearRange}"] ?? null;
         } else {
             $out['academic_batch_id'] = null;
         }

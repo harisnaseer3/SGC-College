@@ -102,6 +102,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('student-fees/vouchers/bulk', [StudentFeeController::class, 'bulkVouchers']);
     Route::get('student-fees/vouchers-list', [StudentFeeController::class, 'vouchersList']);
     Route::post('student-fees/vouchers/generate', [StudentFeeController::class, 'generateVoucher']);
+    Route::put('student-fees/vouchers/{voucher}', [StudentFeeController::class, 'updateVoucher']);
     Route::delete('student-fees/vouchers', [StudentFeeController::class, 'bulkDestroyVouchers']);
     Route::delete('student-fees/vouchers/{voucher}', [StudentFeeController::class, 'destroyVoucher']);
     Route::get('student-fees/voucher/{student}', [StudentFeeController::class, 'voucher']);
