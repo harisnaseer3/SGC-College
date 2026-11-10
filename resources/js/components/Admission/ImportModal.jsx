@@ -46,7 +46,7 @@ const StepDivider = () => <div className="flex-1 h-px bg-slate-200 mx-2" />;
 // ── Row preview table ────────────────────────────────────────────────────────
 
 const PreviewTable = ({ rows }) => {
-    const PREVIEW_COLS = ['first_name', 'last_name', 'phone', 'gender', 'campus', 'program', 'semester', 'status'];
+    const PREVIEW_COLS = ['first_name', 'last_name', 'phone', 'gender', 'date_of_birth', 'campus', 'program', 'semester', 'status'];
     const label = k => k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     return (

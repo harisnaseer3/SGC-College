@@ -119,10 +119,21 @@ class StudentImportController extends BaseController
     private function parseAndValidate($file, bool $dryRun): array
     {
         $handle  = fopen($file->getRealPath(), 'r');
-        $headers = array_map('trim', fgetcsv($handle));
-
-        // Normalise header names (lowercase, spaces/hyphens → underscores)
-        $headers = array_map(fn($h) => strtolower(str_replace([' ', '-'], '_', $h)), $headers);
+        $headers = array_map(function ($h) {
+            // Strip UTF-8 BOM if present on the first header
+            $h = preg_replace('/^\xEF\xBB\xBF/', '', trim($h));
+            $h = strtolower(preg_replace('/[\s\-]+/', '_', $h));
+            return match ($h) {
+                'dob', 'd_o_b', 'birth_date', 'birthdate', 'dateofbirth', 'student_dob' => 'date_of_birth',
+                'admission_number', 'adm_no', 'adm_number' => 'admission_no',
+                'roll_number', 'roll' => 'roll_no',
+                'cnic', 'b_form', 'bform' => 'student_cnic',
+                'father_name', 'parent_name' => 'guardian_name',
+                'father_phone', 'parent_phone', 'guardian_contact' => 'guardian_phone',
+                'father_cnic', 'parent_cnic' => 'guardian_cnic',
+                default => $h,
+            };
+        }, fgetcsv($handle));
 
         $rows     = [];
         $imported = 0;
@@ -178,6 +189,12 @@ class StudentImportController extends BaseController
 
             // ── Resolve human-readable values → IDs ─────────────────────────
             $resolved = $this->resolveRow($data, $campusMap, $programByName, $programByCode, $semesterMap, $batchMap, $programRequiresBatch);
+            if (!empty($resolved['date_of_birth'])) {
+                $data['date_of_birth'] = $resolved['date_of_birth'];
+            }
+            if (!empty($resolved['admission_date'])) {
+                $data['admission_date'] = $resolved['admission_date'];
+            }
             $errors   = $this->validateRow($resolved, $rowIndex);
 
             if (!empty($errors)) {
@@ -206,14 +223,14 @@ class StudentImportController extends BaseController
                                 'last_name'           => $resolved['last_name'],
                                 'email'               => $this->nullIfEmpty($resolved['email'] ?? ''),
                                 'phone'               => $resolved['phone'],
-                                'date_of_birth'       => $this->parseDate($resolved['date_of_birth'] ?? null),
+                                'date_of_birth'       => $resolved['date_of_birth'] ?? null,
                                 'address'             => $this->nullIfPlaceholder($resolved['address'] ?? ''),
                                 'guardian_name'       => $this->nullIfPlaceholder($resolved['guardian_name'] ?? ''),
                                 'guardian_phone'      => $this->nullIfPlaceholder($resolved['guardian_phone'] ?? ''),
                                 'guardian_cnic'       => $this->nullIfPlaceholder($resolved['guardian_cnic'] ?? ''),
                                 'admission_number'    => $this->nullIfPlaceholder($resolved['admission_no'] ?? ''),
                                 'roll_number'         => $this->nullIfPlaceholder($resolved['roll_no'] ?? ''),
-                                'admission_date'      => $this->parseDate($resolved['admission_date'] ?? null),
+                                'admission_date'      => $resolved['admission_date'] ?? null,
                                 'status'              => $status,
                                 'student_cnic'        => $this->nullIfPlaceholder($resolved['student_cnic'] ?? ''),
                                 'gender'              => $resolved['gender'],
@@ -308,8 +325,11 @@ class StudentImportController extends BaseController
         }
 
         // ── Dates ────────────────────────────────────────────────────────────
-        $out['admission_date'] = $this->parseDate($data['admission_date'] ?? null);
-        $out['date_of_birth']  = $this->parseDate($data['date_of_birth']  ?? null);
+        $rawAdmissionDate      = $data['admission_date'] ?? null;
+        $rawDateOfBirth        = $data['date_of_birth'] ?? null;
+        $out['raw_date_of_birth'] = (!$this->isPlaceholder($rawDateOfBirth)) ? $rawDateOfBirth : null;
+        $out['admission_date'] = $this->parseDate($rawAdmissionDate, false);
+        $out['date_of_birth']  = $this->parseDate($rawDateOfBirth, true);
 
         // ── Booleans ─────────────────────────────────────────────────────────
         $out['is_transfer'] = $this->parseBool($data['is_transfer'] ?? '0') ? '1' : '0';
@@ -369,8 +389,12 @@ class StudentImportController extends BaseController
 
         $validator = Validator::make($data, $rules);
 
+        $messages = [];
+        if (!empty($data['raw_date_of_birth']) && empty($data['date_of_birth'])) {
+            $messages[] = "Date of birth: Invalid date format '{$data['raw_date_of_birth']}'.";
+        }
+
         if ($validator->fails()) {
-            $messages = [];
             foreach ($validator->errors()->toArray() as $field => $errs) {
                 // Show friendly field names (campus instead of campus_id, etc.)
                 $friendly   = match($field) {
@@ -382,40 +406,110 @@ class StudentImportController extends BaseController
                 };
                 $messages[] = ucfirst(str_replace('_', ' ', $friendly)) . ': ' . implode(', ', $errs);
             }
-            return $messages;
         }
 
-        return [];
+        return $messages;
     }
 
     // ── Value Helpers ─────────────────────────────────────────────────────────
 
     /**
      * Parse various date formats:
-     *  - YYYY-MM-DD  (ISO standard)
-     *  - DD-Mon-YY   e.g. 31-Dec-24
-     *  - DD/MM/YYYY
-     *  - D-M-YYYY
+     *  - YYYY-MM-DD / YYYY/MM/DD  (ISO standard)
+     *  - DD-Mon-YY / DD-Mon-YYYY  e.g. 31-Dec-24, 15-Jan-02
+     *  - DD/MM/YYYY or MM/DD/YYYY or DD-MM-YYYY or DD.MM.YYYY
+     *  - Excel numeric serial dates
      */
-    private function parseDate(?string $value): ?string
+    private function parseDate(?string $value, bool $isBirthDate = false): ?string
     {
         if (empty($value) || $this->isPlaceholder($value)) {
             return null;
         }
 
-        // Try strtotime first (handles most formats)
-        $ts = strtotime($value);
-        if ($ts !== false) {
-            return date('Y-m-d', $ts);
+        $value = trim($value);
+
+        // 1. Excel serial date number (e.g. 37271 -> 2002-01-15)
+        if (ctype_digit($value) && (int) $value > 10000 && (int) $value < 80000) {
+            $unixDate = ((int) $value - 25569) * 86400;
+            return gmdate('Y-m-d', $unixDate);
         }
 
-        // Manual: DD-Mon-YY  (e.g. 31-Dec-24)
-        if (preg_match('/^(\d{1,2})[\/\-]([A-Za-z]{3})[\/\-](\d{2,4})$/', $value, $m)) {
-            $year = strlen($m[3]) === 2 ? '20' . $m[3] : $m[3];
-            $ts   = strtotime("{$m[1]}-{$m[2]}-{$year}");
+        // 2. ISO format: YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
+        if (preg_match('/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/', $value, $m)) {
+            $year  = (int) $m[1];
+            $month = (int) $m[2];
+            $day   = (int) $m[3];
+            // If month > 12 and day <= 12, swap them (e.g. YYYY-DD-MM)
+            if ($month > 12 && $day <= 12) {
+                [$month, $day] = [$day, $month];
+            }
+            if (checkdate($month, $day, $year)) {
+                return sprintf('%04d-%02d-%02d', $year, $month, $day);
+            }
+        }
+
+        // 3. DD-Mon-YY or DD-Mon-YYYY or DD Mon YYYY (e.g. 15-Jan-02, 31/Dec/2004, 15 Jan 2003)
+        if (preg_match('/^(\d{1,2})[\/\-\.\s]([A-Za-z]{3,9})[\/\-\.\s](\d{2,4})$/', $value, $m)) {
+            $day   = (int) $m[1];
+            $mon   = $m[2];
+            $yrRaw = $m[3];
+            if (strlen($yrRaw) === 2) {
+                $yrInt = (int) $yrRaw;
+                if ($isBirthDate) {
+                    $maxTwoDigit = (int) date('y') - 3;
+                    $year = $yrInt > $maxTwoDigit ? (1900 + $yrInt) : (2000 + $yrInt);
+                } else {
+                    $year = $yrInt > 50 ? (1900 + $yrInt) : (2000 + $yrInt);
+                }
+            } else {
+                $year = (int) $yrRaw;
+            }
+            $ts = strtotime("{$day} {$mon} {$year}");
             if ($ts !== false) {
                 return date('Y-m-d', $ts);
             }
+        }
+
+        // 4. Numeric DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, or MM/DD/YYYY (with 2- or 4-digit year)
+        if (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/', $value, $m)) {
+            $p1    = (int) $m[1];
+            $p2    = (int) $m[2];
+            $yrRaw = $m[3];
+
+            if (strlen($yrRaw) === 2) {
+                $yrInt = (int) $yrRaw;
+                if ($isBirthDate) {
+                    $maxTwoDigit = (int) date('y') - 3;
+                    $year = $yrInt > $maxTwoDigit ? (1900 + $yrInt) : (2000 + $yrInt);
+                } else {
+                    $year = $yrInt > 50 ? (1900 + $yrInt) : (2000 + $yrInt);
+                }
+            } else {
+                $year = (int) $yrRaw;
+            }
+
+            // Default to DD/MM/YYYY (standard in Pakistan/UK), unless p2 > 12 (which means MM/DD/YYYY)
+            if ($p1 > 12 && $p2 <= 12) {
+                $day   = $p1;
+                $month = $p2;
+            } elseif ($p2 > 12 && $p1 <= 12) {
+                $month = $p1;
+                $day   = $p2;
+            } else {
+                // Both <= 12: treat as DD/MM/YYYY
+                $day   = $p1;
+                $month = $p2;
+            }
+
+            if (checkdate($month, $day, $year)) {
+                return sprintf('%04d-%02d-%02d', $year, $month, $day);
+            }
+        }
+
+        // 5. Fallback to strtotime for any other textual formats (e.g. "Jan 15, 2002")
+        $ts = strtotime($value);
+        if ($ts !== false) {
+            return date('Y-m-d', $ts);
         }
 
         return null;
