@@ -10,6 +10,7 @@ const RecycleBin = () => {
     const [search, setSearch] = useState('');
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
     const [actionLoading, setActionLoading] = useState(false);
+    const [selectedItems, setSelectedItems] = useState([]); // [{ id, module }]
     
     // Comprehensive map of all soft-deletable modules globally supported
     const [modules] = useState([
@@ -55,6 +56,7 @@ const RecycleBin = () => {
                 params: { module, page, search, per_page: perPage }
             });
             setRecords(res.data.data.data);
+            setSelectedItems([]);
             setPagination({
                 current_page: res.data.data.current_page,
                 last_page: res.data.data.last_page,
@@ -68,6 +70,33 @@ const RecycleBin = () => {
         }
     };
 
+    const isItemSelected = (id, mod) => {
+        return selectedItems.some(item => item.id === id && item.module === mod);
+    };
+
+    const toggleSelectItem = (id, mod) => {
+        setSelectedItems(prev => {
+            const exists = prev.some(item => item.id === id && item.module === mod);
+            if (exists) {
+                return prev.filter(item => !(item.id === id && item.module === mod));
+            } else {
+                return [...prev, { id, module: mod }];
+            }
+        });
+    };
+
+    const toggleSelectAll = (e) => {
+        if (e.target.checked) {
+            const currentItems = (records || []).map(r => ({
+                id: r.id,
+                module: r.module_name || module
+            }));
+            setSelectedItems(currentItems);
+        } else {
+            setSelectedItems([]);
+        }
+    };
+
     const handleRestore = async (recordId, recordModule) => {
         if (!window.confirm('Are you sure you want to restore this record?')) return;
         
@@ -78,6 +107,23 @@ const RecycleBin = () => {
         } catch (error) {
             console.error('Restore failed:', error);
             alert(error.response?.data?.message || 'Restore failed.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleBulkRestore = async () => {
+        if (selectedItems.length === 0) return;
+        if (!window.confirm(`Are you sure you want to restore ${selectedItems.length} selected record(s)?`)) return;
+
+        setActionLoading(true);
+        try {
+            const res = await axios.post('/api/recycle-bin/restore', { items: selectedItems });
+            alert(res.data?.message || `${selectedItems.length} record(s) restored successfully.`);
+            fetchRecords(pagination.current_page);
+        } catch (error) {
+            console.error('Bulk restore failed:', error);
+            alert(error.response?.data?.message || 'Bulk restore failed.');
         } finally {
             setActionLoading(false);
         }
@@ -101,15 +147,55 @@ const RecycleBin = () => {
         }
     };
 
+    const handleBulkForceDelete = async () => {
+        if (selectedItems.length === 0) return;
+        const pin = window.prompt(`WARNING: This will permanently delete ${selectedItems.length} selected record(s). Please enter the Security PIN to proceed:`);
+        if (!pin) return;
+
+        setActionLoading(true);
+        try {
+            const res = await axios.delete('/api/recycle-bin/force-delete', {
+                data: { items: selectedItems, pin }
+            });
+            alert(res.data?.message || `${selectedItems.length} record(s) permanently deleted.`);
+            fetchRecords(pagination.current_page);
+        } catch (error) {
+            console.error('Bulk force delete failed:', error);
+            alert(error.response?.data?.message || 'Bulk permanent delete failed. Check your security PIN.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const isAllSelected = records.length > 0 && records.every(r => isItemSelected(r.id, r.module_name || module));
+    const isSomeSelected = selectedItems.length > 0 && !isAllSelected;
+
     const getColumns = () => {
-        return ['ID', 'Reference / Details', 'Deleted At', { name: 'Actions', align: 'right' }];
+        return [
+            {
+                name: (
+                    <input
+                        type="checkbox"
+                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+                        checked={isAllSelected}
+                        ref={el => { if (el) el.indeterminate = isSomeSelected; }}
+                        onChange={toggleSelectAll}
+                    />
+                ),
+                width: '44px'
+            },
+            'ID',
+            'Reference / Details',
+            'Deleted At',
+            { name: 'Actions', align: 'right' }
+        ];
     };
 
     const renderRow = (record) => {
         // Fallback generic mapping for 22 different data formats to keep the table clean
         const possibleKeys = ['name', 'title', 'description', 'reference_number', 'voucher_number'];
         let title = '';
-        const recMod = record.module_name || 'unknown';
+        const recMod = record.module_name || module || 'unknown';
         
         if (recMod === 'students' || recMod === 'users') {
             title = `${record.first_name || ''} ${record.last_name || ''}`.trim() || record.name || '';
@@ -126,9 +212,18 @@ const RecycleBin = () => {
         if (!title) title = `System Record`;
 
         const subTitle = record.email || record.admission_number || record.status || '';
+        const isChecked = isItemSelected(record.id, recMod);
 
         return (
             <>
+                <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                    <input
+                        type="checkbox"
+                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+                        checked={isChecked}
+                        onChange={() => toggleSelectItem(record.id, recMod)}
+                    />
+                </td>
                 <td className="px-6 py-4 text-sm font-medium text-slate-900">{record.id}</td>
                 <td className="px-6 py-4">
                     <div className="font-bold text-slate-900 capitalize">{title}</div>
@@ -168,9 +263,36 @@ const RecycleBin = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">System Recycle Bin</h1>
-                <p className="text-slate-500 mt-1 font-medium italic">Safely recover soft-deleted records across all system modules.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">System Recycle Bin</h1>
+                    <p className="text-slate-500 mt-1 font-medium italic">Safely recover or permanently purge soft-deleted records.</p>
+                </div>
+
+                {selectedItems.length > 0 && (
+                    <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                        <button
+                            onClick={handleBulkRestore}
+                            disabled={actionLoading}
+                            className="px-4 py-2 bg-emerald-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-emerald-700 transition flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Restore Selected ({selectedItems.length})
+                        </button>
+                        <button
+                            onClick={handleBulkForceDelete}
+                            disabled={actionLoading}
+                            className="px-4 py-2 bg-rose-600 text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-rose-700 transition flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Permanent Delete Selected ({selectedItems.length})
+                        </button>
+                    </div>
+                )}
             </div>
 
             <Card className="p-5 bg-slate-50/50 border-slate-200/60 shadow-sm flex-col gap-4">

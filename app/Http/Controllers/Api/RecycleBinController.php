@@ -159,23 +159,45 @@ class RecycleBinController extends BaseController implements HasMiddleware
     }
 
     /**
-     * Restore a specific soft-deleted record.
+     * Restore a specific soft-deleted record or bulk records.
      */
     public function restore(Request $request)
     {
         $request->validate([
-            'module' => 'required|string',
-            'id' => 'required|integer'
+            'module' => 'nullable|string',
+            'id' => 'nullable|integer',
+            'items' => 'nullable|array',
+            'items.*.id' => 'required|integer',
+            'items.*.module' => 'required|string',
         ]);
 
-        $module = $request->input('module');
-        if (!array_key_exists($module, $this->modules)) {
-            return $this->sendError('Invalid module specified.', [], 400);
-        }
-
-        $modelClass = $this->modules[$module];
-
         try {
+            // Bulk restore handling
+            if ($request->has('items') && is_array($request->input('items'))) {
+                $items = $request->input('items');
+                $count = 0;
+                foreach ($items as $item) {
+                    $mName = $item['module'] ?? null;
+                    $mId = $item['id'] ?? null;
+                    if ($mName && $mId && isset($this->modules[$mName])) {
+                        $modelClass = $this->modules[$mName];
+                        $record = $modelClass::onlyTrashed()->find($mId);
+                        if ($record) {
+                            $record->restore();
+                            $count++;
+                        }
+                    }
+                }
+                return $this->sendResponse(['restored_count' => $count], "{$count} record(s) restored successfully.");
+            }
+
+            // Single record restore
+            $module = $request->input('module');
+            if (!$module || !array_key_exists($module, $this->modules)) {
+                return $this->sendError('Invalid module specified.', [], 400);
+            }
+
+            $modelClass = $this->modules[$module];
             $record = $modelClass::onlyTrashed()->findOrFail($request->input('id'));
             $record->restore();
 
@@ -186,28 +208,50 @@ class RecycleBinController extends BaseController implements HasMiddleware
     }
 
     /**
-     * Permanently delete a specific soft-deleted record.
+     * Permanently delete a specific soft-deleted record or bulk records.
      */
     public function forceDelete(Request $request)
     {
         $request->validate([
-            'module' => 'required|string',
-            'id' => 'required|integer',
-            'pin' => 'required|string'
+            'pin' => 'required|string',
+            'module' => 'nullable|string',
+            'id' => 'nullable|integer',
+            'items' => 'nullable|array',
+            'items.*.id' => 'required|integer',
+            'items.*.module' => 'required|string',
         ]);
 
         if ($request->input('pin') !== '42747') {
             return $this->sendError('Invalid Security PIN', ['pin' => 'Incorrect 5-digit PIN entered.'], 422);
         }
 
-        $module = $request->input('module');
-        if (!array_key_exists($module, $this->modules)) {
-            return $this->sendError('Invalid module specified.', [], 400);
-        }
-
-        $modelClass = $this->modules[$module];
-
         try {
+            // Bulk force delete handling
+            if ($request->has('items') && is_array($request->input('items'))) {
+                $items = $request->input('items');
+                $count = 0;
+                foreach ($items as $item) {
+                    $mName = $item['module'] ?? null;
+                    $mId = $item['id'] ?? null;
+                    if ($mName && $mId && isset($this->modules[$mName])) {
+                        $modelClass = $this->modules[$mName];
+                        $record = $modelClass::onlyTrashed()->find($mId);
+                        if ($record) {
+                            $record->forceDelete();
+                            $count++;
+                        }
+                    }
+                }
+                return $this->sendResponse(['deleted_count' => $count], "{$count} record(s) permanently deleted.");
+            }
+
+            // Single record force delete
+            $module = $request->input('module');
+            if (!$module || !array_key_exists($module, $this->modules)) {
+                return $this->sendError('Invalid module specified.', [], 400);
+            }
+
+            $modelClass = $this->modules[$module];
             $record = $modelClass::onlyTrashed()->findOrFail($request->input('id'));
             $record->forceDelete();
 
