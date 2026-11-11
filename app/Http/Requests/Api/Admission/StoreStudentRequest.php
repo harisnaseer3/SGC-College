@@ -79,12 +79,27 @@ class StoreStudentRequest extends FormRequest
             'qualifications.*.marks_obtained' => 'nullable|string',
             'qualifications.*.total_marks' => 'nullable|string',
             'qualifications.*.grade_division' => 'nullable|string',
-            'student_picture'     => 'nullable|image|max:2048',
+            'student_picture'     => 'nullable|image|max:1024',
             'is_enrolled'         => 'nullable|boolean',
             'attachments'         => 'nullable|array',
-            'attachments.*'       => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'attachments.*'       => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:1024',
             'deleted_attachments'   => 'nullable|array',
             'deleted_attachments.*' => 'string',
+        ];
+    }
+
+    /**
+     * Get custom validation error messages.
+     */
+    public function messages(): array
+    {
+        return [
+            'student_picture.uploaded' => 'The student profile photo failed to upload because it exceeds the maximum allowed file size (1 MB).',
+            'student_picture.max'      => 'The student profile photo must not be greater than 1 MB.',
+            'student_picture.image'    => 'The student profile photo must be a valid image file (JPG, PNG, WEBP).',
+            'attachments.*.uploaded'   => 'One or more supporting documents failed to upload because they exceed the maximum allowed file size (1 MB).',
+            'attachments.*.max'        => 'Each supporting document must not be greater than 1 MB.',
+            'attachments.*.mimes'      => 'Supporting documents must be of type: PDF, JPG, JPEG, or PNG.',
         ];
     }
 }

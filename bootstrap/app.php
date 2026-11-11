@@ -54,6 +54,14 @@ return Application::configure(basePath: dirname(__DIR__))
                     ], 403);
                 }
 
+                // Explicit handling for oversized file uploads (413 PostTooLargeException)
+                if ($e instanceof \Illuminate\Http\Exceptions\PostTooLargeException) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The uploaded file or document is too large. Maximum allowed file size is 1 MB per file.',
+                    ], 413);
+                }
+
                 return response()->json([
                     'success' => false,
                     'message' => $status === 401 ? 'Unauthenticated or invalid token.' : ($e->getMessage() ?: 'Server Error'),

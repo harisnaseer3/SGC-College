@@ -214,9 +214,22 @@ const NewAdmissionForm = () => {
         setFormData({ ...formData, qualifications: newQuals });
     };
 
+    const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1 MB
+
+    const formatFileSize = (bytes) => {
+        if (!bytes) return '0 KB';
+        if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+        return `${(bytes / 1024).toFixed(0)} KB`;
+    };
+
     const handlePictureChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            if (file.size > MAX_FILE_SIZE_BYTES) {
+                showError(`Profile photo "${file.name}" (${formatFileSize(file.size)}) exceeds the 1 MB maximum size limit.`);
+                e.target.value = null;
+                return;
+            }
             setPictureFile(file);
             setPicturePreview(URL.createObjectURL(file));
         }
@@ -224,6 +237,18 @@ const NewAdmissionForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (pictureFile && pictureFile.size > MAX_FILE_SIZE_BYTES) {
+            showError(`Profile photo "${pictureFile.name}" (${formatFileSize(pictureFile.size)}) exceeds the 1 MB maximum size limit.`);
+            return;
+        }
+
+        const oversizedAttachment = attachmentFiles.find(f => f.size > MAX_FILE_SIZE_BYTES);
+        if (oversizedAttachment) {
+            showError(`Document "${oversizedAttachment.name}" (${formatFileSize(oversizedAttachment.size)}) exceeds the 1 MB maximum size limit. Please remove it or upload a smaller file.`);
+            return;
+        }
+
         setSubmitting(true);
         try {
             const payload = new FormData();
@@ -276,12 +301,20 @@ const NewAdmissionForm = () => {
             showSuccess(isEdit ? 'Student updated successfully!' : 'Student admitted successfully!');
             navigate('/admissions');
         } catch (error) {
+            const status = error.response?.status;
             const errors = error.response?.data?.errors;
             if (errors) {
                 const msgs = Object.values(errors).flat().join(' | ');
                 showError(msgs);
+            } else if (status === 413) {
+                showError('Uploaded file size is too large! Maximum allowed file size is 1 MB per document.');
             } else {
-                showError(error.response?.data?.message || 'Error processing admission');
+                const serverMsg = error.response?.data?.message;
+                if (serverMsg && serverMsg !== 'Server Error') {
+                    showError(serverMsg);
+                } else {
+                    showError('Failed to process admission. Please ensure all uploaded documents and photos are under 1 MB.');
+                }
             }
             console.error('Error submitting form:', error);
         } finally {
@@ -636,7 +669,7 @@ const NewAdmissionForm = () => {
                             </div>
                             <div>
                                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Student Profile Photo</h4>
-                                <p className="text-[11px] text-slate-400 mt-0.5">JPG, PNG or WEBP (Max 2MB)</p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">JPG, PNG or WEBP (Max 1MB)</p>
                             </div>
                             <label className="cursor-pointer px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition-all shadow-sm">
                                 Choose Image
@@ -650,14 +683,31 @@ const NewAdmissionForm = () => {
                             <div className="border-2 border-dashed border-slate-200 hover:border-indigo-300 rounded-2xl p-6 bg-slate-50/50 transition-all text-center">
                                 <svg className="w-8 h-8 text-indigo-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                                 <p className="text-xs font-bold text-slate-700">Click to select attachment files</p>
-                                <p className="text-[11px] text-slate-400 mt-0.5">PDF, JPG, JPEG, PNG supported</p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">PDF, JPG, JPEG, PNG supported (Max 1MB per file)</p>
                                 <input 
                                     type="file" 
                                     multiple 
                                     accept=".pdf,.jpg,.jpeg,.png" 
                                     onChange={(e) => {
                                         const newFiles = Array.from(e.target.files);
-                                        setAttachmentFiles(prev => [...prev, ...newFiles]);
+                                        const validFiles = [];
+                                        const oversizedFiles = [];
+
+                                        newFiles.forEach(file => {
+                                            if (file.size > MAX_FILE_SIZE_BYTES) {
+                                                oversizedFiles.push(`${file.name} (${formatFileSize(file.size)})`);
+                                            } else {
+                                                validFiles.push(file);
+                                            }
+                                        });
+
+                                        if (oversizedFiles.length > 0) {
+                                            showError(`File size limit exceeded (Max 1 MB): ${oversizedFiles.join(', ')}`);
+                                        }
+
+                                        if (validFiles.length > 0) {
+                                            setAttachmentFiles(prev => [...prev, ...validFiles]);
+                                        }
                                         e.target.value = null;
                                     }} 
                                     className="mt-3 block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer" 
