@@ -278,7 +278,7 @@ const VoucherList = () => {
                             onChange={(e) => setFilters({ ...filters, year: e.target.value })}
                         >
                             <option value="">All Years</option>
-                            {[new Date().getFullYear(), new Date().getFullYear() - 1].map(y => (
+                            {[new Date().getFullYear() + 1, new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map(y => (
                                 <option key={y} value={y}>{y}</option>
                             ))}
                         </select>

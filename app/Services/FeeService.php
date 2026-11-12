@@ -253,7 +253,13 @@ class FeeService
 
         for ($s = 1; $s <= $currentSem; $s++) {
             [$start, $end] = $this->getStudentSemesterRange($student, $s);
-            $dueDate = $start->copy()->day(20);
+            // If the semester starts in the future (e.g. Spring 2027 student admitted in Oct/Nov 2026),
+            // set the initial fee due date to the current month's 20th so vouchers can be generated and paid immediately.
+            if ($start->gt($currentDate)) {
+                $dueDate = $currentDate->day <= 20 ? $currentDate->copy()->day(20) : $currentDate->copy();
+            } else {
+                $dueDate = $start->copy()->day(20);
+            }
 
             $itemsToApply = [];
             foreach ($structures as $structure) {
@@ -1003,9 +1009,9 @@ class FeeService
             return $yearNumber;
         }
 
-        // Standardize the start month to the calendar semester (Jan or July) of the admission date
-        $startMonth = $admissionDate->month >= 7 ? 7 : 1;
-        $standardizedAdmission = $admissionDate->copy()->month($startMonth)->startOfMonth();
+        // Standardize the start month and year using the student's academic batch & intake session when available,
+        // so early admissions (e.g. admitted in Oct/Nov 2026 for a Spring 2027 batch) still start Semester 1 in Spring 2027.
+        $standardizedAdmission = $this->getStandardizedSemesterStartDate($student, $admissionDate);
 
         if ($targetDate->lt($standardizedAdmission)) {
             return 1;
@@ -1047,19 +1053,60 @@ class FeeService
         }
 
         if ($structureType === 'annual') {
-            $start = $admissionDate->copy()->addYears($semesterNumber - 1)->startOfMonth();
+            $batchStartYear = null;
+            if ($student->academic_batch_id) {
+                $batch = $student->relationLoaded('academicBatch')
+                    ? $student->academicBatch
+                    : \App\Models\AcademicBatch::withoutGlobalScopes()->find($student->academic_batch_id);
+                if ($batch && preg_match('/\b(19\d\d|20\d\d)\b/', $batch->name, $m)) {
+                    $batchStartYear = (int) $m[1];
+                }
+            }
+            $baseStart = $batchStartYear
+                ? Carbon::createFromDate($batchStartYear, $admissionDate->month, 1)->startOfMonth()
+                : $admissionDate;
+            $start = $baseStart->copy()->addYears($semesterNumber - 1)->startOfMonth();
             $end = $start->copy()->addYear()->subDay()->endOfMonth();
             return [$start, $end];
         }
 
-        // Standardize the start month to the calendar semester (Jan or July) of the admission date
-        $startMonth = $admissionDate->month >= 7 ? 7 : 1;
-        $standardizedAdmission = $admissionDate->copy()->month($startMonth)->startOfMonth();
+        $standardizedAdmission = $this->getStandardizedSemesterStartDate($student, $admissionDate);
 
         $semStart = $standardizedAdmission->copy()->addMonths(($semesterNumber - 1) * 6)->startOfMonth();
         $semEnd = $semStart->copy()->addMonths(6)->subDay()->endOfMonth();
 
         return [$semStart, $semEnd];
+    }
+
+    /**
+     * Determine the standardized Semester 1 start date for a student, prioritizing Academic Batch year and Intake Session.
+     */
+    protected function getStandardizedSemesterStartDate(Student $student, Carbon $admissionDate): Carbon
+    {
+        $batch = null;
+        if ($student->academic_batch_id) {
+            $batch = $student->relationLoaded('academicBatch')
+                ? $student->academicBatch
+                : \App\Models\AcademicBatch::withoutGlobalScopes()->find($student->academic_batch_id);
+        }
+
+        $startYear = $admissionDate->year;
+        if ($batch && preg_match('/\b(19\d\d|20\d\d)\b/', $batch->name, $m)) {
+            $startYear = (int) $m[1];
+        }
+
+        $intakeLower = strtolower(trim($student->intake_session ?? ''));
+        $batchNameLower = strtolower(trim($batch->name ?? ''));
+
+        if ($intakeLower === 'spring' || str_contains($batchNameLower, 'spring')) {
+            $startMonth = 1;
+        } elseif ($intakeLower === 'fall' || str_contains($batchNameLower, 'fall')) {
+            $startMonth = 7;
+        } else {
+            $startMonth = $admissionDate->month >= 7 ? 7 : 1;
+        }
+
+        return Carbon::createFromDate($startYear, $startMonth, 1)->startOfMonth();
     }
 
     /**

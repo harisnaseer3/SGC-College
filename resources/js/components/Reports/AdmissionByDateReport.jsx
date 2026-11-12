@@ -17,7 +17,7 @@ const AdmissionByDateReport = () => {
     const [orgDetails, setOrgDetails] = useState(null);
     const [filters, setFilters] = useState({
         start_date: '2025-01-01', // Wide default starting range
-        end_date: new Date().toLocaleDateString('sv-SE')  // YYYY-MM-DD local
+        end_date: `${new Date().getFullYear() + 1}-12-31` // Include upcoming batch admissions (e.g. 2027)
     });
 
     const fetchReport = async () => {
@@ -235,7 +235,7 @@ const AdmissionByDateReport = () => {
                             type="button"
                             onClick={() => setFilters({
                                 start_date: '2025-01-01',
-                                end_date: new Date().toLocaleDateString('sv-SE')
+                                end_date: `${new Date().getFullYear() + 1}-12-31`
                             })}
                             className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all border border-slate-200 shadow-sm"
                         >

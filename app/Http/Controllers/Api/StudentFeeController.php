@@ -71,20 +71,6 @@ class StudentFeeController extends BaseController implements HasMiddleware
                     }
                 });
             }
-            if ($request->filled('month') && $request->filled('year')) {
-                // Fall Semester (7) covers July-Dec (end of Dec), Spring Semester (1) covers Jan-Jun (end of Jun)
-                $endMonth = (int)$request->month >= 7 ? 12 : 6;
-                $date = \Illuminate\Support\Carbon::createFromDate($request->year, $endMonth, 1)->endOfMonth();
-                $query->where(function ($q) use ($date) {
-                    // Always include rolling / short course admissions (no academic batch) regardless of semester filter
-                    $q->whereNull('academic_batch_id')
-                      ->orWhere('admission_date', '<=', $date->toDateString())
-                      ->orWhereHas('program', function ($pq) {
-                          $pq->where('requires_batch', false)
-                             ->orWhereIn('structure_type', ['monthly', 'weekly']);
-                      });
-                });
-            }
 
             if ($request->filled('search')) {
                 $search = trim($request->search);
