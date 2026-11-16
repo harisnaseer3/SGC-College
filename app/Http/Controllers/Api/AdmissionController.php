@@ -39,7 +39,7 @@ class AdmissionController extends BaseController implements HasMiddleware
     public function index(Request $request)
     {
         try {
-            $query = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch']);
+            $query = Student::with(['campus', 'academicClass', 'section', 'program', 'programSemester', 'academicBatch', 'statusLogs']);
 
             if ($request->filled('search')) {
                 $search = trim($request->search);

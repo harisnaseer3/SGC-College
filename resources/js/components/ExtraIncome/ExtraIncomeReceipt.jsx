@@ -172,8 +172,13 @@ const ExtraIncomeReceipt = () => {
                     </div>
                 </div>
 
-                <div className="mt-6 text-center text-[10px] text-slate-400 print:mt-6">
-                    <p>This is an official computer-generated receipt issued by {data.organization?.name || selectedOrganization?.name || 'SGC Education Management System'}.</p>
+                <div className="mt-6 pt-3 border-t border-slate-100 text-center space-y-1 print:mt-6">
+                    <p className="text-[11px] font-bold text-slate-700">
+                        Note: All fees and charges paid against this receipt are strictly non-refundable and non-transferable.
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                        This is an official computer-generated receipt issued by {data.organization?.name || selectedOrganization?.name || 'SGC Education Management System'}.
+                    </p>
                 </div>
             </div>
 

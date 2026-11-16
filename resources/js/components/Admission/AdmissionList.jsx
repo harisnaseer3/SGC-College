@@ -235,6 +235,7 @@ const AdmissionList = () => {
             'Intake Session',
             'Admission Date',
             'Status',
+            'Struck Off Date',
             'Guardian Name',
             'Guardian Phone',
             'Guardian CNIC',
@@ -269,6 +270,7 @@ const AdmissionList = () => {
             (!s.academic_batch_id || s.program?.requires_batch === false || s.program?.structure_type === 'monthly') ? '' : (s.intake_session ?? ''),
             s.admission_date ?? '',
             s.status ?? '',
+            s.struck_off_date ? String(s.struck_off_date).split('T')[0] : '',
             s.guardian_name ?? '',
             s.guardian_phone ?? '',
             s.guardian_cnic ?? '',
@@ -509,7 +511,14 @@ const AdmissionList = () => {
                             </td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-600">{student.campus?.name}</td>
                             <td className="px-6 py-4">
-                                <StatusBadge status={student.status} />
+                                <div className="flex flex-col items-start gap-1">
+                                    <StatusBadge status={student.status} />
+                                    {(student.status?.toLowerCase() === 'struck off' || student.status?.toLowerCase() === 'struck_off') && (student.struck_off_date || student.updated_at) && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[10px] font-bold text-rose-700 whitespace-nowrap">
+                                            Date: {new Date(student.struck_off_date || student.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    )}
+                                </div>
                             </td>
                             <td className="px-6 py-4 text-center">
                                 <div className="flex items-center justify-end gap-1">
@@ -675,8 +684,13 @@ const AdmissionList = () => {
                                 <div>
                                     <h2 className="text-xl font-bold">{selected.first_name} {selected.last_name}</h2>
                                     <p className="text-indigo-200 text-sm mt-0.5">{selected.email || 'No email'}</p>
-                                    <div className="mt-2">
+                                    <div className="mt-2 flex items-center gap-2 flex-wrap">
                                         <StatusBadge status={selected.status} />
+                                        {(selected.status?.toLowerCase() === 'struck off' || selected.status?.toLowerCase() === 'struck_off') && (selected.struck_off_date || selected.updated_at) && (
+                                            <span className="px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-300/40 text-white text-xs font-semibold">
+                                                Struck Off: {new Date(selected.struck_off_date || selected.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -698,6 +712,9 @@ const AdmissionList = () => {
                                     {selected.academic_batch_id && selected.program?.requires_batch !== false && selected.program?.structure_type !== 'monthly' && selected.intake_session && <DetailRow label="Intake" value={selected.intake_session} />}
                                     <DetailRow label="Campus" value={selected.campus?.name} />
                                     <DetailRow label="Admission Date" value={selected.admission_date} />
+                                    {(selected.status?.toLowerCase() === 'struck off' || selected.status?.toLowerCase() === 'struck_off') && (selected.struck_off_date || selected.updated_at) && (
+                                        <DetailRow label="Struck Off Date" value={new Date(selected.struck_off_date || selected.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} />
+                                    )}
                                 </div>
                             </div>
 

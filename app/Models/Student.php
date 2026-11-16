@@ -52,6 +52,10 @@ class Student extends Model
         'qualifications' => 'array',
     ];
 
+    protected $appends = [
+        'struck_off_date',
+    ];
+
     protected static function boot()
     {
         parent::boot();
@@ -264,7 +268,22 @@ class Student extends Model
             return null;
         }
 
-        $log = $this->statusLogs()->where('status', 'Struck Off')->orderBy('action_date', 'desc')->first();
-        return $log ? $log->action_date : null;
+        if ($this->relationLoaded('statusLogs')) {
+            $log = $this->statusLogs
+                ->filter(fn($l) => strtolower($l->status) === 'struck off' || strtolower($l->status) === 'struck_off')
+                ->sortByDesc('action_date')
+                ->first();
+            if ($log && $log->action_date) {
+                return $log->action_date;
+            }
+        } else {
+            $log = $this->statusLogs()->where('status', 'Struck Off')->orderBy('action_date', 'desc')->first();
+            if ($log && $log->action_date) {
+                return $log->action_date;
+            }
+        }
+
+        // Fallback for students marked Struck Off directly on Edit/Import without a status log entry
+        return $this->updated_at ?? $this->admission_date ?? $this->created_at;
     }
 }

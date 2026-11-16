@@ -100,7 +100,7 @@ class StudentStatusController extends BaseController implements HasMiddleware
             DB::commit();
 
             return $this->sendResponse(
-                $student->load(['statusLogs', 'programSemester', 'campus']), 
+                $student->load(['statusLogs', 'program', 'programSemester', 'academicBatch', 'campus']), 
                 "Student successfully " . ($validated['status'] === 'Promoted' ? 'Promoted to ' . $student->programSemester->name : 'Updated to ' . $validated['status'])
             );
 
