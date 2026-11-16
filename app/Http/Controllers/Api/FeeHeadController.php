@@ -35,10 +35,11 @@ class FeeHeadController extends BaseController implements HasMiddleware
     public function store(\App\Http\Requests\Api\Fees\StoreFeeHeadRequest $request)
     {
         try {
+            $this->ensureFrequencyColumnSupportsAnnual();
             $head = FeeHead::create($request->validated());
             return $this->sendResponse($head, 'Fee head created successfully.');
         } catch (\Exception $e) {
-            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
+            return $this->sendError($e->getMessage() ?: 'Internal Server Error.', ['error' => $e->getMessage()], 500);
         }
     }
 
@@ -56,10 +57,34 @@ class FeeHeadController extends BaseController implements HasMiddleware
     public function update(\App\Http\Requests\Api\Fees\UpdateFeeHeadRequest $request, FeeHead $feeHead)
     {
         try {
+            $this->ensureFrequencyColumnSupportsAnnual();
             $feeHead->update($request->validated());
             return $this->sendResponse($feeHead, 'Fee head updated successfully.');
         } catch (\Exception $e) {
-            return $this->sendError('Internal Server Error.', ['error' => $e->getMessage()], 500);
+            return $this->sendError($e->getMessage() ?: 'Internal Server Error.', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Auto-upgrade fee_heads.frequency from legacy ENUM('one_time','monthly','semester') to VARCHAR(30)
+     * and ensure campus_id is nullable if not yet migrated on live.
+     */
+    protected function ensureFrequencyColumnSupportsAnnual(): void
+    {
+        try {
+            if (\Illuminate\Support\Facades\DB::connection()->getDriverName() === 'mysql') {
+                $freqCol = \Illuminate\Support\Facades\DB::selectOne("SHOW COLUMNS FROM `fee_heads` LIKE 'frequency'");
+                if ($freqCol && isset($freqCol->Type) && str_starts_with(strtolower($freqCol->Type), 'enum')) {
+                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE `fee_heads` MODIFY `frequency` VARCHAR(30) NOT NULL DEFAULT 'monthly'");
+                }
+
+                $campusCol = \Illuminate\Support\Facades\DB::selectOne("SHOW COLUMNS FROM `fee_heads` LIKE 'campus_id'");
+                if ($campusCol && isset($campusCol->Null) && strtoupper($campusCol->Null) === 'NO') {
+                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE `fee_heads` MODIFY `campus_id` BIGINT UNSIGNED NULL");
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore schema check errors if permissions disallow DDL
         }
     }
 
