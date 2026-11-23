@@ -495,9 +495,10 @@ const StudentFeeSummaryReport = () => {
                                                                         <td className="py-1.5 text-center">
                                                                             <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
                                                                                 fee.status === 'paid' ? 'bg-fuchsia-50 text-fuchsia-700' :
-                                                                                fee.status === 'partial' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
+                                                                                fee.status === 'partial' ? 'bg-amber-50 text-amber-700' :
+                                                                                fee.status === 'carried_forward' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-rose-50 text-rose-700'
                                                                             }`}>
-                                                                                {fee.status}
+                                                                                {fee.status === 'carried_forward' ? 'carried fwd' : fee.status}
                                                                             </span>
                                                                         </td>
                                                                     </tr>

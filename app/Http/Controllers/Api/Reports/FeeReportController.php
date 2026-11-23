@@ -291,14 +291,44 @@ class FeeReportController extends BaseController implements HasMiddleware
             }
 
             $students = $query->get()->map(function($student) {
-                // Exclude carried_forward fees to prevent double-counting with consolidated Arrears
-                $fees = $student->studentFees->filter(fn($f) => $f->status !== 'carried_forward');
+                $allFees = $student->studentFees;
 
-                // Total Fee is Net Payable = (Base Amount + Fine) - Discount
-                $totalFee = $fees->sum(fn($f) => ($f->amount + $f->fine_amount) - $f->discount_amount);
-                $discountFee = $fees->sum('discount_amount');
-                $paidFee = $fees->sum('paid_amount');
-                $remainingFee = $fees->sum('balance_amount');
+                // Handle struck-off students: exclude unpaid fees on or after struck-off date
+                if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
+                    $struckOffLog = \App\Models\StudentStatusLog::where('student_id', $student->id)
+                        ->where('status', 'Struck Off')
+                        ->orderBy('action_date', 'desc')
+                        ->first();
+                    if ($struckOffLog) {
+                        $struckOffDate = Carbon::parse($struckOffLog->action_date)->startOfDay();
+                        $allFees = $allFees->filter(function($fee) use ($struckOffDate) {
+                            if (in_array($fee->status, ['paid', 'partial', 'carried_forward'])) {
+                                return true;
+                            }
+                            $feeDueDate = Carbon::parse($fee->due_date)->startOfDay();
+                            return $feeDueDate->lt($struckOffDate);
+                        })->values();
+                    }
+                }
+
+                // Non-arrears fees represent the original fee heads billed to the student
+                $nonArrearsFees = $allFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears');
+
+                if ($nonArrearsFees->isNotEmpty()) {
+                    $discountFee = (float)$nonArrearsFees->sum('discount_amount');
+                    $grossAmount = (float)$nonArrearsFees->sum('amount');
+                    $fineAmount  = (float)$nonArrearsFees->sum('fine_amount');
+                    $totalFee    = ($grossAmount + $fineAmount) - $discountFee;
+                } else {
+                    $activeFees  = $allFees->where('status', '!=', 'carried_forward');
+                    $discountFee = (float)$activeFees->sum('discount_amount');
+                    $grossAmount = (float)$activeFees->sum('amount');
+                    $fineAmount  = (float)$activeFees->sum('fine_amount');
+                    $totalFee    = ($grossAmount + $fineAmount) - $discountFee;
+                }
+
+                $paidFee      = (float)$allFees->sum('paid_amount');
+                $remainingFee = (float)$allFees->where('status', '!=', 'carried_forward')->sum('balance_amount');
 
                 $status = 'unpaid';
                 if ($totalFee > 0 && $remainingFee == 0) {
@@ -326,9 +356,9 @@ class FeeReportController extends BaseController implements HasMiddleware
                     'paid_fee' => (float)$paidFee,
                     'remaining_fee' => (float)$remainingFee,
                     'status' => $status,
-                    'fees' => $fees->map(fn($f) => [
+                    'fees' => $allFees->sortBy('due_date')->map(fn($f) => [
                         'fee_head' => $f->feeHead->name ?? 'N/A',
-                        'due_date' => $f->due_date ? $f->due_date->format('d M Y') : 'N/A',
+                        'due_date' => $f->due_date ? Carbon::parse($f->due_date)->format('d M Y') : 'N/A',
                         'amount' => (float)(($f->amount + $f->fine_amount) - $f->discount_amount),
                         'discount_amount' => (float)$f->discount_amount,
                         'paid_amount' => (float)$f->paid_amount,
