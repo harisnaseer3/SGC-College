@@ -396,19 +396,19 @@ const StudentLedgerDetail = () => {
                 </Card>
                 <Card className="p-6 bg-slate-50 border-slate-100">
                     <div className="text-xs font-bold text-slate-500 uppercase">Total Payable</div>
-                    <div className="text-2xl font-bold text-slate-900">Rs. {Number(ledger.summary.total_payable).toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-slate-900">Rs. {Number(ledger.summary?.total_payable || 0).toLocaleString()}</div>
                 </Card>
                 <Card className="p-6 bg-amber-50 border-amber-100">
                     <div className="text-xs font-bold text-amber-500 uppercase">Total Discounts</div>
-                    <div className="text-2xl font-bold text-amber-700">Rs. {Number(ledger.summary.total_discounts).toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-amber-700">Rs. {Number(ledger.summary?.total_discounts || 0).toLocaleString()}</div>
                 </Card>
                 <Card className="p-6 bg-fuchsia-50 border-fuchsia-100">
                     <div className="text-xs font-bold text-fuchsia-500 uppercase">Total Paid</div>
-                    <div className="text-2xl font-bold text-fuchsia-700">Rs. {Number(ledger.summary.total_paid).toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-fuchsia-700">Rs. {Number(ledger.summary?.total_paid || 0).toLocaleString()}</div>
                 </Card>
                 <Card className="p-6 bg-rose-50 border-rose-100">
                     <div className="text-xs font-bold text-rose-500 uppercase">Net Balance</div>
-                    <div className="text-2xl font-bold text-rose-700">Rs. {Number(ledger.summary.total_balance).toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-rose-700">Rs. {Number(ledger.summary?.total_balance || 0).toLocaleString()}</div>
                 </Card>
             </div>
 

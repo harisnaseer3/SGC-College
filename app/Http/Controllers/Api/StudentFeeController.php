@@ -99,13 +99,21 @@ class StudentFeeController extends BaseController implements HasMiddleware
             }
 
             $students = $query->withSum(['studentFees as total_amount' => function($q) {
-                    $q->where('status', '!=', 'carried_forward');
+                    $q->where('status', '!=', 'carried_forward')
+                      ->where(function($sub) {
+                          $sub->whereNotNull('voucher_number')
+                              ->orWhere('paid_amount', '>', 0);
+                      });
                 }], 'amount')
                 ->withSum(['studentFees as total_paid' => function($q) {
                     $q->where('status', '!=', 'carried_forward');
                 }], 'paid_amount')
                 ->withSum(['studentFees as total_balance' => function($q) {
-                    $q->where('status', '!=', 'carried_forward');
+                    $q->where('status', '!=', 'carried_forward')
+                      ->where(function($sub) {
+                          $sub->whereNotNull('voucher_number')
+                              ->orWhere('paid_amount', '>', 0);
+                      });
                 }], 'balance_amount')
                 ->orderBy('id', 'desc')
                 ->paginate(request('per_page', 10));
@@ -296,12 +304,17 @@ class StudentFeeController extends BaseController implements HasMiddleware
             $unpaidFees = $allFees->whereIn('status', ['unpaid', 'partial', 'carried_forward'])->values();
             $paidFees   = $allFees->where('status', 'paid')->values();
 
+            // Only include fees that have an issued voucher (or have payments) in the ledger summary cards
+            $voucherFees = $allFees->filter(function($f) {
+                return !empty($f->voucher_number) || (float)$f->paid_amount > 0;
+            });
+
             $summary = [
-                'total_payable'   => $allFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears')->sum('amount'),
-                'total_fines'     => $allFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears')->sum('fine_amount'),
-                'total_discounts' => $allFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears')->sum('discount_amount'),
-                'total_paid'      => $allFees->sum('paid_amount'),
-                'total_balance'   => $allFees->where('status', '!=', 'carried_forward')->sum('balance_amount'),
+                'total_payable'   => $voucherFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears')->sum('amount'),
+                'total_fines'     => $voucherFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears')->sum('fine_amount'),
+                'total_discounts' => $voucherFees->filter(fn($f) => strtolower($f->feeHead->name ?? '') !== 'arrears')->sum('discount_amount'),
+                'total_paid'      => $voucherFees->sum('paid_amount'),
+                'total_balance'   => $voucherFees->where('status', '!=', 'carried_forward')->sum('balance_amount'),
             ];
 
             $payments = \App\Models\FeePayment::where('student_id', $studentId)

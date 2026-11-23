@@ -291,7 +291,10 @@ class FeeReportController extends BaseController implements HasMiddleware
             }
 
             $students = $query->get()->map(function($student) {
-                $allFees = $student->studentFees;
+                // Only consider fees that belong to a generated voucher (or have payments)
+                $allFees = $student->studentFees->filter(function($fee) {
+                    return !empty($fee->voucher_number) || (float)$fee->paid_amount > 0;
+                })->values();
 
                 // Handle struck-off students: exclude unpaid fees on or after struck-off date
                 if (strtolower($student->status) === 'struck off' || strtolower($student->status) === 'struck_off') {
