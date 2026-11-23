@@ -25,6 +25,18 @@ trait LogsActivity
         static::deleted(function (Model $model) {
             static::logActivity('DELETED', $model);
         });
+
+        if (method_exists(static::class, 'forceDeleted')) {
+            static::forceDeleted(function (Model $model) {
+                static::logActivity('PERMANENTLY_DELETED', $model);
+            });
+        }
+
+        if (method_exists(static::class, 'restored')) {
+            static::restored(function (Model $model) {
+                static::logActivity('RESTORED', $model);
+            });
+        }
     }
 
     /**

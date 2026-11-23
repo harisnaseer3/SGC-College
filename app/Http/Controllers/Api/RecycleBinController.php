@@ -7,6 +7,7 @@ use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use App\Services\ActivityLogger;
 
 class RecycleBinController extends BaseController implements HasMiddleware
 {
@@ -221,8 +222,25 @@ class RecycleBinController extends BaseController implements HasMiddleware
             'items.*.module' => 'required|string',
         ]);
 
-        if ($request->input('pin') !== '42747') {
-            return $this->sendError('Invalid Security PIN', ['pin' => 'Incorrect 5-digit PIN entered.'], 422);
+        $configuredPin = env('RECYCLE_BIN_PIN');
+        if (empty($configuredPin)) {
+            $configuredPin = '42747'; // Default fallback if not set in .env
+        }
+
+        if ((string) $request->input('pin') !== (string) $configuredPin) {
+            ActivityLogger::log(
+                'SECURITY_ALERT',
+                'RecycleBin',
+                'Failed permanent delete attempt due to invalid Security PIN',
+                ['ip' => $request->ip(), 'attempted_module' => $request->input('module')]
+            );
+            return $this->sendError('Invalid Security PIN', ['pin' => 'Incorrect Security PIN entered.'], 422);
+        }
+
+        // Extra safeguard: Only super admin or user with manage_recycle_bin permission
+        $user = $request->user();
+        if ($user && method_exists($user, 'hasRole') && !$user->hasRole('super_admin') && !$user->can('manage_recycle_bin')) {
+            return $this->sendError('Unauthorized', ['error' => 'Only Super Administrators can permanently delete records.'], 403);
         }
 
         try {
@@ -242,6 +260,12 @@ class RecycleBinController extends BaseController implements HasMiddleware
                         }
                     }
                 }
+                ActivityLogger::log(
+                    'PERMANENT_DELETE',
+                    'RecycleBin',
+                    "Bulk permanently deleted {$count} record(s)",
+                    ['items' => $items, 'deleted_count' => $count]
+                );
                 return $this->sendResponse(['deleted_count' => $count], "{$count} record(s) permanently deleted.");
             }
 
@@ -253,7 +277,15 @@ class RecycleBinController extends BaseController implements HasMiddleware
 
             $modelClass = $this->modules[$module];
             $record = $modelClass::onlyTrashed()->findOrFail($request->input('id'));
+            $attributes = method_exists($record, 'getAttributes') ? $record->getAttributes() : null;
             $record->forceDelete();
+
+            ActivityLogger::log(
+                'PERMANENT_DELETE',
+                'RecycleBin',
+                "Permanently deleted record from {$module} (ID: {$request->input('id')})",
+                ['module' => $module, 'id' => $request->input('id'), 'snapshot' => $attributes]
+            );
 
             return $this->sendResponse([], 'Record permanently deleted.');
         } catch (\Exception $e) {
