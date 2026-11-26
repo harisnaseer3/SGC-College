@@ -115,6 +115,14 @@ class StudentFeeController extends BaseController implements HasMiddleware
                               ->orWhere('paid_amount', '>', 0);
                       });
                 }], 'balance_amount')
+                ->withCount(['studentFees as total_fees_count' => function($q) {
+                    $q->where('status', '!=', 'carried_forward');
+                }])
+                ->withCount(['studentFees as unvouchered_fees_count' => function($q) {
+                    $q->where('status', '!=', 'carried_forward')
+                      ->whereNull('voucher_number')
+                      ->where('paid_amount', '<=', 0);
+                }])
                 ->orderBy('id', 'desc')
                 ->paginate(request('per_page', 10));
 
@@ -122,11 +130,15 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 $totalAmount = $student->total_amount ?? 0;
                 $totalPaid = $student->total_paid ?? 0;
                 $totalBalance = $student->total_balance ?? 0;
+                $totalFeesCount = $student->total_fees_count ?? 0;
+                $unvoucheredCount = $student->unvouchered_fees_count ?? 0;
 
                 // Determine aggregated status
                 $status = 'unpaid';
-                if ($totalAmount == 0) {
+                if ($totalFeesCount == 0) {
                     $status = 'no fees';
+                } elseif ($totalAmount == 0 && $unvoucheredCount > 0) {
+                    $status = 'voucher pending';
                 } elseif ($totalBalance <= 0) {
                     $status = 'paid';
                 } elseif ($totalPaid > 0) {
@@ -474,6 +486,24 @@ class StudentFeeController extends BaseController implements HasMiddleware
             if ($count === 0) {
                 $alreadyHasFees = \App\Models\StudentFee::where('student_id', $student->id)->exists();
                 if ($alreadyHasFees) {
+                    // Check if the student has unvouchered fees awaiting voucher generation
+                    $unvoucheredMinSem = \App\Models\StudentFee::where('student_id', $student->id)
+                        ->whereIn('status', ['unpaid', 'partial'])
+                        ->whereNull('voucher_number')
+                        ->min('semester_number');
+
+                    if ($unvoucheredMinSem !== null) {
+                        $voucherReq = new \Illuminate\Http\Request([
+                            'student_id' => $student->id,
+                            'semester_number' => $unvoucheredMinSem,
+                        ]);
+                        $voucherRes = $this->generateVoucher($voucherReq);
+                        $resData = $voucherRes->getData(true);
+                        if (!empty($resData['success'])) {
+                            return $this->sendResponse($resData['data'] ?? [], "Fees were already assigned. Initial voucher generated successfully.");
+                        }
+                    }
+
                     return $this->sendError("Fees for all applicable semesters have already been assigned to this student.", [], 400);
                 }
 
@@ -481,7 +511,21 @@ class StudentFeeController extends BaseController implements HasMiddleware
                 return $this->sendError("No matching fee structure found for this student. ({$details})", [], 404);
             }
 
-            return $this->sendResponse(['count' => $count], "Fees assigned successfully. $count records created.");
+            // If initial fees were just assigned, also generate the voucher for the first semester so it is ready
+            $minSem = \App\Models\StudentFee::where('student_id', $student->id)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->whereNull('voucher_number')
+                ->min('semester_number');
+
+            if ($minSem !== null) {
+                $voucherReq = new \Illuminate\Http\Request([
+                    'student_id' => $student->id,
+                    'semester_number' => $minSem,
+                ]);
+                $this->generateVoucher($voucherReq);
+            }
+
+            return $this->sendResponse(['count' => $count], "Fees assigned and voucher generated successfully.");
         } catch (\Exception $e) {
             return $this->sendError('Failed to assign fees.', ['error' => $e->getMessage()], 500);
         }

@@ -385,6 +385,7 @@ const StudentLedgerList = () => {
                         <td className="px-6 py-4 text-center">
                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                                 fee.aggregated_status === 'no fees' ? 'bg-slate-100 text-slate-600' :
+                                fee.aggregated_status === 'voucher pending' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                                 fee.aggregated_status === 'unpaid' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
                                 fee.aggregated_status === 'partial' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                                 'bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-200'
@@ -393,21 +394,23 @@ const StudentLedgerList = () => {
                             </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                            {fee.aggregated_status === 'no fees' ? (
-                                <button 
-                                    onClick={() => handleAssignFee(fee.student_id)}
-                                    className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 shadow-sm transition-all duration-200"
-                                >
-                                    Assign Fee
-                                </button>
-                            ) : (
+                            <div className="flex items-center justify-center gap-1.5">
+                                {(fee.aggregated_status === 'no fees' || fee.aggregated_status === 'voucher pending') && (
+                                    <button 
+                                        onClick={() => handleAssignFee(fee.student_id)}
+                                        className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 shadow-sm transition-all duration-200 whitespace-nowrap"
+                                        title={fee.aggregated_status === 'voucher pending' ? 'Issue Initial Voucher' : 'Assign Initial Fees'}
+                                    >
+                                        {fee.aggregated_status === 'voucher pending' ? 'Issue Voucher' : 'Assign Fee'}
+                                    </button>
+                                )}
                                 <button 
                                     onClick={() => navigate(`/fees/ledger/${fee.student_id}`)}
-                                    className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200"
+                                    className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-200 whitespace-nowrap"
                                 >
-                                View Ledger
+                                    View Ledger
                                 </button>
-                            )}
+                            </div>
                         </td>
                     </>
                 )}
